@@ -13,4 +13,4 @@ RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
 RUN Rscript -e 'install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies = TRUE)'
 
 # run command 
-# docker run --rm -ti -p 8787:8787 my/docker-tag
+# docker run --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 phd-intro
