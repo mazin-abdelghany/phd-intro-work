@@ -10,3 +10,7 @@ To run the RMarkdown file:
 6. Run the command `docker run --rm --mount type=bind,source=.,dst=/project -ti -p 8787:8787 phd-intro`.
 7. In your browser of choice, open `http://localhost:8787`.
 8. Type in the username `rstudio` and the auto-generated password from the command line.
+
+In order to see the files within the source directory, within the R console `setwd("/project")`. Then, in the files panel, under "More", click "Go To Working Directory". Any files in the source directory should appear here. Any files created within this directory, will also be saved in the source directory.
+
+Open the RMarkdown file, and run as normal.
