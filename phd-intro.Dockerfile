@@ -6,7 +6,8 @@ RUN install2.r --error \
      posterior \
      tidybayes \
      ggdist \
-     loo 
+     loo \
+     mvtnorm
 
 # install RStan
 RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
