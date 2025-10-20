@@ -1,6 +1,10 @@
 ---
 title: "Introductory coding examples"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
 date: "2025-10-17"
 ---
 
