@@ -14,8 +14,6 @@ To run the RMarkdown file:
 
 In order to see the files within the source directory:
 1. Within the R console, `setwd("/project")`.
-2. In the Files panel, under "More", click "Go To Working Directory".
-
-Any files in the source directory should appear here. Any files created within this directory, will also be saved in the source directory.
+2. In the Files panel, under "More", click "Go To Working Directory". Any files in the source directory should appear here. Any files created within this directory, will also be saved in the source directory.
 
 Open the RMarkdown file, and run as normal.
