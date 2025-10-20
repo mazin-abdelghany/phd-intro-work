@@ -7,8 +7,12 @@ RUN install2.r --error \
      tidybayes \
      ggdist \
      loo \
+<<<<<<< HEAD
      mvtnorm \
      gplite
+=======
+     mvtnorm
+>>>>>>> d4bff225fe0483f68b96c04fd79d7713847650b7
 
 # install RStan
 RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
