@@ -1,16 +1,79 @@
 ---
 title: "Introductory coding examples"
-output: html_document
+output: 
+  html_document
+    toc: true
+    toc_float: true
 date: "2025-10-17"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# load required libraries
+library(ggplot2)
 ```
 
 # Introductory coding examples
 
 ## Group sequential design simulations
 
+### General RCT planning
+
+The statistical design of the below example trial will assume that a treatment $T$ is being assessed against placebo. The parameter to be estimated, $\theta$, is the difference in a continuous outcome of interest, $O$, between the treatment and placebo groups.
+
+For example, the treatment $T$ may be an anti-hypertensive therapy and the outcome of interest $O$ may be the difference in systolic blood pressure (SBP): $\theta = SBP_{\text{placebo}} - SBP_{\text{treatment}}$. An ineffective therapy would have no effect on the systolic blood pressure. Thus, we have: 
+$$
+\text{Null hypothesis}, H_0: \theta \le 0 \qquad \text{Alternative hypothesis}, H_1:\theta>0
+$$ 
+A suitable test statistic, $Z$, would then be utilized to test the above hypothesis at a critical value threshold $c$. The null hypothesis would be rejected if 
+$$
+Z > c, \text{where } P(Z > c) \le \alpha
+$$ 
+and the sample size $n$ would be chosen so that 
+$$
+P(Z > c) \ge 1- \beta \text{ when } \theta = \delta
+$$ 
+where $\alpha$ is the frequentist type I error rate, $\beta$ is the frequentist type II error rate and $\delta$ is a selected, assumed treatment effect of clinical significance.
+
+### Group sequential design planning
+
+In group sequential designs, a number of analyses, $J$, are performed at pre-selected points with each analysis numbered as $j = 1, 2, \dots, j-1, J$. At each timepoint, a test statistic $Z_j$ would be calculated to assess for stopping of the trial either for futility or efficacy. Upper and lower bounds ($u_j$ and $\ell_j$) for the test statistic would be prespecified for each analysis timepoint, creating a boundary for clinical trial decisions.
+
+```{r}
+boundaries <- data.frame(
+  x = c(5, 3, 2, 1.5, 1),
+  y = c(-2, -1, 0, 0.5, 1),
+  j_analysis = c(1, 2, 3, 4, 5)
+)
+
+ggplot(data = boundaries) +
+  geom_ribbon(mapping = aes(x = j_analysis, ymin = x, ymax = y), color = "grey", alpha = 0.3) +
+  geom_line(mapping = aes(x = j_analysis, y = y), color = "red") +
+  geom_line(mapping = aes(x = j_analysis, y = x), color = "blue") +
+  geom_point(mapping = aes(x = j_analysis, y = y)) +
+  geom_point(mapping = aes(x = j_analysis, y = x)) +
+  annotate("label", x = 2, y = 1, label = "Continue trial") +
+  annotate("label", x = 3, y = 4, label = "Stop for efficacy (reject null)") +
+  annotate("label", x = 3, y = -1.5, label = "Stop for futility (fail to reject null)") +
+  ylab("Test statistic, Z") +
+  xlab("Analysis number, j") +
+  scale_x_continuous(limits = c(0.5,5.3), breaks = c(1, 2, 3, 4, 5)) +
+  scale_y_continuous(limits = c(-3, 6))
+```
+
+### Bootstrap sample size calculations
+
+Continuing with the above example of treatment of hypertension with two groups, we can consider the sample size of a hypothetical 
+
 ## Gaussian process regression
+
+
+
+
+
+
+
+
+
 
