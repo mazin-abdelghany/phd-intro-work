@@ -7,8 +7,12 @@ RUN install2.r --error \
      tidybayes \
      ggdist \
      loo \
+<<<<<<< HEAD
      mvtnorm \
      gplite
+=======
+     mvtnorm
+>>>>>>> refs/rewritten/Added-required-R-package-to-Dockerfile
 
 # install RStan
 RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
