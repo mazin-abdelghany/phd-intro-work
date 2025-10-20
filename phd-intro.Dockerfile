@@ -12,7 +12,11 @@ RUN install2.r --error \
      gplite
 =======
      mvtnorm
+<<<<<<< HEAD
 >>>>>>> refs/rewritten/Added-R-package-to-Dockerfile
+=======
+>>>>>>> refs/rewritten/Added-required-R-package-to-Dockerfile
+>>>>>>> refs/rewritten/Added-R-package-to-Dockerfile-2
 
 # install RStan
 RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
