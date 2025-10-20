@@ -695,11 +695,44 @@ ggplot() +
   xlab('x') + ylab('y')
 ```
 
-
-Now 7:
+Now 7, with the point $(10, 100)$:
 ```{r}
-n <- 7
-x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+n <- 6
+x  <- matrix(c(seq(-2, 2, length.out = n), 10), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-4, 12, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Now 7 with the point $(0, 0)$:
+```{r}
+n <- 6
+x  <- matrix(c(seq(-2, 2, length.out = n), 0), ncol = 1)
 y  <- x^2
 
 ggplot() + 
@@ -729,7 +762,6 @@ ggplot() +
   geom_point(aes(x=x, y=y), size=2) +
   xlab('x') + ylab('y')
 ```
-
 
 Add some noise to the case of 7 points:
 ```{r}
