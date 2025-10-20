@@ -472,12 +472,295 @@ pmvnorm(lower = lower, upper = upper, mean = mean_1, corr = SIGMA)
 
 ## Gaussian process regression
 
+```{r}
+# load required libraries
+library(gplite)
+```
+
+Let's start by modeling a circle.
+```{r}
+x  <- matrix(c(seq(-1, -0.9, length.out = 10),
+               seq(-0.9, 0.9, length.out = 20),
+               seq(0.9, 1, length.out = 10)), ncol = 1)
+y  <- sqrt(1 - x^2) 
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+```{r}
+# Specify the GP model we want to use:
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-1.5, 1.5, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+The Gaussian process does not want to create an asymptote at the critical values of -1 and 1.
+
+We can model a "better behaved" function. We can start with a single point.
+```{r}
+n <- 1
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-2.5, -1.5, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Now 2 points:
+```{r}
+n <- 2
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-2.5, 2.5, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
 
 
+Add a third point:
+```{r}
+n <- 3
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
 
 
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-2.5, 2.5, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
 
 
+Now 5:
+```{r}
+n <- 5
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
 
 
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
 
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-4, 4, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Now 6:
+```{r}
+n <- 6
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-4, 4, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+
+Now 7:
+```{r}
+n <- 7
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-20, 20, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+
+Add some noise to the case of 7 points:
+```{r}
+n <- 7
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2 + rnorm(7, mean = 0, sd = 0.3)
+
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+
+```{r}
+# Now fit the model to the data:
+gp <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-20, 20, len=150)
+pred <- gp_pred(gp, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), size=0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
