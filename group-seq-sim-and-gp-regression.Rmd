@@ -64,7 +64,100 @@ ggplot(data = boundaries) +
 
 ### Bootstrap sample size calculations
 
-Continuing with the above example of treatment of hypertension with two groups, we can consider the sample size of a hypothetical 
+Continuing with the above example of treatment of hypertension with two groups, we can consider the sample size of a hypothetical trial. First, we perform the bootstrapping under the null hypothesis of $\theta = 0$.
+
+Generating data for groups without difference in mean, first stage:
+```{r}
+list_of_pbo <- list()
+list_of_trt <- list()
+
+t_test_df <- data.frame(
+  t_test = c(rep(0, 1000)),
+  p_val = c(rep(0, 1000))
+) 
+
+# get 1000 sample mean differences
+for (i in 1:1000) {
+  # generate placebo group data
+  pbo <- rnorm(10, mean = 140, sd = 10)
+  list_of_pbo[[i]] <- pbo
+  
+  # generate treatment group data
+  trt <- rnorm(10, mean = 140, sd = 10)
+  list_of_trt[[i]] <- trt
+  
+  # get the test statistic for difference between means
+  t_test <- t.test(pbo, trt, "greater")
+  t_test_df$t_test[i] <- t_test$statistic
+  t_test_df$p_val[i] <- t_test$p.value
+}
+
+par(mfrow = c(1,2))
+hist(t_test_df$t_test)
+hist(t_test_df$p_val)
+```
+
+Generating data for groups without difference in mean, second stage:
+```{r}
+t_test_df <- data.frame(
+  t_test = c(rep(0, 1000)),
+  p_val = c(rep(0, 1000))
+) 
+
+# get 1000 sample mean differences
+for (i in 1:1000) {
+  # generate placebo group data
+  pbo <- rnorm(10, mean = 140, sd = 10)
+  list_of_pbo[[i]] <- c(list_of_pbo[[i]], pbo)
+  
+  # generate treatment group data
+  trt <- rnorm(10, mean = 140, sd = 10)
+  list_of_trt[[i]] <- c(list_of_trt[[i]], pbo)
+  
+  # get the test statistic for difference between means
+  t_test <- t.test(list_of_pbo[[i]], list_of_trt[[i]], "greater")
+  t_test_df$t_test[i] <- t_test$statistic
+  t_test_df$p_val[i] <- t_test$p.value
+}
+
+par(mfrow = c(1,2))
+hist(t_test_df$t_test)
+hist(t_test_df$p_val)
+```
+
+Generating data for groups without difference in mean, third stage:
+```{r}
+t_test_df <- data.frame(
+  t_test = c(rep(0, 1000)),
+  p_val = c(rep(0, 1000))
+) 
+
+# get 1000 sample mean differences
+for (i in 1:1000) {
+  # generate placebo group data
+  pbo <- rnorm(10, mean = 140, sd = 10)
+  list_of_pbo[[i]] <- c(list_of_pbo[[i]], pbo)
+  
+  # generate treatment group data
+  trt <- rnorm(10, mean = 140, sd = 10)
+  list_of_trt[[i]] <- c(list_of_trt[[i]], pbo)
+  
+  # get the test statistic for difference between means
+  t_test <- t.test(list_of_pbo[[i]], list_of_trt[[i]], "greater")
+  t_test_df$t_test[i] <- t_test$statistic
+  t_test_df$p_val[i] <- t_test$p.value
+}
+
+par(mfrow = c(1,2))
+hist(t_test_df$t_test)
+hist(t_test_df$p_val)
+```
+
+### Questions for meeting
+1. Why format $\mathbf{u}$ and $\mathbf{\ell}$ as ${cu_1, \dots, cu_2}$?
+2. Slide 16/43, $c$ is not mentioned?
+3. Same slide, are $\mathbf{u}$, $\mathbf{\ell}$, $\mathbf{n}$, $\delta$ chosen randomly?
+4. The above is incorrect because these are considered multivariate normals with dependence.
 
 ## Gaussian process regression
 
