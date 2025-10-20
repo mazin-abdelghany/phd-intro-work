@@ -156,6 +156,7 @@ hist(t_test_df$p_val)
 2. Slide 16/43, $c$ is not mentioned?
 3. Same slide, are $\mathbf{u}$, $\mathbf{\ell}$, $\mathbf{n}$, $\delta$ chosen randomly?
 4. The above is incorrect because these are considered multivariate normals with dependence.
+5. Why $u_2$ to infinity rather than $l_2$ to infinity?
 
 ### Multivariate normal probability test calculations
 The following equation is used to calculate the probability of stopping at Analysis 1 in the example on Slide 16:
@@ -169,21 +170,29 @@ $$
 $$
 ```{r}
 n1 <- 20
+n2 <- 40
 
 theta_0 <- 0
+theta_1 <- 0.5
 
 sigma <- 1
 
-mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma)))
+mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
+            theta_0 * sqrt(n2/ (2*sigma) ))
 
-SIGMA <- matrix(1)
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2),
+    sqrt(n1/n2), 1),
+  nrow = 2
+)
 
+u1 <- 2.5
 l1 <- 0
 
-lower <- c(l1)
-upper <- c(Inf)
-
-pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+# lower <- c(l1, u2)
+# upper <- c(u1, Inf)
+# 
+# pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 ```
 
 The following equation is used to calculate the probability of stopping at Analysis 2 in the example on Slide 16:
@@ -196,6 +205,7 @@ $$
 \end{bmatrix}, \begin{bmatrix} 1 & \sqrt{\frac{n_1}{n_2}} \\ \sqrt{\frac{n_1}{n_2}} & 1 \end{bmatrix} \right) dy_2\,dy_1 
 $$
 
+For $\theta = 0$:
 ```{r}
 n1 <- 20
 n2 <- 40
@@ -224,6 +234,123 @@ upper <- c(u1, Inf)
 pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 ```
 
+For $\theta = 0.5$, i.e., under the alternative $\delta$:
+```{r}
+n1 <- 20
+n2 <- 40
+
+theta_0 <- 0
+theta_1 <- 0.5
+
+sigma <- 1
+
+mean_0 <- c(theta_1 * sqrt(n1/ (2*sigma) ),
+            theta_1 * sqrt(n2/ (2*sigma) ))
+
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2),
+    sqrt(n1/n2), 1),
+  nrow = 2
+)
+
+u1 <- 2.5
+u2 <- 2
+l1 <- 0
+
+lower <- c(l1, u2)
+upper <- c(u1, Inf)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+```
+
+
+The following equation is used to calculate the probability of stopping at Analysis 3 in the example on Slide 16:
+
+$$
+\int_{l_1}^{u_1}\int_{l_2}^{u_2}\int_{l_3}^{\infty} \phi_2 \left( 
+\begin{bmatrix}
+    y_1 & y_2 & y_3
+\end{bmatrix}, 
+\begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} & \theta \sqrt{\frac{n_2}{2\sigma^2}} & \theta \sqrt{\frac{n_3}{2\sigma^2}} 
+\end{bmatrix}, 
+\begin{bmatrix} 
+1 & \sqrt{\frac{n_1}{n_2}} & \sqrt{\frac{n_1}{n_3}}\\ 
+\sqrt{\frac{n_1}{n_2}} & 1 & \sqrt{\frac{n_2}{n_3}}\\
+\sqrt{\frac{n_1}{n_3}} & \sqrt{\frac{n_2}{n_3}} & 1
+\end{bmatrix} 
+\right) dy_3\,dy_2\,dy_1
+$$
+
+For $\theta = 0$:
+```{r}
+n1 <- 20
+n2 <- 40
+n3 <- 60
+
+theta_0 <- 0
+theta_1 <- 0.5
+
+sigma <- 1
+
+mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
+            theta_0 * sqrt(n2/ (2*sigma) ),
+            theta_0 * sqrt(n3/ (2*sigma) ))
+
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2), sqrt(n1/n3),
+    sqrt(n1/n2), 1, sqrt(n2/n3),
+    sqrt(n1/n3), sqrt(n2/n3), 1),
+  nrow = 3
+)
+
+u1 <- 2.5
+u2 <- 2
+u3 <- Inf
+l1 <- 0
+l2 <- 0.75
+l3 <- 1.5
+
+lower <- c(l1, l2, l3)
+upper <- c(u1, u2, u3)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+```
+
+For $\theta = 0.5$, i.e., under the alternative $\delta$:
+```{r}
+n1 <- 20
+n2 <- 40
+n3 <- 60
+
+theta_0 <- 0
+theta_1 <- 0.5
+
+sigma <- 1
+
+mean_0 <- c(theta_1 * sqrt(n1/ (2*sigma) ),
+            theta_1 * sqrt(n2/ (2*sigma) ),
+            theta_1 * sqrt(n3/ (2*sigma) ))
+
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2), sqrt(n1/n3),
+    sqrt(n1/n2), 1, sqrt(n2/n3),
+    sqrt(n1/n3), sqrt(n2/n3), 1),
+  nrow = 3
+)
+
+u1 <- 2.5
+u2 <- 2
+u3 <- Inf
+l1 <- 0
+l2 <- 0.75
+l3 <- 1.5
+
+lower <- c(l1, l2, l3)
+upper <- c(u1, u2, u3)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+```
 
 ## Gaussian process regression
 
