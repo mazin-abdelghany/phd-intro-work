@@ -21,17 +21,23 @@ library(mvtnorm)
 The statistical design of the below example trial will assume that a treatment $T$ is being assessed against placebo. The parameter to be estimated, $\theta$, is the difference in a continuous outcome of interest, $O$, between the treatment and placebo groups.
 
 For example, the treatment $T$ may be an anti-hypertensive therapy and the outcome of interest $O$ may be the difference in systolic blood pressure (SBP): $\theta = SBP_{\text{placebo}} - SBP_{\text{treatment}}$. An ineffective therapy would have no effect on the systolic blood pressure. Thus, we have: 
+
 $$
 \text{Null hypothesis}, H_0: \theta \le 0 \qquad \text{Alternative hypothesis}, H_1:\theta>0
 $$ 
+
 A suitable test statistic, $Z$, would then be utilized to test the above hypothesis at a critical value threshold $c$. The null hypothesis would be rejected if 
+
 $$
 Z > c, \text{where } P(Z > c) \le \alpha
 $$ 
+
 and the sample size $n$ would be chosen so that 
+
 $$
 P(Z > c) \ge 1- \beta \text{ when } \theta = \delta
 $$ 
+
 where $\alpha$ is the frequentist type I error rate, $\beta$ is the frequentist type II error rate and $\delta$ is a selected, assumed treatment effect of clinical significance.
 
 ### Group sequential design planning
@@ -159,24 +165,107 @@ hist(t_test_df$p_val)
 5. Why $u_2$ to infinity rather than $l_2$ to infinity?
 
 ### Multivariate normal probability test calculations
-The following equation is used to calculate the probability of stopping at Analysis 1 in the example on Slide 16:
-
-$$
-\int_{l_1}^{\infty} \phi_2 \left( \begin{bmatrix}
-    y_1 
-\end{bmatrix}, \begin{bmatrix} 
-\theta \sqrt{\frac{n_1}{2\sigma^2}} 
-\end{bmatrix}, \begin{bmatrix} 1 \end{bmatrix} \right) dy_2\,dy_1 
-$$
+First, we set up the variables needed for each of the calculations:
 ```{r}
 n1 <- 20
 n2 <- 40
+n3 <- 60
 
-theta_0 <- 0
-theta_1 <- 0.5
+theta_0 <- 0  # theta under the null
+delta <- 0.5  # theta under the alternative
 
+sigma <- 1 # assumed known
+
+# bounds of integration
+u1 <- 2.5
+u2 <- 2
+u3 <- Inf
+l1 <- 0
+l2 <- 0.75
+l3 <- 1.5
+```
+
+
+The following equation is used to calculate the probability of stopping at Analysis 1 in the example on Slide 16. For the  first analysis, this is a single variable normal distribution. The probability of stopping for futility **under the null** is the lower tail of the normal distribution up to the first lower bound (the selected critical value, $z$).
+
+$$
+\int_{-\infty}^{l_1} \phi_2 \left( \begin{bmatrix}
+    y_1 
+\end{bmatrix}, \begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} 
+\end{bmatrix}, \begin{bmatrix} 1 \end{bmatrix} \right)dy_1 
+$$
+
+```{r}
+mean_0 <- theta_0 * sqrt(n1/(2*sigma))
 sigma <- 1
 
+# prob stop for futility
+pnorm(l1, mean = mean_0, sd = sigma)
+```
+
+The probability of stopping for efficacy **under the null** is the upper tail of the normal distribution from the first upper bound.
+
+$$
+\int_{u_1}^{\infty} \phi_2 \left( \begin{bmatrix}
+    y_1 
+\end{bmatrix}, \begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} 
+\end{bmatrix}, \begin{bmatrix} 1 \end{bmatrix} \right)dy_1 
+$$
+
+```{r}
+# prob stop for efficacy
+pnorm(u1, mean = mean_0, sd = sigma, lower.tail = FALSE)
+```
+
+The probability of stopping for futility **under the alternative** is the lower tail of the normal distribution up to the first lower bound.
+
+$$
+\int_{-\infty}^{l_1} \phi_2 \left( \begin{bmatrix}
+    y_1 
+\end{bmatrix}, \begin{bmatrix} 
+\delta \sqrt{\frac{n_1}{2\sigma^2}} 
+\end{bmatrix}, \begin{bmatrix} 1 \end{bmatrix} \right)dy_1 
+$$
+
+```{r}
+mean_1 <- delta * sqrt(n1/(2*sigma))
+
+# prob stop for futility, theta = 0.5
+pnorm(l1, mean = mean_1, sd = sigma)
+```
+
+The probability of stopping for efficacy **under the alternative** is the upper tail of the normal distribution from the first upper bound.
+
+$$
+\int_{u_1}^{\infty} \phi_2 \left( \begin{bmatrix}
+    y_1 
+\end{bmatrix}, \begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} 
+\end{bmatrix}, \begin{bmatrix} 1 \end{bmatrix} \right)dy_1 
+$$
+
+```{r}
+# again,
+mean_1 <- delta * sqrt(n1/(2*sigma))
+
+# prob stop for efficacy
+pnorm(u1, mean = mean_1, sd = sigma, lower.tail = FALSE)
+```
+
+The following equation is used to calculate the probability of stopping for futility **under the null** at Analysis 2 in the example on Slide 16:
+
+$$
+\int_{l_1}^{u_1}\int_{-\infty}^{l_2} \phi_2 \left( \begin{bmatrix}
+    y_1 & y_2
+\end{bmatrix}, \begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} & \theta \sqrt{\frac{n_2}{2\sigma^2}} 
+\end{bmatrix}, \begin{bmatrix} 1 & \sqrt{\frac{n_1}{n_2}} \\ \sqrt{\frac{n_1}{n_2}} & 1 \end{bmatrix} \right) dy_2\,dy_1 
+$$
+
+Recall, $\theta = 0$:
+```{r}
 mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
             theta_0 * sqrt(n2/ (2*sigma) ))
 
@@ -186,16 +275,39 @@ SIGMA <- matrix(
   nrow = 2
 )
 
-u1 <- 2.5
-l1 <- 0
+# order of integration doesn't matter here
+lower <- c(l1, -Inf)
+upper <- c(u1, l2)
 
-# lower <- c(l1, u2)
-# upper <- c(u1, Inf)
-# 
-# pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+# lower <- c(-Inf, l1)
+# upper <- c(l2, u1)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 ```
 
-The following equation is used to calculate the probability of stopping at Analysis 2 in the example on Slide 16:
+When $\theta = \delta = 0.5$:
+```{r}
+mean_1 <- c(delta * sqrt(n1/ (2*sigma) ),
+            delta * sqrt(n2/ (2*sigma) ))
+
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2),
+    sqrt(n1/n2), 1),
+  nrow = 2
+)
+
+# order of integration matters here
+lower <- c(l1, -Inf)
+upper <- c(u1, l2)
+
+# lower <- c(-Inf, l1)
+# upper <- c(l2, u1)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_1, corr = SIGMA)
+```
+
+
+The following equation is used to calculate the probability of stopping for efficacy **under the null** at Analysis 2 in the example on Slide 16:
 
 $$
 \int_{l_1}^{u_1}\int_{u_2}^{\infty} \phi_2 \left( \begin{bmatrix}
@@ -205,16 +317,8 @@ $$
 \end{bmatrix}, \begin{bmatrix} 1 & \sqrt{\frac{n_1}{n_2}} \\ \sqrt{\frac{n_1}{n_2}} & 1 \end{bmatrix} \right) dy_2\,dy_1 
 $$
 
-For $\theta = 0$:
+Recall, $\theta = 0$:
 ```{r}
-n1 <- 20
-n2 <- 40
-
-theta_0 <- 0
-theta_1 <- 0.5
-
-sigma <- 1
-
 mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
             theta_0 * sqrt(n2/ (2*sigma) ))
 
@@ -224,28 +328,16 @@ SIGMA <- matrix(
   nrow = 2
 )
 
-u1 <- 2.5
-u2 <- 2
-l1 <- 0
-
 lower <- c(l1, u2)
 upper <- c(u1, Inf)
 
 pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 ```
 
-For $\theta = 0.5$, i.e., under the alternative $\delta$:
+Under the alternative when $\theta = \delta = 0.5$:
 ```{r}
-n1 <- 20
-n2 <- 40
-
-theta_0 <- 0
-theta_1 <- 0.5
-
-sigma <- 1
-
-mean_0 <- c(theta_1 * sqrt(n1/ (2*sigma) ),
-            theta_1 * sqrt(n2/ (2*sigma) ))
+mean_0 <- c(delta * sqrt(n1/ (2*sigma) ),
+            delta * sqrt(n2/ (2*sigma) ))
 
 SIGMA <- matrix(
   c(1, sqrt(n1/n2),
@@ -253,10 +345,6 @@ SIGMA <- matrix(
   nrow = 2
 )
 
-u1 <- 2.5
-u2 <- 2
-l1 <- 0
-
 lower <- c(l1, u2)
 upper <- c(u1, Inf)
 
@@ -264,7 +352,7 @@ pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 ```
 
 
-The following equation is used to calculate the probability of stopping at Analysis 3 in the example on Slide 16:
+The following equation is used to calculate the probability of stopping for efficacy **under the null** at Analysis 3 in the example on Slide 16:
 
 $$
 \int_{l_1}^{u_1}\int_{l_2}^{u_2}\int_{l_3}^{\infty} \phi_2 \left( 
@@ -284,15 +372,6 @@ $$
 
 For $\theta = 0$:
 ```{r}
-n1 <- 20
-n2 <- 40
-n3 <- 60
-
-theta_0 <- 0
-theta_1 <- 0.5
-
-sigma <- 1
-
 mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
             theta_0 * sqrt(n2/ (2*sigma) ),
             theta_0 * sqrt(n3/ (2*sigma) ))
@@ -304,33 +383,17 @@ SIGMA <- matrix(
   nrow = 3
 )
 
-u1 <- 2.5
-u2 <- 2
-u3 <- Inf
-l1 <- 0
-l2 <- 0.75
-l3 <- 1.5
-
 lower <- c(l1, l2, l3)
-upper <- c(u1, u2, u3)
+upper <- c(u1, u2, Inf)
 
 pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 ```
 
-For $\theta = 0.5$, i.e., under the alternative $\delta$:
+Under the alternative when $\theta = \delta = 0.5$:
 ```{r}
-n1 <- 20
-n2 <- 40
-n3 <- 60
-
-theta_0 <- 0
-theta_1 <- 0.5
-
-sigma <- 1
-
-mean_0 <- c(theta_1 * sqrt(n1/ (2*sigma) ),
-            theta_1 * sqrt(n2/ (2*sigma) ),
-            theta_1 * sqrt(n3/ (2*sigma) ))
+mean_1 <- c(delta * sqrt(n1/ (2*sigma) ),
+            delta * sqrt(n2/ (2*sigma) ),
+            delta * sqrt(n3/ (2*sigma) ))
 
 SIGMA <- matrix(
   c(1, sqrt(n1/n2), sqrt(n1/n3),
@@ -339,17 +402,68 @@ SIGMA <- matrix(
   nrow = 3
 )
 
-u1 <- 2.5
-u2 <- 2
-u3 <- Inf
-l1 <- 0
-l2 <- 0.75
-l3 <- 1.5
 
 lower <- c(l1, l2, l3)
-upper <- c(u1, u2, u3)
+upper <- c(u1, u2, Inf)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_1, corr = SIGMA)
+```
+
+
+The following equation is used to calculate the probability of stopping for futility **under the null** at Analysis 3 in the example on Slide 16:
+
+$$
+\int_{l_1}^{u_1}\int_{l_2}^{u_2}\int_{-\infty}^{l_3} \phi_2 \left( 
+\begin{bmatrix}
+    y_1 & y_2 & y_3
+\end{bmatrix}, 
+\begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} & \theta \sqrt{\frac{n_2}{2\sigma^2}} & \theta \sqrt{\frac{n_3}{2\sigma^2}} 
+\end{bmatrix}, 
+\begin{bmatrix} 
+1 & \sqrt{\frac{n_1}{n_2}} & \sqrt{\frac{n_1}{n_3}}\\ 
+\sqrt{\frac{n_1}{n_2}} & 1 & \sqrt{\frac{n_2}{n_3}}\\
+\sqrt{\frac{n_1}{n_3}} & \sqrt{\frac{n_2}{n_3}} & 1
+\end{bmatrix} 
+\right) dy_3\,dy_2\,dy_1
+$$
+
+Recall, $\theta = 0$:
+```{r}
+mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
+            theta_0 * sqrt(n2/ (2*sigma) ),
+            theta_0 * sqrt(n3/ (2*sigma) ))
+
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2), sqrt(n1/n3),
+    sqrt(n1/n2), 1, sqrt(n2/n3),
+    sqrt(n1/n3), sqrt(n2/n3), 1),
+  nrow = 3
+)
+
+lower <- c(l1, l2, -Inf)
+upper <- c(u1, u2, l3)
 
 pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+```
+
+And **under the alternative**, when $\theta = \delta = 0.5$:
+```{r}
+mean_1 <- c(delta * sqrt(n1/ (2*sigma) ),
+            delta * sqrt(n2/ (2*sigma) ),
+            delta * sqrt(n3/ (2*sigma) ))
+
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2), sqrt(n1/n3),
+    sqrt(n1/n2), 1, sqrt(n2/n3),
+    sqrt(n1/n3), sqrt(n2/n3), 1),
+  nrow = 3
+)
+
+lower <- c(l1, l2, -Inf)
+upper <- c(u1, u2, l3)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_1, corr = SIGMA)
 ```
 
 ## Gaussian process regression
