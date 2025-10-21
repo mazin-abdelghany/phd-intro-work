@@ -183,7 +183,7 @@ sigma <- 1 # assumed known
 # bounds of integration
 u1 <- 2.5
 u2 <- 2
-u3 <- Inf
+u3 <- 1.5
 l1 <- 0
 l2 <- 0.75
 l3 <- 1.5
@@ -359,7 +359,7 @@ pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
 The following equation is used to calculate the probability of stopping for efficacy **under the null** at Analysis 3 in the example on Slide 16:
 
 $$
-\int_{l_1}^{u_1}\int_{l_2}^{u_2}\int_{l_3}^{\infty} \phi_2 \left( 
+\int_{l_1}^{u_1}\int_{l_2}^{u_2}\int_{u_3}^{\infty} \phi_2 \left( 
 \begin{bmatrix}
     y_1 & y_2 & y_3
 \end{bmatrix}, 
@@ -387,7 +387,7 @@ SIGMA <- matrix(
   nrow = 3
 )
 
-lower <- c(l1, l2, l3)
+lower <- c(l1, l2, u3)
 upper <- c(u1, u2, Inf)
 
 pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
@@ -407,7 +407,7 @@ SIGMA <- matrix(
 )
 
 
-lower <- c(l1, l2, l3)
+lower <- c(l1, l2, u3)
 upper <- c(u1, u2, Inf)
 
 pmvnorm(lower = lower, upper = upper, mean = mean_1, corr = SIGMA)
