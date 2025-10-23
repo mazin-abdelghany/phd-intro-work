@@ -1,0 +1,160 @@
+---
+title: "More coding examples"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float: 
+      collapsed: false
+date: "2025-10-17"
+---
+
+```{css, echo=FALSE}
+#TOC {
+    max-width: fit-content;
+    white-space: nowrap;
+}
+  
+div:has(> #TOC) {
+    display: flex;
+    flex-direction: row-reverse;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load required libraries
+library(mvtnorm)
+```
+
+# Group sequential designs
+
+## Simulations of GSD stopping probabilities
+
+First, let us replicate the table of known stopping probabilities for the following group sequential design:
+
+* Number of analyses: 3
+* Upper bound stopping: $\mathbf{u} = (2.5, 2, 1.5)$
+* Lower bound stopping: $\mathbf{l} = (0, 0.75, 1.5)$
+* Number of patients at each analysis: 20
+* Null hypothesis: $\theta = 0$
+* Alternative hypothesis: $\theta = \delta = 0.5$
+* Known variance: $\sigma^2 = 1$
+
+Probabilities are as follows:
+
+|          | $\theta = 0$           |                        | $\theta = 0.5$         |                        |
+|----------|------------------------|------------------------|------------------------|------------------------|
+| Analysis | Prob stop for futility | Prob stop for efficacy | Prob stop for futility | Prob stop for efficacy |
+| 1        | 0.500                  | 0.006                  | 0.057                  | 0.179                  |
+| 2        | 0.299                  | 0.019                  | 0.042                  | 0.420                  |
+| 3        | 0.137                  | 0.038                  | 0.049                  | 0.253                  |
+
+First, let us simulate the straightforward case of Analysis 1 **under the null**.
+
+For futility:
+```{r}
+theta <- 0
+sigma2 <- 1
+
+z_vec <- c(rep(0, 50000))
+
+for (i in 1:50000) {
+  x1 <- rnorm(20)
+  x2 <- rnorm(20)
+
+  mean.diff <- mean(x1 - x2)
+
+  z <- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] <-  z
+}
+
+mean(z_vec <= 0)
+```
+
+For efficacy:
+```{r}
+for (i in 1:50000) {
+  x1 <- rnorm(20)
+  x2 <- rnorm(20)
+
+  mean.diff <- mean(x1 - x2)
+
+  z <- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] <-  z
+}
+
+mean(z_vec >= 2.5)
+```
+
+Now, Analysis 1 **under the alternative**.
+
+For futility:
+```{r}
+theta <- 0.5
+sigma2 <- 1
+
+z_vec <- c(rep(0, 50000))
+
+for (i in 1:50000) {
+  x1 <- rnorm(20, mean = theta, sd = sqrt(sigma2))
+  x2 <- rnorm(20)
+
+  mean.diff <- mean(x1 - x2)
+
+  z <- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] <-  z
+}
+
+mean(z_vec <= 0)
+```
+
+
+For efficacy:
+```{r}
+theta <- 0.5
+sigma2 <- 1
+
+z_vec <- c(rep(0, 50000))
+
+for (i in 1:50000) {
+  x1 <- rnorm(20, mean = theta, sd = sqrt(sigma2))
+  x2 <- rnorm(20)
+
+  mean.diff <- mean(x1 - x2)
+
+  z <- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] <-  z
+}
+
+mean(z_vec >= 2.5)
+```
+
+
+## Function for GSDs
+
+# Gaussian process regression
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

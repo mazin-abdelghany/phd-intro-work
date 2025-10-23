@@ -174,13 +174,6 @@ hist(t_test_df$t_test)
 hist(t_test_df$p_val)
 ```
 
-### Questions for meeting
-1. Why format $\mathbf{u}$ and $\mathbf{\ell}$ as ${cu_1, \dots, cu_2}$?
-2. Slide 16/43, $c$ is not mentioned?
-3. Same slide, are $\mathbf{u}$, $\mathbf{\ell}$, $\mathbf{n}$, $\delta$ chosen randomly?
-4. The above is incorrect because these are considered multivariate normals with dependence.
-5. Why $u_2$ to infinity rather than $l_2$ to infinity?
-
 ### MV normal probability calculations
 First, we set up the variables needed for each of the calculations:
 ```{r}
