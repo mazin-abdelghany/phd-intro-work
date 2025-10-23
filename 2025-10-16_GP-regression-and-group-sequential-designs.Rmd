@@ -3,10 +3,23 @@ title: "Introductory coding examples"
 output: 
   html_document:
     toc: true
-    toc_float: true
     toc_depth: 3
-date: "2025-10-17"
+    toc_float: 
+      collapsed: false
+date: "2025-10-16"
 ---
+
+```{css, echo=FALSE}
+#TOC {
+    max-width: fit-content;
+    white-space: nowrap;
+}
+  
+div:has(> #TOC) {
+    display: flex;
+    flex-direction: row-reverse;
+}
+```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -168,7 +181,7 @@ hist(t_test_df$p_val)
 4. The above is incorrect because these are considered multivariate normals with dependence.
 5. Why $u_2$ to infinity rather than $l_2$ to infinity?
 
-### Multivariate normal probability test calculations
+### MV normal probability calculations
 First, we set up the variables needed for each of the calculations:
 ```{r}
 n1 <- 20
