@@ -58,7 +58,7 @@ For futility:
 theta <- 0
 sigma2 <- 1
 
-z_vec <- c(rep(0, 50000))
+z_vec <- c()
 
 for (i in 1:50000) {
   x1 <- rnorm(20)
@@ -97,7 +97,7 @@ For futility:
 theta <- 0.5
 sigma2 <- 1
 
-z_vec <- c(rep(0, 50000))
+z_vec <- c()
 
 for (i in 1:50000) {
   x1 <- rnorm(20, mean = theta, sd = sqrt(sigma2))
@@ -119,7 +119,7 @@ For efficacy:
 theta <- 0.5
 sigma2 <- 1
 
-z_vec <- c(rep(0, 50000))
+z_vec <- c()
 
 for (i in 1:50000) {
   x1 <- rnorm(20, mean = theta, sd = sqrt(sigma2))
@@ -135,6 +135,171 @@ for (i in 1:50000) {
 mean(z_vec >= 2.5)
 ```
 
+Now, the case of all three analyses **under the null**.
+
+```{r}
+theta <- 0
+sigma2 <- 1
+
+z_vec <- c()
+z2_vec <- c()
+z3_vec <- c()
+
+analysis2_count <- 0
+analysis3_count <- 0
+
+for (i in 1:100000) {
+  x1 <- rnorm(20)
+  x2 <- rnorm(20)
+
+  mean.diff <- mean(x1 - x2)
+
+  z <- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] <-  z
+  
+  if ( (z > 0) & (z < 2.5) ) {
+    
+    analysis2_count <- analysis2_count + 1
+    
+    x3 <- rnorm(20)
+    x4 <- rnorm(20)
+    
+    x1 <- c(x1, x3)
+    x2 <- c(x2, x4)
+    
+    mean.diff <- mean(x1 - x2)
+    
+    z2 <- mean.diff * sqrt( 40 / (2*sigma2) )
+    
+    z2_vec[analysis2_count] <- z2
+    
+    if ( (z2 > 0.75) & (z2 < 2) ) {
+      
+      analysis3_count <- analysis3_count + 1
+      
+      x5 <- rnorm(20)
+      x6 <- rnorm(20)
+    
+      x1 <- c(x1, x3, x5)
+      x2 <- c(x2, x4, x6)
+    
+      mean.diff <- mean(x1 - x2)
+    
+      z3 <- mean.diff * sqrt( 60 / (2*sigma2) )
+    
+      z3_vec[analysis3_count] <- z3
+      
+    }
+    
+  }
+  
+}
+```
+
+
+For futility:
+
+```{r}
+mean(z_vec <= 0)
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec <= 0.75) 
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec < 1.5)
+```
+
+For efficacy:
+
+```{r}
+mean(z_vec > 2.5)
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 2) 
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec > 1.5)
+```
+
+Now, the case of all three analyses **under the alternative**.
+
+```{r}
+theta <- 0.5
+sigma2 <- 1
+
+z_vec <- c()
+z2_vec <- c()
+z3_vec <- c()
+
+analysis2_count <- 0
+analysis3_count <- 0
+
+for (i in 1:100000) {
+  x1 <- rnorm(20, mean = theta)
+  x2 <- rnorm(20)
+
+  mean.diff <- mean(x1 - x2)
+
+  z <- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] <-  z
+  
+  if ( (z > 0) & (z < 2.5) ) {
+    
+    analysis2_count <- analysis2_count + 1
+    
+    x3 <- rnorm(20, mean = theta)
+    x4 <- rnorm(20)
+    
+    x1 <- c(x1, x3)
+    x2 <- c(x2, x4)
+    
+    mean.diff <- mean(x1 - x2)
+    
+    z2 <- mean.diff * sqrt( 40 / (2*sigma2) )
+    
+    z2_vec[analysis2_count] <- z2
+    
+    if ( (z2 > 0.75) & (z2 < 2) ) {
+      
+      analysis3_count <- analysis3_count + 1
+      
+      x5 <- rnorm(20, mean = theta)
+      x6 <- rnorm(20)
+    
+      x1 <- c(x1, x3, x5)
+      x2 <- c(x2, x4, x6)
+    
+      mean.diff <- mean(x1 - x2)
+    
+      z3 <- mean.diff * sqrt( 60 / (2*sigma2) )
+    
+      z3_vec[analysis3_count] <- z3
+      
+    }
+    
+  }
+  
+}
+```
+
+
+For futility:
+
+```{r}
+mean(z_vec <= 0)
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec <= 0.75) 
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec <= 1.5)
+```
+
+For efficacy:
+
+```{r}
+mean(z_vec > 2.5)
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec >= 2) 
+
+mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec >= 1.5)
+```
 
 ## Function for GSDs
 

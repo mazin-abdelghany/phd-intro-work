@@ -1575,7 +1575,7 @@ the following group sequential design:</p>
 <pre class="r"><code>theta &lt;- 0
 sigma2 &lt;- 1
 
-z_vec &lt;- c(rep(0, 50000))
+z_vec &lt;- c()
 
 for (i in 1:50000) {
   x1 &lt;- rnorm(20)
@@ -1589,7 +1589,7 @@ for (i in 1:50000) {
 }
 
 mean(z_vec &lt;= 0)</code></pre>
-<pre><code>## [1] 0.4994</code></pre>
+<pre><code>## [1] 0.49946</code></pre>
 <p>For efficacy:</p>
 <pre class="r"><code>for (i in 1:50000) {
   x1 &lt;- rnorm(20)
@@ -1603,13 +1603,13 @@ mean(z_vec &lt;= 0)</code></pre>
 }
 
 mean(z_vec &gt;= 2.5)</code></pre>
-<pre><code>## [1] 0.0062</code></pre>
+<pre><code>## [1] 0.0063</code></pre>
 <p>Now, Analysis 1 <strong>under the alternative</strong>.</p>
 <p>For futility:</p>
 <pre class="r"><code>theta &lt;- 0.5
 sigma2 &lt;- 1
 
-z_vec &lt;- c(rep(0, 50000))
+z_vec &lt;- c()
 
 for (i in 1:50000) {
   x1 &lt;- rnorm(20, mean = theta, sd = sqrt(sigma2))
@@ -1623,12 +1623,12 @@ for (i in 1:50000) {
 }
 
 mean(z_vec &lt;= 0)</code></pre>
-<pre><code>## [1] 0.05734</code></pre>
+<pre><code>## [1] 0.0565</code></pre>
 <p>For efficacy:</p>
 <pre class="r"><code>theta &lt;- 0.5
 sigma2 &lt;- 1
 
-z_vec &lt;- c(rep(0, 50000))
+z_vec &lt;- c()
 
 for (i in 1:50000) {
   x1 &lt;- rnorm(20, mean = theta, sd = sqrt(sigma2))
@@ -1642,7 +1642,153 @@ for (i in 1:50000) {
 }
 
 mean(z_vec &gt;= 2.5)</code></pre>
-<pre><code>## [1] 0.1778</code></pre>
+<pre><code>## [1] 0.18104</code></pre>
+<p>Now, the case of all three analyses <strong>under the
+null</strong>.</p>
+<pre class="r"><code>theta &lt;- 0
+sigma2 &lt;- 1
+
+z_vec &lt;- c()
+z2_vec &lt;- c()
+z3_vec &lt;- c()
+
+analysis2_count &lt;- 0
+analysis3_count &lt;- 0
+
+for (i in 1:100000) {
+  x1 &lt;- rnorm(20)
+  x2 &lt;- rnorm(20)
+
+  mean.diff &lt;- mean(x1 - x2)
+
+  z &lt;- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] &lt;-  z
+  
+  if ( (z &gt; 0) &amp; (z &lt; 2.5) ) {
+    
+    analysis2_count &lt;- analysis2_count + 1
+    
+    x3 &lt;- rnorm(20)
+    x4 &lt;- rnorm(20)
+    
+    x1 &lt;- c(x1, x3)
+    x2 &lt;- c(x2, x4)
+    
+    mean.diff &lt;- mean(x1 - x2)
+    
+    z2 &lt;- mean.diff * sqrt( 40 / (2*sigma2) )
+    
+    z2_vec[analysis2_count] &lt;- z2
+    
+    if ( (z2 &gt; 0.75) &amp; (z2 &lt; 2) ) {
+      
+      analysis3_count &lt;- analysis3_count + 1
+      
+      x5 &lt;- rnorm(20)
+      x6 &lt;- rnorm(20)
+    
+      x1 &lt;- c(x1, x3, x5)
+      x2 &lt;- c(x2, x4, x6)
+    
+      mean.diff &lt;- mean(x1 - x2)
+    
+      z3 &lt;- mean.diff * sqrt( 60 / (2*sigma2) )
+    
+      z3_vec[analysis3_count] &lt;- z3
+      
+    }
+    
+  }
+  
+}</code></pre>
+<p>For futility:</p>
+<pre class="r"><code>mean(z_vec &lt;= 0)</code></pre>
+<pre><code>## [1] 0.50146</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &lt;= 0.75) </code></pre>
+<pre><code>## [1] 0.2979</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &gt; 0.75 &amp; z2_vec &lt; 2) * mean(z3_vec &lt; 1.5)</code></pre>
+<pre><code>## [1] 0.13471</code></pre>
+<p>For efficacy:</p>
+<pre class="r"><code>mean(z_vec &gt; 2.5)</code></pre>
+<pre><code>## [1] 0.0059</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &gt; 2) </code></pre>
+<pre><code>## [1] 0.01964</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &gt; 0.75 &amp; z2_vec &lt; 2) * mean(z3_vec &gt; 1.5)</code></pre>
+<pre><code>## [1] 0.04039</code></pre>
+<p>Now, the case of all three analyses <strong>under the
+alternative</strong>.</p>
+<pre class="r"><code>theta &lt;- 0.5
+sigma2 &lt;- 1
+
+z_vec &lt;- c()
+z2_vec &lt;- c()
+z3_vec &lt;- c()
+
+analysis2_count &lt;- 0
+analysis3_count &lt;- 0
+
+for (i in 1:100000) {
+  x1 &lt;- rnorm(20, mean = theta)
+  x2 &lt;- rnorm(20)
+
+  mean.diff &lt;- mean(x1 - x2)
+
+  z &lt;- mean.diff * sqrt( 20 / (2*sigma2) )
+  
+  z_vec[i] &lt;-  z
+  
+  if ( (z &gt; 0) &amp; (z &lt; 2.5) ) {
+    
+    analysis2_count &lt;- analysis2_count + 1
+    
+    x3 &lt;- rnorm(20, mean = theta)
+    x4 &lt;- rnorm(20)
+    
+    x1 &lt;- c(x1, x3)
+    x2 &lt;- c(x2, x4)
+    
+    mean.diff &lt;- mean(x1 - x2)
+    
+    z2 &lt;- mean.diff * sqrt( 40 / (2*sigma2) )
+    
+    z2_vec[analysis2_count] &lt;- z2
+    
+    if ( (z2 &gt; 0.75) &amp; (z2 &lt; 2) ) {
+      
+      analysis3_count &lt;- analysis3_count + 1
+      
+      x5 &lt;- rnorm(20, mean = theta)
+      x6 &lt;- rnorm(20)
+    
+      x1 &lt;- c(x1, x3, x5)
+      x2 &lt;- c(x2, x4, x6)
+    
+      mean.diff &lt;- mean(x1 - x2)
+    
+      z3 &lt;- mean.diff * sqrt( 60 / (2*sigma2) )
+    
+      z3_vec[analysis3_count] &lt;- z3
+      
+    }
+    
+  }
+  
+}</code></pre>
+<p>For futility:</p>
+<pre class="r"><code>mean(z_vec &lt;= 0)</code></pre>
+<pre><code>## [1] 0.056</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &lt;= 0.75) </code></pre>
+<pre><code>## [1] 0.04282</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &gt; 0.75 &amp; z2_vec &lt; 2) * mean(z3_vec &lt;= 1.5)</code></pre>
+<pre><code>## [1] 0.05958</code></pre>
+<p>For efficacy:</p>
+<pre class="r"><code>mean(z_vec &gt; 2.5)</code></pre>
+<pre><code>## [1] 0.17858</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &gt;= 2) </code></pre>
+<pre><code>## [1] 0.42101</code></pre>
+<pre class="r"><code>mean(z_vec &gt; 0 &amp; z_vec &lt; 2.5) * mean(z2_vec &gt; 0.75 &amp; z2_vec &lt; 2) * mean(z3_vec &gt;= 1.5)</code></pre>
+<pre><code>## [1] 0.24201</code></pre>
 </div>
 <div id="function-for-gsds" class="section level2">
 <h2>Function for GSDs</h2>
