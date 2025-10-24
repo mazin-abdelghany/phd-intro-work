@@ -766,8 +766,8 @@ library(ggplot2)
 
 ggplot() + 
   geom_line(mapping = aes(x = delta_vector, y = ess_vector)) +
-  labs(x = "True delta", y = "Effective sample size", 
-       title = "Effective sample size over range of true delta values")
+  labs(x = "True \u03B4", y = "Effective sample size", 
+       title = "Effective sample size over range of true \u03B4 values")
 ```
 
 
