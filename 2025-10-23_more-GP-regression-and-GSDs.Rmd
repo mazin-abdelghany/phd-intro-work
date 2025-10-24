@@ -303,6 +303,200 @@ mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec >
 
 ## Function for GSDs
 
+In order to generate a function, we need the following information:
+
+* Number of analyses
+* Upper bound stopping vector $\mathbf{u}$
+* Lower bound stopping vector $\mathbf{l}$
+* Number of patients at each analysis as a vector $\mathbf{n}$
+* Null hypothesis value for $\theta$
+* Alternative hypothesis value for $\delta$
+* Known variance: $\sigma^2$
+
+The length of the upper and lower bound vectors should be equal to the number of analyses that are planned. The length of the number of patients at each analysis vector should also be equal to the number of analyses that are planned.
+
+```{r}
+gsd_simulations <- function(n_analyses = 3, 
+                            upper_bounds = c(2.5, 2, 1.5),
+                            lower_bounds = c(0, 0.75, 1.5),
+                            n_patients = c(20, 40, 60),
+                            null_hypothesis = 0,
+                            alt_hypothesis = 0.5,
+                            variance = 1) {
+  
+  # sanity checks
+  if(length(upper_bounds) != n_analyses) print("Warning: number of upper bounds must equal number of analyses")
+  if(length(lower_bounds) != n_analyses) print("Warning: number of lower bounds must equal number of analyses")
+  if(length(n_patients) != n_analyses) print("Warning: number of patients vector must equal number of analyses")
+  
+  if(length(upper_bounds) != length(lower_bounds)) {
+    print("Warning: number of upper bounds must equal number of analyses")
+  }
+  
+  # assign values for null and alt hypotheses
+  theta_0 <- null_hypothesis
+  delta <- alt_hypothesis
+  
+  # empty mean vectors to fill
+  mean_0 <- c()
+  mean_1 <- c()
+  
+  # need to parse the upper and lower boundaries of the design
+  # for futility and efficacy, must put the bounds of integration correctly 
+  # for pmvnorm
+  futility_l_bounds <- list()
+  futility_u_bounds <- list()
+  efficacy_l_bounds <- list()
+  efficacy_u_bounds <- list()
+
+  n_analyses <- length(upper_bounds)
+
+  for (i in 1:n_analyses) {
+    
+    # special case of i = 1
+    if (i == 1) {
+      futility_l_bounds[[i]] <- lower_bounds[i]
+      futility_u_bounds[[i]] <- upper_bounds[i]
+      efficacy_l_bounds[[i]] <- lower_bounds[i]
+      efficacy_u_bounds[[i]] <- upper_bounds[i]
+      next
+    }
+    
+    # all other cases
+    futility_l_bounds[[i]] <- c(lower_bounds[1:i-1], -Inf)
+    futility_u_bounds[[i]] <- c(upper_bounds[1:i-1], lower_bounds[i])
+    
+    efficacy_l_bounds[[i]] <- c(lower_bounds[1:i-1], upper_bounds[i])
+    efficacy_u_bounds[[i]] <- c(upper_bounds[1:i-1], Inf)
+  }
+  
+  # list of probabilities to return
+  probs_to_return <- list()
+  
+  # list of SIGMAs
+  SIGMA_list <- list()
+    
+  for (i in 1:n_analyses) {
+    if (i == 1) next
+    
+    # start with diagonal matrix for SIGMA
+    SIGMA <- diag(nrow = i)
+    
+    # n = 2, need to fill all but 11, 22
+    # n = 3, need to fill all but 11, 22, 33
+    # n = 4, need to fill all but 11, 22, 33, 44
+    # etc. 
+    for(i in 1:i) {
+      for(j  in 1:i) {
+        
+        # leave the 1s on the diagonal, skip this iteration of for loop
+        if(i == j) next
+        
+        # when i is less than j, the lower number of patients will be in numerator
+        if(i < j) SIGMA[i,j] <- sqrt(n_patients[i] / n_patients[j])
+        
+        # when i is greater than j, the lower number of patients will be in numerator
+        if(i > j) SIGMA[i,j] <- sqrt(n_patients[j] / n_patients[i])
+        
+      }
+    }
+    
+    SIGMA_list[[i]] <- SIGMA
+  }
+  
+  
+  for (i in 1:n_analyses) {
+    
+    ##############
+    # ANALYSIS 1 #
+    ##############
+    if(i == 1) {
+      # mean under null
+      mean_0[i] <- theta_0 * sqrt(n_patients[i]/(2*variance))
+      
+      # mean under alternative
+      mean_1[i] <- delta * sqrt(n_patients[i]/(2*variance))
+      
+      # prob stop for futility, null
+      futility_null <- pnorm(futility_l_bounds[[i]], 
+                             mean = mean_0, 
+                             sd = sqrt(variance))
+      
+      # prob stop for efficacy, null
+      efficacy_null <- pnorm(efficacy_u_bounds[[i]], 
+                             mean = mean_0, 
+                             sd = sqrt(variance), 
+                             lower.tail = FALSE)
+  
+      # prob stop for futility, alt
+      futility_alt <- pnorm(futility_l_bounds[[i]], 
+                            mean = mean_1, 
+                            sd = sqrt(variance))
+      
+      # prob stop for efficacy
+      efficacy_alt <- pnorm(efficacy_u_bounds[[i]], 
+                            mean = mean_1, 
+                            sd = sqrt(variance), 
+                            lower.tail = FALSE)
+      
+      probs_to_return[[i]] <- c(futility_null, efficacy_null, futility_alt, efficacy_alt)
+      
+      next
+    }
+    
+    ######################
+    # ALL OTHER ANALYSES #
+    ######################
+    
+    # next mean under null
+    mean_0[i] <- theta_0 * sqrt(n_patients[i] / (2 * variance))
+    
+    # next mean under alternative
+    mean_1[i] <- delta * sqrt(n_patients[i]/ (2*variance))
+    
+    # bounds for these will be same
+    # futility under null
+    futility_null <- pmvnorm(lower = futility_l_bounds[[i]], 
+                             upper = futility_u_bounds[[i]], 
+                             mean = mean_0, corr = SIGMA_list[[i]])
+    # futility under alt
+    futility_alt <- pmvnorm(lower = futility_l_bounds[[i]], 
+                            upper = futility_u_bounds[[i]], 
+                            mean = mean_1, corr = SIGMA_list[[i]])
+    
+    # bounds for these will be same
+    # futility under null
+    efficacy_null <- pmvnorm(lower = efficacy_l_bounds[[i]], 
+                             upper = efficacy_u_bounds[[i]],
+                             mean = mean_0, corr = SIGMA_list[[i]])
+    # futility under alt
+    efficacy_alt <- pmvnorm(lower = efficacy_l_bounds[[i]], 
+                            upper = efficacy_u_bounds[[i]], 
+                            mean = mean_1, corr = SIGMA_list[[i]])
+    
+    probs_to_return[[i]] <- c(futility_null, efficacy_null, futility_alt, efficacy_alt)
+    
+  }
+  
+  
+  # return the probabilities
+  probs_to_return
+}
+```
+
+
+```{r}
+gsd_simulations(n_analyses = 4,
+                upper_bounds = c(2.5, 2, 1.8, 1.5),
+                lower_bounds = c(0, 0.75, 1, 1.5),
+                n_patients = c(20, 40, 60, 80),
+                null_hypothesis = 0,
+                alt_hypothesis = 0.5,
+                variance = 1)
+```
+
+
+
 # Gaussian process regression
 
 
