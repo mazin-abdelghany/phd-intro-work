@@ -26,6 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # load required libraries
 library(mvtnorm)
+library(ggplot2)
 ```
 
 # Group sequential designs
@@ -762,8 +763,6 @@ for (i in 1:100) {
 Then, we can graph this:
 
 ```{r}
-library(ggplot2)
-
 ggplot() + 
   geom_line(mapping = aes(x = delta_vector, y = ess_vector)) +
   labs(x = "True \u03B4", y = "Effective sample size", 
@@ -773,18 +772,198 @@ ggplot() +
 
 # Gaussian process regression
 
+```{r}
+# load required libraries
+library(gplite)
+```
+
+Generate some data for the function to which the model will be fit.
+
+```{r}
+n <- 5
+x  <- matrix(seq(-2, 2, length.out = n), ncol = 1)
+y  <- x^2
+```
+
+Plot the data.
+
+```{r}
+ggplot() + 
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
 
 
+Initialize the GP model.
+
+```{r}
+# Specify the GP model we want to use:
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(
+    vars = NULL,
+    lscale = 0.3,
+    magn = 1,
+    prior_lscale = prior_logunif(),
+    prior_magn = prior_logunif(),
+    normalize = FALSE
+  ),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(
+    sigma = 0.5, 
+    prior_sigma = prior_logunif()
+  ), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+```
+
+In order to plot the negative log marginal likelihood for different hyperparameters combinations, we will need to fit the GP model without optimizing (i.e., without using `gp_optim`).
+
+```{r}
+gp_raw <- gp_fit(gp_empty, x, y)
+```
+
+Plot the model with the raw values.
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-4, 4, len=150)
+pred <- gp_pred(gp_raw, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Pull the negative log marginal likelihood.
+
+```{r}
+gp_energy(gp_raw)
+```
+
+If the GP model is optimized, the negative log marginal likelihood should improve.
+
+```{r}
+# Now fit the model to the data:
+gp_optimized <- gp_optim(gp_empty, x, y, verbose = FALSE)
+```
 
 
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-4, 4, len=150)
+pred <- gp_pred(gp_optimized, xt, var = T)
+
+# visualize
+mu <- pred$mean
+lb <- pred$mean - 2*sqrt(pred$var)
+ub <- pred$mean + 2*sqrt(pred$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb, ymax=ub), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
 
 
+```{r}
+gp_energy(gp_optimized)
+```
 
+We can repeat the above process of fitting the raw model with different hyperparameter values. The squared-exponential covariance function has three tunable hyperparameters:
 
+* the length-scale $\ell$
+* the signal variance $\sigma_{f}^2$, where $f$ is the objective function
+* the noise variance $sigma_{n}^2$, where $n$ is additive Gaussian noise
 
+These parameters can be varied independently and collected in vectors such as $(\ell, \sigma_{f}^2, \sigma_{n}^2) = (1,1,0.1)$. In order to graph the surface of the negative log marginal likelihood, we can fix one of these parameters. In this example, we can assume there is no noise and fix the noise parameter $\sigma_{n}^2$ at 0. 
 
+Create a grid of hyperparameters:
 
+```{r}
+ell <- seq(0.1, 4, by = 0.05)
+  
+sigma_f <- seq(0.1, 4, by = 0.05)
 
+hyperparams <- expand.grid(
+  ell = ell,
+  sigma_f = sigma_f
+)
+
+dim(hyperparams)
+head(hyperparams)
+```
+
+We can now fit the model with each of these hyperparameters and obtain the negative log marginal likelihood.
+
+```{r}
+# collect energies in the empty vector
+energy <- c()
+
+# run 6000+ models
+for (i in 1:dim(hyperparams)[1]) {
+  
+  gp_empty <- gp_init(
+    # A squared exponential (aka Gaussian aka RBF) kernel
+    cfs = cf_sexp(
+      vars = NULL,
+      lscale = hyperparams$ell[i],
+      magn = hyperparams$sigma_f[i],
+      prior_lscale = prior_logunif(),
+      prior_magn = prior_logunif(),
+      normalize = FALSE
+    ),  
+    
+    # Assume Gaussian distributed errors
+    lik = lik_gaussian(
+      sigma = 0.01, 
+      prior_sigma = prior_logunif()
+    ), 
+    
+    # Use the full covariance (i.e., do not approximate)
+    method = method_full() 
+  )
+  
+  gp_raw <- gp_fit(gp_empty, x, y)
+  
+  energy[i] <- gp_energy(gp_raw)
+  
+}
+
+head(energy)
+```
+
+Add the energy vector to the hyperparameter vector.
+
+```{r}
+surface_plot <- cbind(hyperparams, energy)
+head(surface_plot)
+```
+
+Where is the minimum value?
+
+```{r}
+surface_plot[which.min(surface_plot$energy),]
+```
+
+This is near the theoretical value that was found by `gp_optim`. Now, we can plot the surface.
+
+```{r}
+ggplot(data = surface_plot) +
+  geom_contour(mapping = aes(x = ell, y = sigma_f, z = energy),
+               binwidth = 10)
+```
 
 
 
