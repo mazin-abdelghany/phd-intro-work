@@ -777,6 +777,8 @@ ggplot() +
 library(gplite)
 ```
 
+## An unoptimized GP regression model (raw)
+
 Generate some data for the function to which the model will be fit.
 
 ```{r}
@@ -851,6 +853,8 @@ Pull the negative log marginal likelihood.
 gp_energy(gp_raw)
 ```
 
+## An optimized GP model
+
 If the GP model is optimized, the negative log marginal likelihood should improve.
 
 ```{r}
@@ -881,13 +885,15 @@ ggplot() +
 gp_energy(gp_optimized)
 ```
 
+## Performing our own optimization, grid search
+
 We can repeat the above process of fitting the raw model with different hyperparameter values. The squared-exponential covariance function has three tunable hyperparameters:
 
 * the length-scale $\ell$
 * the signal variance $\sigma_{f}^2$, where $f$ is the objective function
 * the noise variance $sigma_{n}^2$, where $n$ is additive Gaussian noise
 
-These parameters can be varied independently and collected in vectors such as $(\ell, \sigma_{f}^2, \sigma_{n}^2) = (1,1,0.1)$. In order to graph the surface of the negative log marginal likelihood, we can fix one of these parameters. In this example, we can assume there is no noise and fix the noise parameter $\sigma_{n}^2$ at 0. 
+These parameters can be varied independently and collected in vectors such as $(\ell, \sigma_{f}^2, \sigma_{n}^2) = (1,1,0.1)$. In order to graph the surface of the negative log marginal likelihood, we can fix one of these parameters. In this example, we can assume there is no noise and fix the noise parameter $\sigma_{n}^2$ at 0.01. 
 
 Create a grid of hyperparameters:
 
@@ -964,6 +970,8 @@ ggplot(data = surface_plot) +
   geom_contour(mapping = aes(x = ell, y = sigma_f, z = energy),
                binwidth = 10)
 ```
+
+## Marginal likelihood surface plots
 
 We can also plot the surface.
 
@@ -1133,3 +1141,271 @@ fig <- plot_ly() %>%
   
 fig
 ```
+
+
+Now that we have explored these surfaces, we can review how the selections of each of these surfaces affects the fitting of the GP regression model.
+
+## Modifying length-scale
+
+Model with $\ell = 2$ and $\sigma_f^2 = 6$, near the optimal values. Recall that we are setting $sigma_n^2 = 0.01$.
+
+```{r}
+# Specify the GP model we want to use,
+# we will specify the lscale and magn using values from above
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(
+    vars = NULL,
+    lscale = 2,
+    magn = 6,
+    prior_lscale = prior_logunif(),
+    prior_magn = prior_logunif(),
+    normalize = FALSE
+  ),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(
+    sigma = 0.01, 
+    prior_sigma = prior_logunif()
+  ), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+
+gp_raw_ell2sigma6 <- gp_fit(gp_empty, x, y)
+```
+
+Plot the model.
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+xt   <- seq(-4, 4, len=150)
+pred_ell2sigma6 <- gp_pred(gp_raw_ell2sigma6, xt, var = T)
+
+# visualize
+mu_ell2sigma6 <- pred_ell2sigma6$mean
+lb_ell2sigma6 <- pred_ell2sigma6$mean - 2*sqrt(pred_ell2sigma6$var)
+ub_ell2sigma6 <- pred_ell2sigma6$mean + 2*sqrt(pred_ell2sigma6$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma6, ymax=ub_ell2sigma6), fill='lightgray') +
+  geom_line(aes(x=xt, y=mu_ell2sigma6), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Model with $\ell = 1$ and $\sigma_f^2 = 6$:
+
+```{r}
+# Specify the GP model we want to use,
+# we will specify the lscale and magn using values from above
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(
+    vars = NULL,
+    lscale = 1,
+    magn = 6,
+    prior_lscale = prior_logunif(),
+    prior_magn = prior_logunif(),
+    normalize = FALSE
+  ),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(
+    sigma = 0.01, 
+    prior_sigma = prior_logunif()
+  ), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+
+gp_raw_ell1sigma6 <- gp_fit(gp_empty, x, y)
+```
+
+Plot the model.
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+pred_ell1sigma6 <- gp_pred(gp_raw_ell1sigma6, xt, var = T)
+
+# visualize
+mu_ell1sigma6 <- pred_ell1sigma6$mean
+lb_ell1sigma6 <- pred_ell1sigma6$mean - 2*sqrt(pred_ell1sigma6$var)
+ub_ell1sigma6 <- pred_ell1sigma6$mean + 2*sqrt(pred_ell1sigma6$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell1sigma6, ymax=ub_ell1sigma6), fill='orange', alpha = 0.3) +
+  geom_line(aes(x=xt, y=mu_ell1sigma6), linewidth = 0.5, color = "orange") + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma6, ymax=ub_ell2sigma6), fill='lightgray', alpha = 0.6) +
+  geom_line(aes(x=xt, y=mu_ell2sigma6), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Model with $\ell = 0.1$ and $\sigma_f^2 = 6$:
+
+```{r}
+# Specify the GP model we want to use,
+# we will specify the lscale and magn using values from above
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(
+    vars = NULL,
+    lscale = 0.1,
+    magn = 6,
+    prior_lscale = prior_logunif(),
+    prior_magn = prior_logunif(),
+    normalize = FALSE
+  ),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(
+    sigma = 0.01, 
+    prior_sigma = prior_logunif()
+  ), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+
+gp_raw_ell01sigma6 <- gp_fit(gp_empty, x, y)
+```
+
+Plot the model.
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+pred_ell01sigma6 <- gp_pred(gp_raw_ell01sigma6, xt, var = T)
+
+# visualize
+mu_ell01sigma6 <- pred_ell01sigma6$mean
+lb_ell01sigma6 <- pred_ell01sigma6$mean - 2*sqrt(pred_ell01sigma6$var)
+ub_ell01sigma6 <- pred_ell01sigma6$mean + 2*sqrt(pred_ell01sigma6$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell01sigma6, ymax=ub_ell01sigma6), fill='purple', alpha = 0.3) +
+  geom_line(aes(x=xt, y=mu_ell01sigma6), linewidth = 0.5, color = "purple") +
+  geom_ribbon(aes(x=xt, ymin=lb_ell1sigma6, ymax=ub_ell1sigma6), fill='orange', alpha = 0.3) +
+  geom_line(aes(x=xt, y=mu_ell1sigma6), linewidth = 0.5, color = "orange") + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma6, ymax=ub_ell2sigma6), fill='lightgray', alpha = 0.6) +
+  geom_line(aes(x=xt, y=mu_ell2sigma6), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+## Modifying signal variance
+
+Plot the "near optimal" model.
+
+```{r}
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma6, ymax=ub_ell2sigma6), fill='lightgray', alpha = 0.6) +
+  geom_line(aes(x=xt, y=mu_ell2sigma6), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Model with $\ell = 2$ and $\sigma_f^2 = 0.1$:
+
+```{r}
+# Specify the GP model we want to use,
+# we will specify the lscale and magn using values from above
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(
+    vars = NULL,
+    lscale = 2,
+    magn = 0.1,
+    prior_lscale = prior_logunif(),
+    prior_magn = prior_logunif(),
+    normalize = FALSE
+  ),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(
+    sigma = 0.01, 
+    prior_sigma = prior_logunif()
+  ), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+
+gp_raw_ell2sigma01 <- gp_fit(gp_empty, x, y)
+```
+
+Plot the model.
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+pred_ell2sigma01 <- gp_pred(gp_raw_ell2sigma01, xt, var = T)
+
+# visualize
+mu_ell2sigma01 <- pred_ell2sigma01$mean
+lb_ell2sigma01 <- pred_ell2sigma01$mean - 2*sqrt(pred_ell2sigma01$var)
+ub_ell2sigma01 <- pred_ell2sigma01$mean + 2*sqrt(pred_ell2sigma01$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma01, ymax=lb_ell2sigma01), fill='orange', alpha = 0.3) +
+  geom_line(aes(x=xt, y=mu_ell2sigma01), linewidth = 0.5, color = "orange") +
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma6, ymax=ub_ell2sigma6), fill='lightgray', alpha = 0.6) +
+  geom_line(aes(x=xt, y=mu_ell2sigma6), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y')
+```
+
+Model with $\ell = 2$ and $\sigma_f^2 = 0.03$:
+
+```{r}
+# Specify the GP model we want to use,
+# we will specify the lscale and magn using values from above
+gp_empty <- gp_init(
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(
+    vars = NULL,
+    lscale = 2,
+    magn = 0.03,
+    prior_lscale = prior_logunif(),
+    prior_magn = prior_logunif(),
+    normalize = FALSE
+  ),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(
+    sigma = 0.01, 
+    prior_sigma = prior_logunif()
+  ), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() 
+)
+
+gp_raw_ell2sigma003 <- gp_fit(gp_empty, x, y)
+```
+
+Plot the model.
+
+```{r}
+# compute the predictive mean and variance in a grid of points
+pred_ell2sigma003 <- gp_pred(gp_raw_ell2sigma003, xt, var = T)
+
+# visualize
+mu_ell2sigma003 <- pred_ell2sigma003$mean
+lb_ell2sigma003 <- pred_ell2sigma003$mean - 2*sqrt(pred_ell2sigma003$var)
+ub_ell2sigma003 <- pred_ell2sigma003$mean + 2*sqrt(pred_ell2sigma003$var)
+
+ggplot() + 
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma003, ymax=ub_ell2sigma003), fill='purple', alpha = 0.3) +
+  geom_line(aes(x=xt, y=mu_ell2sigma003), linewidth = 0.5, color = "purple") +
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma01, ymax=lb_ell2sigma01), fill='orange', alpha = 0.3) +
+  geom_line(aes(x=xt, y=mu_ell2sigma01), linewidth = 0.5, color = "orange") +
+  geom_ribbon(aes(x=xt, ymin=lb_ell2sigma6, ymax=ub_ell2sigma6), fill='lightgray', alpha = 0.6) +
+  geom_line(aes(x=xt, y=mu_ell2sigma6), linewidth = 0.5) +
+  geom_point(aes(x=x, y=y), size=2) +
+  xlab('x') + ylab('y') 
+```
+
+
+
