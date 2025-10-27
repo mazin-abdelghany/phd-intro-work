@@ -965,8 +965,171 @@ ggplot(data = surface_plot) +
                binwidth = 10)
 ```
 
+We can also plot the surface.
+
+Entire surface:
+
+```{r}
+library(plotly)
+
+fig <- plot_ly() %>% 
+  
+  add_trace(
+    data = surface_plot,
+    x = unique(surface_plot$ell), 
+    y = unique(surface_plot$sigma_f), 
+    z = matrix(surface_plot$energy, nrow = 79, ncol = 79, byrow = TRUE),
+    type = "surface") %>%
+  
+  layout(
+    scene = list(
+      xaxis = list(
+        title = "length-scale parameter"
+      ),
+      yaxis = list(
+        title = "signal variance"
+      ),
+      zaxis = list(
+        title = "-log(marginal likelihood)"
+      )
+    )
+  )
+
+fig
+```
+
+Surface limited to lower values of negative log marginal likelihood:
+
+```{r}
+library(plotly)
+
+fig <- plot_ly() %>% 
+  
+  add_trace(
+    data = surface_plot,
+    x = unique(surface_plot$ell)[1:30], 
+    y = unique(surface_plot$sigma_f)[50:79], 
+    z = matrix(surface_plot$energy, nrow = 79, ncol = 79, byrow = TRUE)[50:79, 1:30],
+    type = "surface") %>%
+  
+  add_trace(
+    x = 1.45,
+    y = 4,
+    z = 11.07394,
+    type = "scatter3d",
+    mode = "markers"
+  ) %>%
+  
+  layout(
+    scene = list(
+      aspectmode = 'manual',  # Set to manual for custom aspect ratio
+      aspectratio = list(x = 1, y = 1, z = 0.5),  # Adjust x, y, z ratios
+      
+      xaxis = list(
+        title = "length-scale parameter"
+      ),
+      
+      yaxis = list(
+        title = "signal variance"
+      ),
+      
+      zaxis = list(
+        title = "-log(marginal likelihood)"
+      )
+    )
+  )
+
+fig
+```
 
 
+Looking at the above plot, it appears that values for `sigma_f` that are greater than 4 may improve the negative log marginal likelihood further. We can assess this with new GP fits.
 
+```{r}
+ell <- seq(0.5, 3, by = 0.05)
+  
+sigma_f <- seq(2, 8, by = 0.05)
 
+hyperparams <- expand.grid(
+  ell = ell,
+  sigma_f = sigma_f
+)
 
+# collect energies in the empty vector
+energy <- c()
+
+# run 6000+ models
+for (i in 1:dim(hyperparams)[1]) {
+  
+  gp_empty <- gp_init(
+    # A squared exponential (aka Gaussian aka RBF) kernel
+    cfs = cf_sexp(
+      vars = NULL,
+      lscale = hyperparams$ell[i],
+      magn = hyperparams$sigma_f[i],
+      prior_lscale = prior_logunif(),
+      prior_magn = prior_logunif(),
+      normalize = FALSE
+    ),  
+    
+    # Assume Gaussian distributed errors
+    lik = lik_gaussian(
+      sigma = 0.01, 
+      prior_sigma = prior_logunif()
+    ), 
+    
+    # Use the full covariance (i.e., do not approximate)
+    method = method_full() 
+  )
+  
+  gp_raw <- gp_fit(gp_empty, x, y)
+  
+  energy[i] <- gp_energy(gp_raw)
+  
+}
+
+surface_plot <- cbind(hyperparams, energy)
+
+surface_plot[which.min(surface_plot$energy),]
+```
+
+Plot this new run.
+
+```{r}
+fig <- plot_ly() %>% 
+  
+  add_trace(
+    x = unique(surface_plot$sigma_f)[80:121], 
+    y = unique(surface_plot$ell)[10:51], 
+    z = matrix(surface_plot$energy, nrow = 51, ncol = 121)[10:51, 80:121],
+    type = "surface") %>% 
+  
+  add_trace(
+    x = 6.1,
+    y = 1.95,
+    z = 11.05812,
+    type = "scatter3d",
+    mode = "markers"
+  ) %>%
+  
+  layout(
+    scene = list(
+      aspectmode = 'manual',  # Set to manual for custom aspect ratio
+      aspectratio = list(x = 1, y = 1, z = 0.5),  # Adjust x, y, z ratios
+      
+      xaxis = list(
+        title = "signal variance"
+      ),
+      
+      yaxis = list(
+        title = "length-scale parameter"
+      ),
+      
+      zaxis = list(
+        title = "-log(marginal likelihood)"
+      )
+    )
+  )
+  
+fig
+```
