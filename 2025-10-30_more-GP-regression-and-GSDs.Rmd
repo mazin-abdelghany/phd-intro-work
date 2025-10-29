@@ -27,7 +27,13 @@ knitr::opts_chunk$set(echo = TRUE)
 # load required libraries
 library(mvtnorm)
 library(ggplot2)
+library(data.table)
+
+# set the seed
+set.seed(20251029)
 ```
+
+# GSD simulations
 
 Last week, we simulated a 3-stage group sequential design using `for` loops and entry into the next stage of the trial using `if` statements. This method---while easy to understand---may have lower computational efficiency.
 
@@ -53,6 +59,8 @@ Probabilities for the above are as follows:
 | 2        | 0.299                  | 0.019                  | 0.042                  | 0.420                  |
 | 3        | 0.137                  | 0.038                  | 0.049                  | 0.253                  |
 
+
+## Vectorized
 
 First, let us simulate analyses **under the null**.
 
@@ -113,8 +121,6 @@ mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_4
 
 Next, we simulate analyses **under the alternative**.
 
-Analysis 1, for futility:
-
 ```{r}
 theta <- 0.5
 sigma2 <- 1
@@ -169,26 +175,260 @@ mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_4
 mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 > 1.5)
 ```
 
-Which is faster?
+## Which is faster?
+
+Last week's implementation, wrapped in a function:
+
+```{r}
+for_loops <- function() {
+
+  theta <- 0
+  sigma2 <- 1
+  
+  z_vec <- vector(mode = "numeric", length = 100000)
+  z2_vec <- vector(mode = "numeric")
+  z3_vec <- vector(mode = "numeric")
+  
+  analysis2_count <- 0
+  analysis3_count <- 0
+  
+  for (i in 1:100000) {
+    x1 <- rnorm(20)
+    x2 <- rnorm(20)
+  
+    mean.diff <- mean(x1 - x2)
+  
+    z <- mean.diff * sqrt( 20 / (2*sigma2) )
+    
+    z_vec[i] <-  z
+    
+    if ( (z > 0) & (z < 2.5) ) {
+      
+      analysis2_count <- analysis2_count + 1
+      
+      x3 <- rnorm(20)
+      x4 <- rnorm(20)
+      
+      x1 <- c(x1, x3)
+      x2 <- c(x2, x4)
+      
+      mean.diff <- mean(x1 - x2)
+      
+      z2 <- mean.diff * sqrt( 40 / (2*sigma2) )
+      
+      z2_vec[analysis2_count] <- z2
+      
+      if ( (z2 > 0.75) & (z2 < 2) ) {
+        
+        analysis3_count <- analysis3_count + 1
+        
+        x5 <- rnorm(20)
+        x6 <- rnorm(20)
+        
+        x1 <- append(x1, x5)
+        x2 <- c(x2, x6)
+      
+        mean.diff <- mean(x1 - x2)
+      
+        z3 <- mean.diff * sqrt( 60 / (2*sigma2) )
+      
+        z3_vec[analysis3_count] <- z3
+        
+      }
+      
+    }
+    
+  }
+  
+  probs <- c(
+    mean(z_vec <= 0),
+    mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec <= 0.75),
+    mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec < 1.5),
+    mean(z_vec > 2.5),
+    mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 2),
+    mean(z_vec > 0 & z_vec < 2.5) * mean(z2_vec > 0.75 & z2_vec < 2) * mean(z3_vec > 1.5)
+  )
+  
+  probs
+  
+}
+```
+
+This week's implementation, wrapped in a function:
+
+```{r}
+vectorized <- function() {
+  
+  theta <- 0
+  sigma2 <- 1
+  
+  matrix_x1 <- replicate(100000, rnorm(60))
+  matrix_x2 <- replicate(100000, rnorm(60))
+  
+  diff_matrix <- matrix_x1 - matrix_x2
+  
+  # analysis 1
+  # take only first 20 rows
+  mean_diff_matrix_20 <- colMeans(diff_matrix[1:20,])
+  
+  z_matrix_20 <- mean_diff_matrix_20 * sqrt( 20 / (2*sigma2) )
+  
+  # analysis 2
+  # includes people who moved to analysis 2 only
+  # which columns moved to analysis 2
+  moved_to_analysis2 <- z_matrix_20 > 0 & z_matrix_20 < 2.5
+  
+  # select those columns
+  diff_matrix_40 <- diff_matrix[, moved_to_analysis2]
+  
+  # column mean of these
+  # take only the first 40 rows
+  mean_diff_matrix_40 <- colMeans(diff_matrix_40[1:40,])
+  
+  z_matrix_40 <- mean_diff_matrix_40 * sqrt( 40 / (2*sigma2) )
+  
+  # analysis 3
+  # includes people who moved to analysis 2 then 3 only
+  # which columns moved to analysis 3
+  moved_to_analysis3 <- z_matrix_40 > 0.75 & z_matrix_40 < 2
+  
+  # select those columns from those who moved to anlaysis 2
+  # therefore, filter the difference matrix of those who moved to analysis 
+  diff_matrix_60 <- diff_matrix_40[, moved_to_analysis3]
+  
+  # column mean of these
+  # take all 60 rows
+  mean_diff_matrix_60 <- colMeans(diff_matrix_60)
+  
+  z_matrix_60 <- mean_diff_matrix_60 * sqrt( 60 / (2*sigma2) )
+  
+  probs <- c(
+    mean(z_matrix_20 <= 0),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 <= 0.75),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 < 1.5),
+    mean(z_matrix_20 >= 2.5),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 >= 2),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 > 1.5)
+  )
+  
+  probs
+  
+}
+```
+
+```{r}
+for_loops()
+vectorized()
+```
+
+```{r, cache=TRUE}
+bench::mark(
+  for_loops(),
+  vectorized(),
+  check = FALSE
+)
+```
+
+Add `data.table` to the vectorized implementation:
+
+```{r}
+vectorized_DT <- function() {
+  
+  theta <- 0
+  sigma2 <- 1
+  
+  matrix_x1 <- replicate(100000, rnorm(60))
+  matrix_x2 <- replicate(100000, rnorm(60))
+  
+  setDT(as.data.frame(matrix_x1))
+  setDT(as.data.frame(matrix_x2))
+  
+  diff_matrix <- matrix_x1 - matrix_x2
+  
+  # analysis 1
+  # take only first 20 rows
+  mean_diff_matrix_20 <- colMeans(diff_matrix[1:20,])
+  
+  z_matrix_20 <- mean_diff_matrix_20 * sqrt( 20 / (2*sigma2) )
+  
+  # analysis 2
+  # includes people who moved to analysis 2 only
+  # which columns moved to analysis 2
+  moved_to_analysis2 <- z_matrix_20 > 0 & z_matrix_20 < 2.5
+  
+  # select those columns
+  diff_matrix_40 <- diff_matrix[, moved_to_analysis2]
+  
+  # column mean of these
+  # take only the first 40 rows
+  mean_diff_matrix_40 <- colMeans(diff_matrix_40[1:40,])
+  
+  z_matrix_40 <- mean_diff_matrix_40 * sqrt( 40 / (2*sigma2) )
+  
+  # analysis 3
+  # includes people who moved to analysis 2 then 3 only
+  # which columns moved to analysis 3
+  moved_to_analysis3 <- z_matrix_40 > 0.75 & z_matrix_40 < 2
+  
+  # select those columns from those who moved to anlaysis 2
+  # therefore, filter the difference matrix of those who moved to analysis 
+  diff_matrix_60 <- diff_matrix_40[, moved_to_analysis3]
+  
+  # column mean of these
+  # take all 60 rows
+  mean_diff_matrix_60 <- colMeans(diff_matrix_60)
+  
+  z_matrix_60 <- mean_diff_matrix_60 * sqrt( 60 / (2*sigma2) )
+  
+  probs <- c(
+    mean(z_matrix_20 <= 0),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 <= 0.75),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 < 1.5),
+    mean(z_matrix_20 >= 2.5),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 >= 2),
+    mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 > 1.5)
+  )
+  
+  probs
+  
+}
+```
+
+```{r}
+vectorized_DT()
+```
+
+```{r, cache=TRUE}
+bench::mark(
+  for_loops(),
+  vectorized(),
+  vectorized_DT(),
+  check = FALSE
+)
+```
 
 
+## GSD function without for loops
 
+In order to perform the function call without for loops, first, assess if the `pmvnorm` function gives values that make sense for multidimensional integrals with infinities as both upper and lower bounds. For example, calculating the stopping probability for efficacy under the null for the first analysis:
 
+$$
+\int_{u_1}^{\infty}\int_{-\infty}^{\infty}\int_{-\infty}^{\infty} \phi_2 \left( 
+\begin{bmatrix}
+    y_1 & y_2 & y_3
+\end{bmatrix}, 
+\begin{bmatrix} 
+\theta \sqrt{\frac{n_1}{2\sigma^2}} & \theta \sqrt{\frac{n_2}{2\sigma^2}} & \theta \sqrt{\frac{n_3}{2\sigma^2}} 
+\end{bmatrix}, 
+\begin{bmatrix} 
+1 & \sqrt{\frac{n_1}{n_2}} & \sqrt{\frac{n_1}{n_3}}\\ 
+\sqrt{\frac{n_1}{n_2}} & 1 & \sqrt{\frac{n_2}{n_3}}\\
+\sqrt{\frac{n_1}{n_3}} & \sqrt{\frac{n_2}{n_3}} & 1
+\end{bmatrix} 
+\right) dy_3\,dy_2\,dy_1
+$$
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+We can try this with code:
 
 
 
