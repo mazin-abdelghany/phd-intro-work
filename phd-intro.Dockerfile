@@ -9,7 +9,8 @@ RUN install2.r --error \
      loo \
      gplite \
      mvtnorm \
-     plotly
+     plotly \
+     bench
 
 ## install RStan
 # RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
@@ -19,4 +20,4 @@ RUN install2.r --error \
 # docker run --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 phd-intro
 
 # run command, detached with password
-# docker run -d -e PASSWORD=aeSoochif9moonga --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 phd_intro
+# docker run -d -e PASSWORD=aeSoochif9moonga --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 phd-intro
