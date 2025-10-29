@@ -28,3 +28,168 @@ knitr::opts_chunk$set(echo = TRUE)
 library(mvtnorm)
 library(ggplot2)
 ```
+
+Last week, we simulated a 3-stage group sequential design using `for` loops and entry into the next stage of the trial using `if` statements. This method---while easy to understand---may have lower computational efficiency.
+
+Here, we implement the same group sequential design (GSD) using vectorized computations.
+
+First, a reminder of the GSD parameters:
+
+* Number of analyses: 3
+* Number of patients per group: $\mathbf{n} = (20, 40, 60)$
+* Upper bound stopping: $\mathbf{u} = (2.5, 2, 1.5)$
+* Lower bound stopping: $\boldsymbol{\ell} = (0, 0.75, 1.5)$
+* Number of patients at each analysis: 20
+* Null hypothesis: $\theta = 0$
+* Alternative hypothesis: $\theta = \delta = 0.5$
+* Known variance: $\sigma^2 = 1$
+
+Probabilities for the above are as follows:
+
+|          | $\theta = 0$           |                        | $\theta = 0.5$         |                        |
+|----------|------------------------|------------------------|------------------------|------------------------|
+| Analysis | Prob stop for futility | Prob stop for efficacy | Prob stop for futility | Prob stop for efficacy |
+| 1        | 0.500                  | 0.006                  | 0.057                  | 0.179                  |
+| 2        | 0.299                  | 0.019                  | 0.042                  | 0.420                  |
+| 3        | 0.137                  | 0.038                  | 0.049                  | 0.253                  |
+
+
+First, let us simulate analyses **under the null**.
+
+```{r}
+theta <- 0
+sigma2 <- 1
+
+matrix_x1 <- replicate(100000, rnorm(60))
+matrix_x2 <- replicate(100000, rnorm(60))
+
+diff_matrix <- matrix_x1 - matrix_x2
+
+# analysis 1
+# take only first 20 rows
+mean_diff_matrix_20 <- colMeans(diff_matrix[1:20,])
+
+z_matrix_20 <- mean_diff_matrix_20 * sqrt( 20 / (2*sigma2) )
+
+mean(z_matrix_20 <= 0)
+mean(z_matrix_20 >= 2.5)
+
+# analysis 2
+# includes people who moved to analysis 2 only
+# which columns moved to analysis 2
+moved_to_analysis2 <- z_matrix_20 > 0 & z_matrix_20 < 2.5
+
+# select those columns
+diff_matrix_40 <- diff_matrix[, moved_to_analysis2]
+
+# column mean of these
+# take only the first 40 rows
+mean_diff_matrix_40 <- colMeans(diff_matrix_40[1:40,])
+
+z_matrix_40 <- mean_diff_matrix_40 * sqrt( 40 / (2*sigma2) )
+
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 <= 0.75)
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 >= 2)
+
+# analysis 3
+# includes people who moved to analysis 2 then 3 only
+# which columns moved to analysis 3
+moved_to_analysis3 <- z_matrix_40 > 0.75 & z_matrix_40 < 2
+
+# select those columns from those who moved to anlaysis 2
+# therefore, filter the difference matrix of those who moved to analysis 
+diff_matrix_60 <- diff_matrix_40[, moved_to_analysis3]
+
+# column mean of these
+# take all 60 rows
+mean_diff_matrix_60 <- colMeans(diff_matrix_60)
+
+z_matrix_60 <- mean_diff_matrix_60 * sqrt( 60 / (2*sigma2) )
+
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 < 1.5)
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 > 1.5)
+```
+
+
+Next, we simulate analyses **under the alternative**.
+
+Analysis 1, for futility:
+
+```{r}
+theta <- 0.5
+sigma2 <- 1
+
+matrix_x1 <- replicate(100000, rnorm(60, mean = theta))
+matrix_x2 <- replicate(100000, rnorm(60))
+
+diff_matrix <- matrix_x1 - matrix_x2
+
+# analysis 1
+# take only first 20 rows
+mean_diff_matrix_20 <- colMeans(diff_matrix[1:20,])
+
+z_matrix_20 <- mean_diff_matrix_20 * sqrt( 20 / (2*sigma2) )
+
+mean(z_matrix_20 <= 0)
+mean(z_matrix_20 >= 2.5)
+
+# analysis 2
+# includes people who moved to analysis 2 only
+# which columns moved to analysis 2
+moved_to_analysis2 <- z_matrix_20 > 0 & z_matrix_20 < 2.5
+
+# select those columns
+diff_matrix_40 <- diff_matrix[, moved_to_analysis2]
+
+# column mean of these
+# take only the first 40 rows
+mean_diff_matrix_40 <- colMeans(diff_matrix_40[1:40,])
+
+z_matrix_40 <- mean_diff_matrix_40 * sqrt( 40 / (2*sigma2) )
+
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 <= 0.75)
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 >= 2)
+
+# analysis 3
+# includes people who moved to analysis 2 then 3 only
+# which columns moved to analysis 3
+moved_to_analysis3 <- z_matrix_40 > 0.75 & z_matrix_40 < 2
+
+# select those columns from those who moved to anlaysis 2
+# therefore, filter the difference matrix of those who moved to analysis 
+diff_matrix_60 <- diff_matrix_40[, moved_to_analysis3]
+
+# column mean of these
+# take all 60 rows
+mean_diff_matrix_60 <- colMeans(diff_matrix_60)
+
+z_matrix_60 <- mean_diff_matrix_60 * sqrt( 60 / (2*sigma2) )
+
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 < 1.5)
+mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 > 1.5)
+```
+
+Which is faster?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
