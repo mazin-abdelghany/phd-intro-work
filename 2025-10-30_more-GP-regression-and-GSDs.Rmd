@@ -329,6 +329,11 @@ bench::mark(
 )
 ```
 
+| function   | min   | median | mem_alloc |
+|------------|-------|--------|-----------|
+| for_loops  | 917ms |  917ms |     183MB |
+| vectorized | 652ms |  652ms |     414MB |
+
 Add `data.table` to the vectorized implementation:
 
 ```{r}
@@ -407,6 +412,11 @@ bench::mark(
 )
 ```
 
+| function   | min   | median | mem_alloc |
+|------------|-------|--------|-----------|
+| for_loops  | 1.53s |  1.52s |     183MB |
+| vectorized | 938ms |  938ms |     413MB |
+| vectorized_DT | 3.38ms |  3.38ms |     577MB |
 
 ## GSD function without for loops
 

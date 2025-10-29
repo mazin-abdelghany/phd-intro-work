@@ -1837,8 +1837,32 @@ mean(z_matrix_20 &gt; 0 &amp; z_matrix_20 &lt; 2.5) * mean(z_matrix_40 &gt; 0.75
 <pre><code>## # A tibble: 2 × 6
 ##   expression        min   median `itr/sec` mem_alloc `gc/sec`
 ##   &lt;bch:expr&gt;   &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 for_loops()     1.01s    1.01s     0.989     182MB     2.97
-## 2 vectorized()    1.28s    1.28s     0.782     413MB     3.13</code></pre>
+## 1 for_loops()   976.1ms  976.1ms     1.02      182MB     3.07
+## 2 vectorized()    1.23s    1.23s     0.816     413MB     3.26</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th>function</th>
+<th>min</th>
+<th>median</th>
+<th>mem_alloc</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>for_loops</td>
+<td>917ms</td>
+<td>917ms</td>
+<td>183MB</td>
+</tr>
+<tr class="even">
+<td>vectorized</td>
+<td>652ms</td>
+<td>652ms</td>
+<td>414MB</td>
+</tr>
+</tbody>
+</table>
 <p>Add <code>data.table</code> to the vectorized implementation:</p>
 <pre class="r"><code>vectorized_DT &lt;- function() {
   
@@ -1913,9 +1937,39 @@ mean(z_matrix_20 &gt; 0 &amp; z_matrix_20 &lt; 2.5) * mean(z_matrix_40 &gt; 0.75
 <pre><code>## # A tibble: 3 × 6
 ##   expression           min   median `itr/sec` mem_alloc `gc/sec`
 ##   &lt;bch:expr&gt;      &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 for_loops()        1.23s    1.23s     0.813     183MB     4.06
-## 2 vectorized()    846.14ms 846.14ms     1.18      413MB     3.55
-## 3 vectorized_DT()    2.78s    2.78s     0.360     577MB     2.16</code></pre>
+## 1 for_loops()        1.02s    1.02s     0.983     183MB     3.93
+## 2 vectorized()    808.37ms 808.37ms     1.24      413MB     3.71
+## 3 vectorized_DT()     2.5s     2.5s     0.401     577MB     1.60</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th>function</th>
+<th>min</th>
+<th>median</th>
+<th>mem_alloc</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>for_loops</td>
+<td>1.53s</td>
+<td>1.52s</td>
+<td>183MB</td>
+</tr>
+<tr class="even">
+<td>vectorized</td>
+<td>938ms</td>
+<td>938ms</td>
+<td>413MB</td>
+</tr>
+<tr class="odd">
+<td>vectorized_DT</td>
+<td>3.38ms</td>
+<td>3.38ms</td>
+<td>577MB</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="gsd-function-without-for-loops" class="section level2">
 <h2>GSD function without for loops</h2>
