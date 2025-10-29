@@ -36,6 +36,7 @@ library(ggplot2)
 First, let us replicate the table of known stopping probabilities for the following group sequential design:
 
 * Number of analyses: 3
+* Number of patients per group: $\mathbf{n} = (20, 40, 60)$
 * Upper bound stopping: $\mathbf{u} = (2.5, 2, 1.5)$
 * Lower bound stopping: $\boldsymbol{\ell} = (0, 0.75, 1.5)$
 * Number of patients at each analysis: 20
