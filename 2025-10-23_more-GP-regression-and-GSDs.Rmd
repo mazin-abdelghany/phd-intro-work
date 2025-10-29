@@ -181,9 +181,9 @@ for (i in 1:100000) {
       
       x5 <- rnorm(20)
       x6 <- rnorm(20)
-    
-      x1 <- c(x1, x3, x5)
-      x2 <- c(x2, x4, x6)
+      
+      x1 <- append(x1, x5)
+      x2 <- c(x2, x6)
     
       mean.diff <- mean(x1 - x2)
     
@@ -265,8 +265,8 @@ for (i in 1:100000) {
       x5 <- rnorm(20, mean = theta)
       x6 <- rnorm(20)
     
-      x1 <- c(x1, x3, x5)
-      x2 <- c(x2, x4, x6)
+      x1 <- append(x1, x5)
+      x2 <- append(x2, x6)
     
       mean.diff <- mean(x1 - x2)
     
@@ -489,10 +489,10 @@ gsd_simulations <- function(n_analyses = 3,
 
 
 ```{r}
-gsd_simulations(n_analyses = 4,
-                upper_bounds = c(2.5, 2, 1.8, 1.5),
-                lower_bounds = c(0, 0.75, 1, 1.5),
-                n_patients = c(20, 40, 60, 80),
+gsd_simulations(n_analyses = 3,
+                upper_bounds = c(2.5, 2, 1.5),
+                lower_bounds = c(0, 0.75, 1.5),
+                n_patients = c(20, 40, 60),
                 null_hypothesis = 0,
                 alt_hypothesis = 0.5,
                 variance = 1)
@@ -542,11 +542,11 @@ for (i in 1:n_analyses) {
   
 }
 
-# calculate the effective sample size
+# calculate the expected sample size
 ess <- sum(n_patients * sum_probs)
 ```
 
-We can add this loop to the function `gsd_simulations()` and then we can graph the effective sample size over a vector of alternative hypotheses $\boldsymbol{\delta}$.
+We can add this loop to the function `gsd_simulations()` and then we can graph the expected sample size over a vector of alternative hypotheses $\boldsymbol{\delta}$.
 
 ```{r}
 gsd_simulations <- function(n_analyses = 3, 
@@ -727,15 +727,15 @@ gsd_simulations <- function(n_analyses = 3,
     
   }
   
-  # calculate the effective sample size
+  # calculate the expected sample size
   ess <- sum(n_patients * sum_probs)
   
-  # add the effective sample size to the list
+  # add the expected sample size to the list
   return_values <- append(probs_to_return, ess)
   
   # name the list
   names_for_list <- as.vector(sapply("analysis_", paste0, 1:n_analyses))
-  names_for_list <- c(names_for_list, "effective_sample_size")
+  names_for_list <- c(names_for_list, "expected_sample_size")
   names(return_values) <- names_for_list
   
   # return probabilities and ESS
@@ -756,7 +756,7 @@ ess_vector <- c()
 delta_vector <- seq(from = 0, to = 1, length.out = 100)
 
 for (i in 1:100) {
-  ess_vector[i] <- gsd_simulations(alt_hypothesis = delta_vector[i])$effective_sample_size
+  ess_vector[i] <- gsd_simulations(alt_hypothesis = delta_vector[i])$expected_sample_size
 }
 ```
 
@@ -765,8 +765,8 @@ Then, we can graph this:
 ```{r}
 ggplot() + 
   geom_line(mapping = aes(x = delta_vector, y = ess_vector)) +
-  labs(x = "True \u03B4", y = "Effective sample size", 
-       title = "Effective sample size over range of true \u03B4 values")
+  labs(x = "True \u03B4", y = "Expected sample size", 
+       title = "Expected sample size over range of true \u03B4 values")
 ```
 
 
