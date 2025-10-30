@@ -46,8 +46,8 @@ First, a reminder of the GSD parameters:
 * Upper bound stopping: $\mathbf{u} = (2.5, 2, 1.5)$
 * Lower bound stopping: $\boldsymbol{\ell} = (0, 0.75, 1.5)$
 * Number of patients at each analysis: 20
-* Null hypothesis: $\theta = 0$
-* Alternative hypothesis: $\theta = \delta = 0.5$
+* Null hypothesis: $\theta_0 = 0$
+* Alternative hypothesis: $\theta_1 = \delta = 0.5$
 * Known variance: $\sigma^2 = 1$
 
 Probabilities for the above are as follows:
@@ -226,7 +226,7 @@ for_loops <- function() {
         x6 <- rnorm(20)
         
         x1 <- append(x1, x5)
-        x2 <- c(x2, x6)
+        x2 <- append(x2, x6)
       
         mean.diff <- mean(x1 - x2)
       
@@ -418,6 +418,8 @@ bench::mark(
 | vectorized | 938ms |  938ms |     413MB |
 | vectorized_DT | 3.38ms |  3.38ms |     577MB |
 
+The vectorized implementation is about 60% faster but requires 2.25 times as much memory. This is likely because there are fewer for loops in the vectorized implementation, but the matrices for calculation the random normal vectors and $z$ scores are large and must remain in memory.
+
 ## GSD function without for loops
 
 In order to perform the function call without for loops, first, assess if the `pmvnorm` function gives values that make sense for multidimensional integrals with infinities as both upper and lower bounds. For example, calculating the stopping probability for efficacy under the null for the first analysis:
@@ -438,8 +440,469 @@ $$
 \right) dy_3\,dy_2\,dy_1
 $$
 
-We can try this with code:
+We can try this with code for the probability of stopping for efficacy **under the null** at analysis 1 as a proof of concept.
+
+```{r}
+# step up the values needed
+# assumed mean and variance
+theta_0 <- 0
+theta_1 <- 0.5
+sigma <- 1
+
+# sample sizes
+n1 <- 20
+n2 <- 40
+n3 <- 60
+
+# bounds of integration
+u1 <- 2.5
+u2 <- 2
+u3 <- 1.5
+l1 <- 0
+l2 <- 0.75
+l3 <- 1.5
+```
+
+Perform the integration.
+
+```{r}
+# mean vector
+mean_0 <- c(theta_0 * sqrt(n1/ (2*sigma) ),
+            theta_0 * sqrt(n2/ (2*sigma) ),
+            theta_0 * sqrt(n3/ (2*sigma) ))
+
+# covariance matrix
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2), sqrt(n1/n3),
+    sqrt(n1/n2), 1, sqrt(n2/n3),
+    sqrt(n1/n3), sqrt(n2/n3), 1),
+  nrow = 3
+)
+
+lower <- c(u1, -Inf, -Inf)
+upper <- c(Inf, Inf, Inf)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_0, corr = SIGMA)
+```
+
+Check this works under the alternative.
+
+```{r}
+# mean vector
+mean_1 <- c(theta_1 * sqrt(n1/ (2*sigma) ),
+            theta_1 * sqrt(n2/ (2*sigma) ),
+            theta_1 * sqrt(n3/ (2*sigma) ))
+
+# covariance matrix
+SIGMA <- matrix(
+  c(1, sqrt(n1/n2), sqrt(n1/n3),
+    sqrt(n1/n2), 1, sqrt(n2/n3),
+    sqrt(n1/n3), sqrt(n2/n3), 1),
+  nrow = 3
+)
+
+lower <- c(u1, -Inf, -Inf)
+upper <- c(Inf, Inf, Inf)
+
+pmvnorm(lower = lower, upper = upper, mean = mean_1, corr = SIGMA)
+```
+
+With this information, we can simplify the `gsd_simulations` function that was written last week. We will need a helper function to replace a `for` loop calculating the Fisher information by using `sapply`.
+
+```{r}
+# Fisher information
+information <- function(n, variance) sqrt(n/(2*variance))
+```
+
+
+```{r}
+gsd_simulations <- function(upper_bounds = c(2.5, 2, 1.5),
+                            lower_bounds = c(0, 0.75, 1.5),
+                            n_patients = c(20, 40, 60),
+                            null_hypothesis = 0,
+                            alt_hypothesis = 0.5,
+                            variance = 1) {
+  
+  # sanity checks, function stops
+  if(length(upper_bounds) != length(lower_bounds)) {
+    stop("Warning: number of upper bounds must equal number of lower bounds")
+  }
+  
+  if(length(n_patients) != length(upper_bounds)) {
+    stop("Warning: number of patients vector must equal number of analyses")
+  }
+  
+  n_analyses <- length(upper_bounds)
+  
+  # assign values for null and alt hypotheses
+  theta_0 <- null_hypothesis
+  theta_1 <- alt_hypothesis
+  
+  ####################
+  # PARSE BOUNDARIES #
+  ####################
+  
+  # need to parse the upper and lower boundaries of the design
+  # for futility and efficacy, must put the bounds of integration correctly 
+  # for pmvnorm
+  futility_l_bounds <- vector(mode = "list", length = n_analyses)
+  futility_u_bounds <- vector(mode = "list", length = n_analyses)
+  efficacy_l_bounds <- vector(mode = "list", length = n_analyses)
+  efficacy_u_bounds <- vector(mode = "list", length = n_analyses)
+
+  for (i in 1:n_analyses) {
+      
+    # special case of i = 1
+    if (i == 1) {
+      futility_l_bounds[[i]] <- rep_len(-Inf, length.out = n_analyses)
+      futility_u_bounds[[i]] <- c(lower_bounds[i], rep_len(Inf, length.out = n_analyses - 1))
+      efficacy_l_bounds[[i]] <- c(upper_bounds[i], rep_len(-Inf, length.out = n_analyses - 1))
+      efficacy_u_bounds[[i]] <- rep_len(Inf, length.out = n_analyses)
+      next
+    }
+    
+    # all other cases
+    futility_l_bounds[[i]] <- c(lower_bounds[1:i-1], rep_len(-Inf, length.out = n_analyses - (i-1)))
+    futility_u_bounds[[i]] <- c(upper_bounds[1:i-1], lower_bounds[i], rep_len(Inf, length.out = n_analyses - i ))
+  
+    efficacy_l_bounds[[i]] <- c(lower_bounds[1:i-1], upper_bounds[i], rep_len(-Inf, length.out = n_analyses - i ))
+    efficacy_u_bounds[[i]] <- c(upper_bounds[1:i-1], rep_len(Inf, length.out = n_analyses - (i-1)))
+    
+  }
+  
+  ##################
+  # GENERATE MEANS #
+  ##################
+  
+  mean_0 <- theta_0 * sqrt(n_patients / (2 * variance))
+  mean_1 <- theta_1 * sqrt(n_patients / (2 * variance))
+  
+  ##############################
+  # GENERATE COVARIANCE MATRIX #
+  ##############################
+  
+  # list of SIGMAs
+  SIGMA <- diag(nrow = n_analyses)
+  
+  for(i in 1:n_analyses) {
+    for(j  in 1:n_analyses) {
+      
+      # leave the 1s on the diagonal, skip this iteration of for loop
+      if(i == j) next
+      
+      # when i is less than j, the lower number of patients will be in numerator
+      if(i < j) SIGMA[i,j] <- sqrt(n_patients[i] / n_patients[j])
+      
+      # when i is greater than j, the lower number of patients will be in numerator
+      if(i > j) SIGMA[i,j] <- sqrt(n_patients[j] / n_patients[i])
+      
+    }
+  }
+  
+  #####################
+  # GET PROBABILITIES #
+  #####################
+  
+  # list of probabilities to return
+  probs_to_return <- matrix(nrow = n_analyses, ncol = 4)
+  
+  for (i in 1:n_analyses) {
+    
+    futility_null <- pmvnorm(lower = futility_l_bounds[[i]], 
+                             upper = futility_u_bounds[[i]], 
+                             mean = mean_0, sigma = SIGMA)
+    
+    futility_alt <- pmvnorm(lower = futility_l_bounds[[i]],
+                            upper = futility_u_bounds[[i]],
+                            mean = mean_1, sigma = SIGMA)
+    
+    efficacy_null <- pmvnorm(lower = efficacy_l_bounds[[i]], 
+                             upper = efficacy_u_bounds[[i]], 
+                             mean = mean_0, sigma = SIGMA)
+    
+    efficacy_alt <- pmvnorm(lower = efficacy_l_bounds[[i]],
+                            upper = efficacy_u_bounds[[i]],
+                            mean = mean_1, sigma = SIGMA)
+    
+    probs_to_return[i, ] <- c(futility_null, efficacy_null, futility_alt, efficacy_alt)
+    
+  }
+  
+  rownames(probs_to_return) <- as.vector(sapply("analysis_", paste0, 1:n_analyses))
+  colnames(probs_to_return) <- c("futility_null", "efficacy_null", "futility_alt", "efficacy_alt")
+  
+  # calculate the expected sample size always under alternative (index 3:4)
+  ess <- sum(
+    rowSums(probs_to_return[,3:4]) * n_patients
+  )
+  
+  # add the expected sample size to the list
+  return_values <- list(probs_to_return, ess)
+  
+  # name the list
+  names(return_values) <- c("probabilities", "expected_sample_size")
+  
+  # return probabilities and ESS
+  return_values
+}
+```
+
+
+```{r}
+gsd_simulations(alt_hypothesis = 0)
+```
+
+Now we can test which is faster. This is the old `gsd_simulations`:
+
+```{r}
+gsd_simulations_old <- function(n_analyses = 3, 
+                            upper_bounds = c(2.5, 2, 1.5),
+                            lower_bounds = c(0, 0.75, 1.5),
+                            n_patients = c(20, 40, 60),
+                            null_hypothesis = 0,
+                            alt_hypothesis = 0.5,
+                            variance = 1) {
+  
+  # sanity checks
+  # sanity checks, function stops
+  if(length(upper_bounds) != length(lower_bounds)) {
+    stop("Warning: number of upper bounds must equal number of lower bounds")
+  }
+  
+  if(length(n_patients) != length(upper_bounds)) {
+    stop("Warning: number of patients vector must equal number of analyses")
+  }
+  
+  # assign values for null and alt hypotheses
+  theta_0 <- null_hypothesis
+  delta <- alt_hypothesis
+  
+  # empty mean vectors to fill
+  mean_0 <- c()
+  mean_1 <- c()
+  
+  # need to parse the upper and lower boundaries of the design
+  # for futility and efficacy, must put the bounds of integration correctly 
+  # for pmvnorm
+  futility_l_bounds <- list()
+  futility_u_bounds <- list()
+  efficacy_l_bounds <- list()
+  efficacy_u_bounds <- list()
+
+  n_analyses <- length(upper_bounds)
+
+  for (i in 1:n_analyses) {
+    
+    # special case of i = 1
+    if (i == 1) {
+      futility_l_bounds[[i]] <- lower_bounds[i]
+      futility_u_bounds[[i]] <- upper_bounds[i]
+      efficacy_l_bounds[[i]] <- lower_bounds[i]
+      efficacy_u_bounds[[i]] <- upper_bounds[i]
+      next
+    }
+    
+    # all other cases
+    futility_l_bounds[[i]] <- c(lower_bounds[1:i-1], -Inf)
+    futility_u_bounds[[i]] <- c(upper_bounds[1:i-1], lower_bounds[i])
+    
+    efficacy_l_bounds[[i]] <- c(lower_bounds[1:i-1], upper_bounds[i])
+    efficacy_u_bounds[[i]] <- c(upper_bounds[1:i-1], Inf)
+  }
+  
+  # list of probabilities to return
+  probs_to_return <- list()
+  
+  # list of SIGMAs
+  SIGMA_list <- list()
+    
+  for (i in 1:n_analyses) {
+    if (i == 1) next
+    
+    # start with diagonal matrix for SIGMA
+    SIGMA <- diag(nrow = i)
+    
+    # n = 2, need to fill all but 11, 22
+    # n = 3, need to fill all but 11, 22, 33
+    # n = 4, need to fill all but 11, 22, 33, 44
+    # etc. 
+    for(i in 1:i) {
+      for(j  in 1:i) {
+        
+        # leave the 1s on the diagonal, skip this iteration of for loop
+        if(i == j) next
+        
+        # when i is less than j, the lower number of patients will be in numerator
+        if(i < j) SIGMA[i,j] <- sqrt(n_patients[i] / n_patients[j])
+        
+        # when i is greater than j, the lower number of patients will be in numerator
+        if(i > j) SIGMA[i,j] <- sqrt(n_patients[j] / n_patients[i])
+        
+      }
+    }
+    
+    SIGMA_list[[i]] <- SIGMA
+  }
+  
+  
+  for (i in 1:n_analyses) {
+    
+    ##############
+    # ANALYSIS 1 #
+    ##############
+    if(i == 1) {
+      # mean under null
+      mean_0[i] <- theta_0 * sqrt(n_patients[i]/(2*variance))
+      
+      # mean under alternative
+      mean_1[i] <- delta * sqrt(n_patients[i]/(2*variance))
+      
+      # prob stop for futility, null
+      futility_null <- pnorm(futility_l_bounds[[i]], 
+                             mean = mean_0, 
+                             sd = sqrt(variance))
+      
+      # prob stop for efficacy, null
+      efficacy_null <- pnorm(efficacy_u_bounds[[i]], 
+                             mean = mean_0, 
+                             sd = sqrt(variance), 
+                             lower.tail = FALSE)
+  
+      # prob stop for futility, alt
+      futility_alt <- pnorm(futility_l_bounds[[i]], 
+                            mean = mean_1, 
+                            sd = sqrt(variance))
+      
+      # prob stop for efficacy
+      efficacy_alt <- pnorm(efficacy_u_bounds[[i]], 
+                            mean = mean_1, 
+                            sd = sqrt(variance), 
+                            lower.tail = FALSE)
+      
+      probs_to_return[[i]] <- c(futility_null, efficacy_null, futility_alt, efficacy_alt)
+      names(probs_to_return[[i]]) <- c("futility_null", "efficacy_null", "futility_alt", "efficacy_alt")
+      
+      next
+    }
+    
+    ######################
+    # ALL OTHER ANALYSES #
+    ######################
+    
+    # next mean under null
+    mean_0[i] <- theta_0 * sqrt(n_patients[i] / (2 * variance))
+    
+    # next mean under alternative
+    mean_1[i] <- delta * sqrt(n_patients[i]/ (2*variance))
+    
+    # bounds for these will be same
+    # futility under null
+    futility_null <- pmvnorm(lower = futility_l_bounds[[i]], 
+                             upper = futility_u_bounds[[i]], 
+                             mean = mean_0, corr = SIGMA_list[[i]])
+    # futility under alt
+    futility_alt <- pmvnorm(lower = futility_l_bounds[[i]], 
+                            upper = futility_u_bounds[[i]], 
+                            mean = mean_1, corr = SIGMA_list[[i]])
+    
+    # bounds for these will be same
+    # futility under null
+    efficacy_null <- pmvnorm(lower = efficacy_l_bounds[[i]], 
+                             upper = efficacy_u_bounds[[i]],
+                             mean = mean_0, corr = SIGMA_list[[i]])
+    # futility under alt
+    efficacy_alt <- pmvnorm(lower = efficacy_l_bounds[[i]], 
+                            upper = efficacy_u_bounds[[i]], 
+                            mean = mean_1, corr = SIGMA_list[[i]])
+    
+    probs_to_return[[i]] <- c(futility_null, efficacy_null, futility_alt, efficacy_alt)
+    names(probs_to_return[[i]]) <- c("futility_null", "efficacy_null", "futility_alt", "efficacy_alt")
+    
+  }
+    
+  # vector to collect the sum of futility and efficacy probabilities
+  sum_probs <- c()
+  
+  for (i in 1:n_analyses) {
+    
+    # pull the probabilities from the list
+    tmp_probs <- probs_to_return[[i]]
+    
+    # gather them into a vector
+    # 3:4 because we want to calculate under the alternative
+    sum_probs <- c(sum_probs, sum(tmp_probs[3:4]))
+    
+  }
+  
+  # calculate the expected sample size
+  ess <- sum(n_patients * sum_probs)
+  
+  # add the expected sample size to the list
+  return_values <- append(probs_to_return, ess)
+  
+  # name the list
+  names_for_list <- as.vector(sapply("analysis_", paste0, 1:n_analyses))
+  names_for_list <- c(names_for_list, "expected_sample_size")
+  names(return_values) <- names_for_list
+  
+  # return probabilities and ESS
+  return_values
+}
+```
+
+
+Which is faster?
+
+```{r}
+bench::mark(
+  gsd_simulations(),
+  gsd_simulations_old(),
+  check = FALSE
+)
+```
+
+The "old" implementation is approximately twice as fast and requires 0.6 times the memory allocation.
+
+Maybe because of the larger `pmvnorm` calls?
+
+```{r}
+upper_bounds <- c(0, Inf,  Inf)
+lower_bounds <- c(-Inf, -Inf, -Inf)
+
+bench::mark(
+  pnorm(0),
+  pmvnorm(lower = lower_bounds, upper = upper_bounds,
+          mean = mean_0, corr = SIGMA),
+  check = FALSE
+)
+```
+
+```{r}
+39.9e-6 / 551.9e-9
+```
+
+```{r}
+SIGMA2 <- matrix(
+  c(1, sqrt(n1/n2), 
+    sqrt(n1/n2), 1),
+  nrow = 2
+)
+upper_bounds2 <- c(0, Inf)
+lower_bounds2 <- c(-Inf, -Inf)
+
+bench::mark(
+  pmvnorm(lower = lower_bounds2, upper = upper_bounds2,
+          mean = c(0,0), corr = SIGMA2),
+  pmvnorm(lower = lower_bounds, upper = upper_bounds,
+          mean = mean_0, corr = SIGMA),
+  check = FALSE
+)
+```
+
+Two and three dimensional integrals appear to be approximately the same speed.
+
+## Maximum ESS with interval bisection
 
 
 
-
+## Triagular designs
