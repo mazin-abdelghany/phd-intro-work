@@ -175,7 +175,7 @@ mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_4
 mean(z_matrix_20 > 0 & z_matrix_20 < 2.5) * mean(z_matrix_40 > 0.75 & z_matrix_40 < 2) * mean(z_matrix_60 > 1.5)
 ```
 
-## Which is faster?
+### Which is faster?
 
 Last week's implementation, wrapped in a function:
 
@@ -851,7 +851,7 @@ gsd_simulations_old <- function(n_analyses = 3,
 ```
 
 
-Which is faster?
+### Which is faster?
 
 ```{r}
 bench::mark(

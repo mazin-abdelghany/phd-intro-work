@@ -1689,9 +1689,8 @@ mean(z_matrix_20 &gt; 0 &amp; z_matrix_20 &lt; 2.5) * mean(z_matrix_40 &gt; 0.75
 <pre><code>## [1] 0.04831</code></pre>
 <pre class="r"><code>mean(z_matrix_20 &gt; 0 &amp; z_matrix_20 &lt; 2.5) * mean(z_matrix_40 &gt; 0.75 &amp; z_matrix_40 &lt; 2) * mean(z_matrix_60 &gt; 1.5)</code></pre>
 <pre><code>## [1] 0.25575</code></pre>
-</div>
-<div id="which-is-faster" class="section level2">
-<h2>Which is faster?</h2>
+<div id="which-is-faster" class="section level3">
+<h3>Which is faster?</h3>
 <p>Last week’s implementation, wrapped in a function:</p>
 <pre class="r"><code>for_loops &lt;- function() {
 
@@ -1975,6 +1974,7 @@ times as much memory. This is likely because there are fewer for loops
 in the vectorized implementation, but the matrices for calculation the
 random normal vectors and <span class="math inline">\(z\)</span> scores
 are large and must remain in memory.</p>
+</div>
 </div>
 <div id="gsd-function-without-for-loops" class="section level2">
 <h2>GSD function without for loops</h2>
@@ -2406,7 +2406,8 @@ information &lt;- function(n, variance) sqrt(n/(2*variance))</code></pre>
   # return probabilities and ESS
   return_values
 }</code></pre>
-<p>Which is faster?</p>
+<div id="which-is-faster-1" class="section level3">
+<h3>Which is faster?</h3>
 <pre class="r"><code>bench::mark(
   gsd_simulations(),
   gsd_simulations_old(),
@@ -2415,8 +2416,8 @@ information &lt;- function(n, variance) sqrt(n/(2*variance))</code></pre>
 <pre><code>## # A tibble: 2 × 6
 ##   expression                 min   median `itr/sec` mem_alloc `gc/sec`
 ##   &lt;bch:expr&gt;            &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 gsd_simulations()       1.86ms   2.16ms      441.    29.9KB    10.8 
-## 2 gsd_simulations_old() 979.19µs   1.15ms      830.   892.8KB     7.22</code></pre>
+## 1 gsd_simulations()       1.84ms   2.15ms      446.    29.9KB    10.7 
+## 2 gsd_simulations_old()  973.3µs   1.17ms      834.   892.8KB     7.19</code></pre>
 <p>The “old” implementation is approximately twice as fast and requires
 0.6 times the memory allocation.</p>
 <p>Maybe because of the larger <code>pmvnorm</code> calls?</p>
@@ -2430,10 +2431,10 @@ bench::mark(
   check = FALSE
 )</code></pre>
 <pre><code>## # A tibble: 2 × 6
-##   expression                             min median `itr/sec` mem_alloc `gc/sec`
-##   &lt;bch:expr&gt;                         &lt;bch:t&gt; &lt;bch:&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 pnorm(0)                             470ns  584ns  1513954.        0B      0  
-## 2 pmvnorm(lower = lower_bounds, upp…  38.3µs   49µs    18396.    2.49KB     17.0</code></pre>
+##   expression                            min  median `itr/sec` mem_alloc `gc/sec`
+##   &lt;bch:expr&gt;                        &lt;bch:t&gt; &lt;bch:t&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
+## 1 pnorm(0)                            493ns   617ns  1501117.        0B      0  
+## 2 pmvnorm(lower = lower_bounds, up…  38.8µs  49.4µs    18649.    2.49KB     17.0</code></pre>
 <pre class="r"><code>39.9e-6 / 551.9e-9</code></pre>
 <pre><code>## [1] 72.29571</code></pre>
 <pre class="r"><code>SIGMA2 &lt;- matrix(
@@ -2454,10 +2455,11 @@ bench::mark(
 <pre><code>## # A tibble: 2 × 6
 ##   expression                             min median `itr/sec` mem_alloc `gc/sec`
 ##   &lt;bch:expr&gt;                          &lt;bch:&gt; &lt;bch:&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
-## 1 pmvnorm(lower = lower_bounds2, upp… 38.4µs 48.6µs    18767.    2.49KB     16.9
-## 2 pmvnorm(lower = lower_bounds, uppe… 38.2µs   49µs    18406.    2.49KB     14.8</code></pre>
+## 1 pmvnorm(lower = lower_bounds2, upp… 38.2µs 48.5µs    18722.    2.49KB     16.9
+## 2 pmvnorm(lower = lower_bounds, uppe… 38.5µs 49.8µs    17793.    2.49KB     14.8</code></pre>
 <p>Two and three dimensional integrals appear to be approximately the
 same speed.</p>
+</div>
 </div>
 <div id="maximum-ess-with-interval-bisection" class="section level2">
 <h2>Maximum ESS with interval bisection</h2>
