@@ -314,13 +314,12 @@ $e_l$ are the upper bounds, $f_l$ are the lower bounds, $\tilde{\delta}$ is the 
 
 ```{r}
 delta_tilde <- function(beta){
-  (2 * qnorm(0.05) * 0.5) / (qnorm(0.05) + qnorm(beta))
+  (2 * qnorm(0.95) * 0.5) / (qnorm(0.95) + qnorm(1-beta))
 }
 ```
 
-
 ```{r}
-beta <- seq(from = 0, to = 0.9, by = 0.05)
+beta <- seq(from = 0.1, to = 0.9, by = 0.05)
 plot(x = beta, y = delta_tilde(beta))
 ```
 
@@ -332,12 +331,11 @@ New function ignoring different sample size considerations in $I_l$:
 calc_bounds_triangular_new <- function(n_analyses = 3,
                                        alpha = 0.05,
                                        power = 0.8,
-                                       delta = 0.5,
-                                       n_patients = c(20, 40, 60)) {
+                                       delta = 0.5) {
   
   beta <- 1-power
   
-  delta_tilde <- (2 * qnorm(alpha) * delta) / (qnorm(alpha) + qnorm(beta))
+  delta_tilde <- (2 * qnorm(1-alpha) * delta) / (qnorm(1-alpha) + qnorm(1-beta))
   
   I_L_term1 <- (4 * (0.583^2)) / n_analyses
   I_L_term2 <- 8 * log(1/(2*alpha))
@@ -373,7 +371,7 @@ calc_bounds_triangular_new <- function(n_analyses = 3,
 
 
 ```{r}
-calc_bounds_triangular_new(power = 0.8)
+calc_bounds_triangular_new(power = 0.4)
 ```
 
 
@@ -382,10 +380,10 @@ calc_bounds_triangular()
 ```
 
 ```{r}
-tri_new <- calc_bounds_triangular_new(power = 0.8)
+tri_new <- calc_bounds_triangular_new(power = 0.4)
 gsd_simulations(upper_bounds = tri_new$upper_bounds,
                 lower_bounds = tri_new$lower_bounds,
-                alt_hypothesis = tri_new$delta_tilde)
+                alt_hypothesis = 0.5)
 ```
 
 
@@ -400,7 +398,7 @@ calc_bounds_triangular_new_diff <- function(n_analyses = 3,
   
   beta <- 1-power
   
-  delta_tilde <- (2 * qnorm(alpha) * delta) / (qnorm(alpha) + qnorm(beta))
+  delta_tilde <- (2 * qnorm(1-alpha) * delta) / (qnorm(1-alpha) + qnorm(1-beta))
   
   I_L_term1 <- (4 * (0.583^2)) / n_analyses
   I_L_term2 <- 8 * log(1/(2*alpha))
@@ -442,7 +440,7 @@ calc_bounds_triangular_new_diff(power = 0.9)
 Fix the alternative hypothesis:
 
 ```{r}
-tri_new_diff <- calc_bounds_triangular_new_diff(power = 0.4)
+tri_new_diff <- calc_bounds_triangular_new_diff(power = 0.8)
 gsd_simulations(upper_bounds = tri_new_diff$upper_bounds,
                 lower_bounds = tri_new_diff$lower_bounds,
                 alt_hypothesis = 0.5)
