@@ -1,0 +1,23 @@
+An executable file needs to have permissions for execute set before you can execute it.
+
+In your machine where you are building the docker image (not inside the docker image itself) run:
+
+```
+ls -la path/to/directory
+```
+
+The first column of the output for your executable (in this case docker-entrypoint.sh) should have the executable bits set something like:
+
+```
+-rwxrwxr-x
+```
+
+If not then try:
+
+```
+chmod +x docker-entrypoint.sh
+```
+
+and then build your docker image again.
+
+Docker uses it's own file system but it copies everything over (including permissions bits) from the source directories.
