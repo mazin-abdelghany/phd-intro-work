@@ -4,8 +4,9 @@
 2025-11-06_GP-regression-and-GSDs_week-4.html linguist-generated
 2025-11-13_GP-regression-and-GSDs_week-5.html linguist-generated
 gpflow_updated.html			      linguist-generated
-2025-12-4_GSDs_week-6.html		      linguist-generated
-2025-12-11_GSDs_week-7.html                  linguist-generated
+2025-12-04_GSDs_week-6.html		      linguist-generated
+2025-12-11_GSDs_week-7.html                   linguist-generated
 GPGO_bayesian-optimization.html		      linguist-generated
+*.ipynb                                       linguist-generated
 
 *.Rmd linguist-language=R
