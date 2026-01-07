@@ -113,7 +113,7 @@ ARG PYTHON_VERSION=python3.11
 ARG TENSORFLOW_PACKAGE=tf-nightly
 COPY setup.python.sh /setup.python.sh
 COPY setup.packages.sh /setup.packages.sh
-RUN /setup.python.sh $PYTHON_VERSION 
+RUN /setup.python.sh ${PYTHON_VERSION} 
 RUN pip install --no-cache-dir ${TENSORFLOW_PACKAGE} 
 
 # Install and setup jupyter
@@ -138,8 +138,11 @@ RUN Rscript -e "install.packages(c('ggplot2', 'gplite', 'mvtnorm', 'bench', 'rpa
 RUN Rscript -e "install.packages('plotly')"
 RUN Rscript -e "install.packages('IRkernel')"
 
+# to register the kernel in the current R installation
 RUN Rscript -e "IRkernel::installspec()"
 
+# install Python packages of interest
+# rpy2 allows interfacing between R and Python
 RUN pip install rpy2 pandas
 RUN pip install gpflow
 
