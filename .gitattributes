@@ -7,6 +7,6 @@ gpflow_updated.html			      linguist-generated
 2025-12-04_GSDs_week-6.html		      linguist-generated
 2025-12-11_GSDs_week-7.html                   linguist-generated
 GPGO_bayesian-optimization.html		      linguist-generated
-*.ipynb                                       linguist-generated
+*.ipynb                                       linguist-vendored
 
 *.Rmd linguist-language=R
