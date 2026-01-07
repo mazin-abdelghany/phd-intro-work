@@ -374,6 +374,10 @@ calc_bounds_triangular_new <- function(n_analyses = 3,
 calc_bounds_triangular_new(power = 0.4)
 ```
 
+```{r}
+calc_bounds_triangular_new(power = 0.8)
+```
+
 
 ```{r}
 calc_bounds_triangular()
