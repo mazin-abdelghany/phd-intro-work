@@ -1,4 +1,4 @@
-name: gpflow_r
+name: gpflow-trieste-r
 
 services:
   tensorflow:
