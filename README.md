@@ -48,9 +48,9 @@ In order to see the files within the source directory:
 
 Open the RMarkdown file, and run as normal.
 
-## Python environment with `TensorFlow` and `GPflow`
+## Python environment with `TensorFlow`, `GPflow`, and `Trieste`
 
-In Week 5 and onwards, Gaussian process (GP) regression is implemented using `GPflow`, a library built in Python on TensorFlow.
+In Week 5 and onwards, Gaussian process (GP) regression is implemented using `GPflow`, a library built in Python on TensorFlow. Bayesian optimization is run using `Trieste`.
 
 To run Jupyter notebooks:
 1. Ensure that you have Docker installed for your system.
