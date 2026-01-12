@@ -1,0 +1,476 @@
+---
+title: "GSD and GP regression - week 6"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float: 
+      collapsed: false
+date: "2025-11-13"
+---
+
+```{css, echo=FALSE}
+#TOC {
+    max-width: fit-content;
+    white-space: nowrap;
+}
+  
+div:has(> #TOC) {
+    display: flex;
+    flex-direction: row-reverse;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load required libraries
+library(mvtnorm)
+library(ggplot2)
+
+# set the seed
+set.seed(585883357)
+```
+
+# Load the GSD package
+
+```{r}
+devtools::load_all(path = "../groupSequentialDesigns/")
+```
+
+Contains:
+
+1. `calc_bounds_of()`
+2. `calc_bounds_pocock()`
+3. `calc_bounds_triangular()`
+4. `gsd_simulations()`
+
+# Calculate staged power
+
+Calculate the boundaries.
+
+```{r}
+pocock_bounds <- calc_bounds_pocock()
+of_bounds <- calc_bounds_of()
+tri_bounds <- calc_bounds_triangular()
+```
+
+Get values for ESS, VSS, and power.
+
+First, generate $\delta$ vector.
+
+```{r}
+deltas <- seq(from = 0, to = 1, by = 0.001)
+```
+
+```{r}
+gsd_simulations(upper_bounds = pocock_bounds$upper_bounds,
+                         lower_bounds = pocock_bounds$lower_bounds,
+                         alt_hypothesis = deltas[1],
+                         n_patients = c(19.51241 * 1:3))$analysis_1["efficacy_alt"]
+```
+
+
+## Pocock
+
+```{r}
+pk_analysis_1 <- vector(mode = "numeric", length = length(deltas))
+pk_analysis_2 <- vector(mode = "numeric", length = length(deltas))
+pk_analysis_3 <- vector(mode = "numeric", length = length(deltas))
+
+for (i in 1:length(deltas)) {
+  
+  sim <- gsd_simulations(upper_bounds = pocock_bounds$upper_bounds,
+                         lower_bounds = pocock_bounds$lower_bounds,
+                         alt_hypothesis = deltas[i],
+                         n_patients = c(19.51241 * 1:3))
+  
+  pk_analysis_1[i] <- sim$analysis_1["efficacy_alt"]
+  pk_analysis_2[i] <- sim$analysis_2["efficacy_alt"]
+  pk_analysis_3[i] <- sim$analysis_3["efficacy_alt"]
+}
+```
+
+
+## O'Brien-Fleming
+
+```{r}
+of_analysis_1 <- vector(mode = "numeric", length = length(deltas))
+of_analysis_2 <- vector(mode = "numeric", length = length(deltas))
+of_analysis_3 <- vector(mode = "numeric", length = length(deltas))
+
+for (i in 1:length(deltas)) {
+  
+  sim <- gsd_simulations(upper_bounds = of_bounds$upper_bounds,
+                         lower_bounds = of_bounds$lower_bounds,
+                         alt_hypothesis = deltas[i],
+                         n_patients = c(16.93269 * 1:3))
+  
+  of_analysis_1[i] <- sim$analysis_1["efficacy_alt"]
+  of_analysis_2[i] <- sim$analysis_2["efficacy_alt"]
+  of_analysis_3[i] <- sim$analysis_3["efficacy_alt"]
+}
+```
+
+
+## Triangular
+
+```{r}
+tri_analysis_1 <- vector(mode = "numeric", length = length(deltas))
+tri_analysis_2 <- vector(mode = "numeric", length = length(deltas))
+tri_analysis_3 <- vector(mode = "numeric", length = length(deltas))
+
+for (i in 1:length(deltas)) {
+  
+  sim <- gsd_simulations(upper_bounds = tri_bounds$upper_bounds,
+                         lower_bounds = tri_bounds$lower_bounds,
+                         alt_hypothesis = deltas[i],
+                         n_patients = c(20.43845 * 1:3))
+  
+  tri_analysis_1[i] <- sim$analysis_1["efficacy_alt"]
+  tri_analysis_2[i] <- sim$analysis_2["efficacy_alt"]
+  tri_analysis_3[i] <- sim$analysis_3["efficacy_alt"]
+}
+```
+
+All of the above have a cumulative power at the end of the trial of approximately 80%. At each stage, power is cumulative sum of the probability of claiming efficacy under the alternative.
+
+## Plots
+
+### Stage 1
+
+```{r}
+ggplot() +
+  geom_line(mapping = aes(x = deltas, y = pk_analysis_1, color = "Pocock")) + 
+  geom_line(mapping = aes(x = deltas, y = of_analysis_1, color = "O'Brien-Fleming")) + 
+  geom_line(mapping = aes(x = deltas, y = tri_analysis_1, color = "Triangular")) +
+  ylim(c(0,1)) +
+  scale_color_manual(name = "Boundary types",
+                     breaks = c("Pocock", "O'Brien-Fleming", "Triangular"),
+                     values = c("Pocock" = "red",
+                                "O'Brien-Fleming" = "blue",
+                                "Triangular" = "purple")) +
+  labs(x = "Alternative hypothesis = \u03B4", 
+       y = "Power at first analysis", 
+       title = "Power for different boundaries at Stage 1")
+```
+
+### Stage 2
+
+```{r}
+ggplot() +
+  geom_line(mapping = aes(x = deltas, y = pk_analysis_2, color = "Pocock")) + 
+  geom_line(mapping = aes(x = deltas, y = of_analysis_2, color = "O'Brien-Fleming")) + 
+  geom_line(mapping = aes(x = deltas, y = tri_analysis_2, color = "Triangular")) +
+  ylim(c(0,1)) +
+  scale_color_manual(name = "Boundary types",
+                     breaks = c("Pocock", "O'Brien-Fleming", "Triangular"),
+                     values = c("Pocock" = "red",
+                                "O'Brien-Fleming" = "blue",
+                                "Triangular" = "purple")) +
+  labs(x = "Alternative hypothesis = \u03B4", 
+       y = "Power at second analysis", 
+       title = "Power for different boundaries at Stage 2")
+```
+
+### Stage 3
+
+```{r}
+ggplot() +
+  geom_line(mapping = aes(x = deltas, y = pk_analysis_3, color = "Pocock")) + 
+  geom_line(mapping = aes(x = deltas, y = of_analysis_3, color = "O'Brien-Fleming")) + 
+  geom_line(mapping = aes(x = deltas, y = tri_analysis_3, color = "Triangular")) +
+  ylim(c(0,1)) +
+  scale_color_manual(name = "Boundary types",
+                     breaks = c("Pocock", "O'Brien-Fleming", "Triangular"),
+                     values = c("Pocock" = "red",
+                                "O'Brien-Fleming" = "blue",
+                                "Triangular" = "purple")) +
+  labs(x = "Alternative hypothesis = \u03B4", 
+       y = "Power at third analysis", 
+       title = "Power for different boundaries at Stage 3")
+```
+
+
+## Cumulative sum plots
+
+### Stage 1
+
+```{r}
+ggplot() +
+  geom_line(mapping = aes(x = deltas, y = pk_analysis_1, color = "Pocock")) + 
+  geom_line(mapping = aes(x = deltas, y = of_analysis_1, color = "O'Brien-Fleming")) + 
+  geom_line(mapping = aes(x = deltas, y = tri_analysis_1, color = "Triangular")) +
+  ylim(c(0,1)) +
+  scale_color_manual(name = "Boundary types",
+                     breaks = c("Pocock", "O'Brien-Fleming", "Triangular"),
+                     values = c("Pocock" = "red",
+                                "O'Brien-Fleming" = "blue",
+                                "Triangular" = "purple")) +
+  labs(x = "Alternative hypothesis = \u03B4", 
+       y = "Power at first analysis", 
+       title = "Power for different boundaries at Stage 1")
+```
+
+### Stage 2
+
+```{r}
+ggplot() +
+  geom_line(mapping = aes(x = deltas, y = pk_analysis_1+pk_analysis_2, color = "Pocock")) + 
+  geom_line(mapping = aes(x = deltas, y = of_analysis_1+of_analysis_2, color = "O'Brien-Fleming")) + 
+  geom_line(mapping = aes(x = deltas, y = tri_analysis_1+tri_analysis_2, color = "Triangular")) +
+  ylim(c(0,1)) +
+  scale_color_manual(name = "Boundary types",
+                     breaks = c("Pocock", "O'Brien-Fleming", "Triangular"),
+                     values = c("Pocock" = "red",
+                                "O'Brien-Fleming" = "blue",
+                                "Triangular" = "purple")) +
+  labs(x = "Alternative hypothesis = \u03B4", 
+       y = "Power at second analysis", 
+       title = "Power for different boundaries at Stage 2")
+```
+
+### Stage 3
+
+```{r}
+ggplot() +
+  geom_line(mapping = aes(x = deltas, y = pk_analysis_1+pk_analysis_2+pk_analysis_3, color = "Pocock")) + 
+  geom_line(mapping = aes(x = deltas, y = of_analysis_1+of_analysis_2+of_analysis_3, color = "O'Brien-Fleming")) + 
+  geom_line(mapping = aes(x = deltas, y = tri_analysis_1+tri_analysis_2+tri_analysis_3, color = "Triangular")) +
+  ylim(c(0,1)) +
+  scale_color_manual(name = "Boundary types",
+                     breaks = c("Pocock", "O'Brien-Fleming", "Triangular"),
+                     values = c("Pocock" = "red",
+                                "O'Brien-Fleming" = "blue",
+                                "Triangular" = "purple")) +
+  labs(x = "Alternative hypothesis = \u03B4", 
+       y = "Power at third analysis", 
+       title = "Power for different boundaries at Stage 3")
+```
+
+
+# David's Triangular test code
+
+## 1. Define the Boundary Function
+
+```{r}
+get_boundaries <- function(alpha, delta, Imax, K) {
+  # Information levels at each look k=1...K
+  k <- 1:K
+  I_k <- (k / K) * Imax
+  
+  # The correction factor for discrete monitoring (0.583 is the specific constant)
+  correction <- 0.583 * sqrt(Imax / K)
+  
+  # Common intercept term (A)
+  intercept <- (2 / delta) * log(1 / (2 * alpha))
+  
+  # Calculate Upper Boundary (dk)
+  # Formula: (2/delta)*log(1/(2*alpha)) - 0.583*sqrt(Imax/K) + (delta/4)*I_k
+  dk <- intercept - correction + (delta / 4) * I_k
+  
+  # Calculate Lower Boundary (ck)
+  # Formula: -(2/delta)*log(1/(2*alpha)) + 0.583*sqrt(Imax/K) + (3*delta/4)*I_k
+  ck <- -intercept + correction + (3 * delta / 4) * I_k
+  
+  return(list(k = k, I_k = I_k, lower = ck, upper = dk))
+}
+```
+
+
+## 2. Simulation Function
+
+```{r}
+simulate_gst <- function(n_sim, alpha, delta, Imax, K, true_theta) {
+  
+  # Get boundaries
+  bounds <- get_boundaries(alpha, delta, Imax, K)
+  upper <- bounds$upper
+  lower <- bounds$lower
+  
+  # Information increment per stage
+  info_increment <- Imax / K
+  
+  # Initialize counters
+  rejected <- 0
+  accepted <- 0 # Accepted Null (futility)
+  overrun  <- 0 # Reached max K without crossing (should be rare in Triangular designs)
+  
+  # Standard Error of the increment (sqrt of information increment)
+  sd_increment <- sqrt(info_increment)
+  # Mean of the increment (theta * information increment)
+  mean_increment <- true_theta * info_increment
+  
+  # Run Simulation (Vectorized loop for efficiency)
+  # We generate the full paths, then check stopping conditions
+  
+  # Generate all increments: matrix of size (n_sim x K)
+  increments <- matrix(rnorm(n_sim * K, mean = mean_increment, sd = sd_increment), 
+                       nrow = n_sim, ncol = K)
+  
+  # Calculate cumulative score statistic Sk
+  # t(apply(...)) is used because apply returns column-vectors
+  Sk <- t(apply(increments, 1, cumsum)) 
+  
+  # Evaluate stopping criteria
+  for (i in 1:n_sim) {
+    path <- Sk[i, ]
+    stopped <- FALSE
+    
+    for (stage in 1:K) {
+      if (path[stage] >= upper[stage]) {
+        rejected <- rejected + 1
+        stopped <- TRUE
+        break
+      } else if (path[stage] <= lower[stage]) {
+        accepted <- accepted + 1
+        stopped <- TRUE
+        break
+      }
+    }
+    
+    # Check if trial finished without crossing boundaries
+    if (!stopped) {
+      # In a closed triangular test, usually the boundaries meet.
+      # If they haven't met by K and we haven't crossed, we need a convention.
+      # Convention: If Sk > (upper+lower)/2, Reject. Otherwise Accept.
+      # For this simulation, we simply track it as 'overrun' or failure to reject.
+      overrun <- overrun + 1
+    }
+  }
+  
+  return(list(
+    rate = rejected / n_sim,
+    overrun_rate = overrun / n_sim,
+    n_sim = n_sim
+  ))
+}
+```
+
+
+## 3. Execution and Visualization
+
+```{r}
+# Parameters
+set.seed(123)
+
+alpha_param <- alpha <- 0.05
+delta_param <- 0.693147   # Effect size (e.g., log-hazard ratio or mean diff)
+
+K <- 3
+
+beta <- 0.3
+
+delta_param <- 2*qnorm(1-alpha)*delta_param/(qnorm(1-alpha)+qnorm(1-beta))
+
+
+Imax_param  <- (sqrt(4*0.583^2/K + 8*log(1/(2*alpha))) - 2*0.583/sqrt(K))^2/delta_param^2    # Max Information (depends on variance and N)
+
+K_param     <- 3   # Number of looks
+N_SIM       <- 10000
+
+# Get Boundaries for plotting
+b <- get_boundaries(alpha_param, delta_param, Imax_param, K_param)
+
+# --- Run Simulation: Power (True Theta = Delta) ---
+res_power <- simulate_gst(N_SIM, alpha_param, delta_param, Imax_param, K_param, 
+                          true_theta = 0.693147)
+
+# --- Run Simulation: Type I Error (True Theta = 0) ---
+res_type1 <- simulate_gst(N_SIM, alpha_param, delta_param, Imax_param, K_param, 
+                          true_theta = 0)
+
+# 4. Print Results
+cat("==========================================\n")
+cat("Group Sequential Trial Simulation Results\n")
+cat("==========================================\n")
+cat(sprintf("Parameters: alpha=%.3f, delta=%.2f, Imax=%.1f, K=%d\n", 
+            alpha_param, delta_param, Imax_param, K_param))
+cat("------------------------------------------\n")
+cat(sprintf("Estimated Power (Theta = %.2f):     %.4f\n", delta_param, res_power$rate))
+cat(sprintf("Estimated Type I Error (Theta = 0): %.4f\n", res_type1$rate))
+cat("==========================================\n")
+b
+```
+
+
+```{r}
+dave_test <- calc_bounds_triangular(n_analyses = 5, alpha = 0.05, delta = 0.66)
+dave_test
+```
+
+```{r}
+b$upper
+b$lower
+```
+
+
+```{r}
+gsd_simulations(n_analyses = 3, upper_bounds = b$upper, lower_bounds = b$lower,
+                n_patients = c(100, 200, 300))
+```
+
+
+# Mazin's New Triangular bounds
+
+```{r}
+calc_bounds_triangular_new <- function(n_analyses = 3,
+                                       alpha = 0.05,
+                                       power = 0.7,
+                                       delta = 0.693147) {
+  
+  beta <- 1-power
+  
+  delta_tilde <- (2 * qnorm(1-alpha) * delta) / (qnorm(1-alpha) + qnorm(1-beta))
+  
+  I_L_term1 <- (4 * (0.583^2)) / n_analyses
+  I_L_term2 <- 8 * log(1/(2*alpha))
+  I_L_term3 <- (2 * 0.583) / sqrt(n_analyses)
+  
+  # replace delta with delta_tilde
+  I_L <- (sqrt(I_L_term1 + I_L_term2) - I_L_term3)^2 * (1 / delta_tilde)^2
+  
+  # replace delta with delta_tilde
+  bounds_term1 <- (2/delta_tilde) * log(1/(2*alpha))
+  
+  # unchanged
+  bounds_term2 <- 0.583 * sqrt(I_L / n_analyses)
+  
+  analysis_fracs <- (1:n_analyses / n_analyses)
+  I_L_fracs <- I_L * analysis_fracs
+  
+  # replace delta with delta_tilde
+  e_l <- (bounds_term1 - bounds_term2 + ((0.25*delta_tilde) * analysis_fracs * I_L )) / sqrt(I_L_fracs)
+  
+  # replace delta with delta_tilde
+  f_l <- (-bounds_term1 + bounds_term2 + ((0.75*delta_tilde) * analysis_fracs * I_L )) / sqrt(I_L_fracs)
+  
+  # return delta_tilde as well
+  return(list(upper_bounds = e_l, 
+              lower_bounds = f_l, 
+              delta_tilde = delta_tilde,
+              info = I_L_fracs))
+  
+  
+}
+```
+
+
+```{r}
+calc_bounds_triangular_new(power=0.9)
+```
+
+
+```{r}
+gsd_simulations(n_analyses = 3, upper_bounds = calc_bounds_triangular_new()$upper_bounds,
+                lower_bounds = calc_bounds_triangular_new()$lower_bounds,
+                n_patients = c(10,20,30), null_hypothesis = 0, alt_hypothesis = 0.7791986)
+```
+
+
+The difference between my code and David's is:  
+1. the mean and standard deviation calculated in my code is using `n_patients` and `variance` while David's code is using `mean = true_theta * info_increment` and standard deviation is `sd = sqrt(info_increment)`.  
+2. the boundaries and simulation is occuring on the score scale for David's code while it's occuring on the standard Z scale in mine.
+
+
+Results on the score scale for my code are (and were) correct.
