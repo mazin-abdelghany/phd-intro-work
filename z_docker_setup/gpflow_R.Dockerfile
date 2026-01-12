@@ -2,7 +2,7 @@
 
 FROM ubuntu:22.04
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Set the locale
 
@@ -11,9 +11,9 @@ RUN apt-get -y install locales
 
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen
-ENV LANG en_US.UTF-8  
-ENV LANGUAGE en_US:en  
-ENV LC_ALL en_US.UTF-8     
+ENV LANG=en_US.UTF-8  
+ENV LANGUAGE=en_US:en  
+ENV LC_ALL=en_US.UTF-8     
 
 # Install necessary R apt packages
 
@@ -111,8 +111,8 @@ RUN rm -rf /var/lib/apt/lists/*
 
 ARG PYTHON_VERSION=python3.11
 ARG TENSORFLOW_PACKAGE=tf-nightly
-COPY setup.python.sh /setup.python.sh
 COPY setup.packages.sh /setup.packages.sh
+COPY setup.python.sh /setup.python.sh
 RUN /setup.python.sh ${PYTHON_VERSION} 
 RUN pip install --no-cache-dir ${TENSORFLOW_PACKAGE} 
 
@@ -143,8 +143,9 @@ RUN Rscript -e "IRkernel::installspec()"
 
 # install Python packages of interest
 # rpy2 allows interfacing between R and Python
-RUN pip install rpy2 pandas
+RUN pip install rpy2 pandas plotly
 RUN pip install gpflow
+RUN pip install trieste trieste[plotting]
 
 # Run the notebook
 
