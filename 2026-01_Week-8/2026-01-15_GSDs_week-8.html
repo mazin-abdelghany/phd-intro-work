@@ -12,7 +12,7 @@
 
 <meta name="date" content="2025-11-13" />
 
-<title>GSD and GP regression - week 6</title>
+<title>GSD - week 8</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -1484,7 +1484,7 @@ font-size: 0.95em;
 
 
 
-<h1 class="title toc-ignore">GSD and GP regression - week 6</h1>
+<h1 class="title toc-ignore">GSD - week 8</h1>
 <h4 class="date">2025-11-13</h4>
 
 </div>
@@ -1787,8 +1787,8 @@ probability of claiming efficacy under the alternative.</p>
   ))
 }</code></pre>
 </div>
-<div id="execution-and-visualization" class="section level2">
-<h2>3. Execution and Visualization</h2>
+<div id="execution-and-visualization-using-tildedelta" class="section level2">
+<h2>3. Execution and Visualization (using <span class="math inline">\(\tilde{\delta}\)</span>)</h2>
 <pre class="r"><code># Parameters
 set.seed(123)
 
@@ -1848,6 +1848,71 @@ cat(&quot;==========================================\n&quot;)</code></pre>
 ## 
 ## $upper
 ## [1] 4.273920 5.342400 6.410881</code></pre>
+</div>
+<div id="execution-and-visualization-using-delta" class="section level2">
+<h2>3. Execution and Visualization (using <span class="math inline">\(\delta\)</span>)</h2>
+<pre class="r"><code># Parameters
+set.seed(123)
+
+alpha_param &lt;- alpha &lt;- 0.05
+delta &lt;- 0.693147   # Effect size (e.g., log-hazard ratio or mean diff)
+
+K &lt;- 3
+
+beta &lt;- 0.3
+
+delta_param &lt;- 2*qnorm(1-alpha)*delta/(qnorm(1-alpha)+qnorm(1-beta))
+
+
+Imax_param  &lt;- (sqrt(4*0.583^2/K + 8*log(1/(2*alpha))) - 2*0.583/sqrt(K))^2/delta_param^2    # Max Information (depends on variance and N)
+
+K_param     &lt;- 3   # Number of looks
+N_SIM       &lt;- 10000
+
+# Get Boundaries for plotting
+b &lt;- get_boundaries(alpha_param, delta_param, Imax_param, K_param)
+
+# --- Run Simulation: Power (True Theta = Delta) ---
+res_power &lt;- simulate_gst(N_SIM, alpha_param, delta, Imax_param, K_param, 
+                          true_theta = 0.693147)
+
+# --- Run Simulation: Type I Error (True Theta = 0) ---
+res_type1 &lt;- simulate_gst(N_SIM, alpha_param, delta, Imax_param, K_param, 
+                          true_theta = 0)
+
+# 4. Print Results
+cat(&quot;==========================================\n&quot;)</code></pre>
+<pre><code>## ==========================================</code></pre>
+<pre class="r"><code>cat(&quot;Group Sequential Trial Simulation Results\n&quot;)</code></pre>
+<pre><code>## Group Sequential Trial Simulation Results</code></pre>
+<pre class="r"><code>cat(&quot;==========================================\n&quot;)</code></pre>
+<pre><code>## ==========================================</code></pre>
+<pre class="r"><code>cat(sprintf(&quot;Parameters: alpha=%.3f, delta=%.2f, Imax=%.1f, K=%d\n&quot;, 
+            alpha_param, delta_param, Imax_param, K_param))</code></pre>
+<pre><code>## Parameters: alpha=0.050, delta=1.05, Imax=12.2, K=3</code></pre>
+<pre class="r"><code>cat(&quot;------------------------------------------\n&quot;)</code></pre>
+<pre><code>## ------------------------------------------</code></pre>
+<pre class="r"><code>cat(sprintf(&quot;Estimated Power (Theta = %.2f):     %.4f\n&quot;, delta_param, res_power$rate))</code></pre>
+<pre><code>## Estimated Power (Theta = 1.05):     0.6057</code></pre>
+<pre class="r"><code>cat(sprintf(&quot;Estimated Type I Error (Theta = 0): %.4f\n&quot;, res_type1$rate))</code></pre>
+<pre><code>## Estimated Type I Error (Theta = 0): 0.0201</code></pre>
+<pre class="r"><code>cat(&quot;==========================================\n&quot;)</code></pre>
+<pre><code>## ==========================================</code></pre>
+<pre class="r"><code>b</code></pre>
+<pre><code>## $k
+## [1] 1 2 3
+## 
+## $I_k
+## [1]  4.065877  8.131754 12.197632
+## 
+## $lower
+## [1] 1.776357e-15 3.205440e+00 6.410881e+00
+## 
+## $upper
+## [1] 4.273920 5.342400 6.410881</code></pre>
+<p>Note that when simulating under <span class="math inline">\(\tilde{\delta}\)</span> the values of <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\beta\)</span> are near the nominal values.
+However, when simulating under <span class="math inline">\(\delta\)</span>, <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\beta\)</span> are not near the nominal values
+(see above parentheticals in code).</p>
 <pre class="r"><code>dave_test &lt;- calc_bounds_triangular(n_analyses = 5, alpha = 0.05, delta = 0.66)
 dave_test</code></pre>
 <pre><code>## $upper_bounds
@@ -1926,7 +1991,8 @@ dave_test</code></pre>
   return(list(upper_bounds = e_l, 
               lower_bounds = f_l, 
               delta_tilde = delta_tilde,
-              info = I_L_fracs))
+              info = I_L_fracs,
+              sq_info = sqrt(I_L_fracs)))
   
   
 }</code></pre>
@@ -1941,7 +2007,105 @@ dave_test</code></pre>
 ## [1] 0.7791986
 ## 
 ## $info
-## [1]  7.399499 14.798998 22.198497</code></pre>
+## [1]  7.399499 14.798998 22.198497
+## 
+## $sq_info
+## [1] 2.720202 3.846947 4.711528</code></pre>
+<pre class="r"><code>calc_bounds_triangular_new(power=0.7)</code></pre>
+<pre><code>## $upper_bounds
+## [1] 2.119577 1.873460 1.835608
+## 
+## $lower_bounds
+## [1] 6.607153e-16 1.124076e+00 1.835608e+00
+## 
+## $delta_tilde
+## [1] 1.051168
+## 
+## $info
+## [1]  4.065877  8.131754 12.197632
+## 
+## $sq_info
+## [1] 2.016402 2.851623 3.492511</code></pre>
+<p>Note above that regardless of power selected, the triangular bounds
+are the same on the <span class="math inline">\(Z\)</span> score scale.
+However, there are large differences in the square root of the
+information (<span class="math inline">\(\sqrt{I_l} =
+\texttt{sq_info}\)</span>) and the score bounds are indeed different.
+The function below calculates under the score scale.</p>
+<pre class="r"><code>calc_bounds_triangular_new_score &lt;- function(n_analyses = 3,
+                                       alpha = 0.05,
+                                       power = 0.7,
+                                       delta = 0.693147) {
+  
+  beta &lt;- 1-power
+  
+  delta_tilde &lt;- (2 * qnorm(1-alpha) * delta) / (qnorm(1-alpha) + qnorm(1-beta))
+  
+  I_L_term1 &lt;- (4 * (0.583^2)) / n_analyses
+  I_L_term2 &lt;- 8 * log(1/(2*alpha))
+  I_L_term3 &lt;- (2 * 0.583) / sqrt(n_analyses)
+  
+  # replace delta with delta_tilde
+  I_L &lt;- (sqrt(I_L_term1 + I_L_term2) - I_L_term3)^2 * (1 / delta_tilde)^2
+  
+  # replace delta with delta_tilde
+  bounds_term1 &lt;- (2/delta_tilde) * log(1/(2*alpha))
+  
+  # unchanged
+  bounds_term2 &lt;- 0.583 * sqrt(I_L / n_analyses)
+  
+  analysis_fracs &lt;- (1:n_analyses / n_analyses)
+  I_L_fracs &lt;- I_L * analysis_fracs
+  
+  # replace delta with delta_tilde
+  # we are commenting out the standardization sqrt(I_L_fracs)
+  e_l &lt;- (bounds_term1 - bounds_term2 + ((0.25*delta_tilde) * analysis_fracs * I_L )) #/ sqrt(I_L_fracs)
+  
+  # replace delta with delta_tilde
+  # we are commenting out the standardization sqrt(I_L_fracs)
+  f_l &lt;- (-bounds_term1 + bounds_term2 + ((0.75*delta_tilde) * analysis_fracs * I_L )) #/ sqrt(I_L_fracs)
+  
+  # return delta_tilde as well
+  return(list(upper_bounds = e_l, 
+              lower_bounds = f_l, 
+              delta_tilde = delta_tilde,
+              info = I_L_fracs,
+              sq_info = sqrt(I_L_fracs)))
+  
+  
+}</code></pre>
+<pre class="r"><code>calc_bounds_triangular_new_score(power=0.9)</code></pre>
+<pre><code>## $upper_bounds
+## [1] 5.765679 7.207099 8.648518
+## 
+## $lower_bounds
+## [1] 1.776357e-15 4.324259e+00 8.648518e+00
+## 
+## $delta_tilde
+## [1] 0.7791986
+## 
+## $info
+## [1]  7.399499 14.798998 22.198497
+## 
+## $sq_info
+## [1] 2.720202 3.846947 4.711528</code></pre>
+<pre class="r"><code>calc_bounds_triangular_new_score(power=0.7)</code></pre>
+<pre><code>## $upper_bounds
+## [1] 4.273920 5.342400 6.410881
+## 
+## $lower_bounds
+## [1] 1.332268e-15 3.205440e+00 6.410881e+00
+## 
+## $delta_tilde
+## [1] 1.051168
+## 
+## $info
+## [1]  4.065877  8.131754 12.197632
+## 
+## $sq_info
+## [1] 2.016402 2.851623 3.492511</code></pre>
+<p>Note the large difference in the bounds, the information, the square
+root of the information given the change in the power.</p>
 <pre class="r"><code>gsd_simulations(n_analyses = 3, upper_bounds = calc_bounds_triangular_new()$upper_bounds,
                 lower_bounds = calc_bounds_triangular_new()$lower_bounds,
                 n_patients = c(10,20,30), null_hypothesis = 0, alt_hypothesis = 0.7791986)</code></pre>
@@ -1973,8 +2137,8 @@ dave_test</code></pre>
 <code>n_patients</code> and <code>variance</code> while David’s code is
 using <code>mean = true_theta * info_increment</code> and standard
 deviation is <code>sd = sqrt(info_increment)</code>.<br />
-2. the boundaries and simulation is occuring on the score scale for
-David’s code while it’s occuring on the standard Z scale in mine.</p>
+2. the boundaries and simulation is occurring on the score scale for
+David’s code while it’s occurring on the standard Z scale in mine.</p>
 <p>Results on the score scale for my code are (and were) correct.</p>
 </div>
 

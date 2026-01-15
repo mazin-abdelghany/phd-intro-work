@@ -1,5 +1,5 @@
 ---
-title: "GSD and GP regression - week 6"
+title: "GSD - week 8"
 output: 
   html_document:
     toc: true
@@ -348,7 +348,7 @@ simulate_gst <- function(n_sim, alpha, delta, Imax, K, true_theta) {
 ```
 
 
-## 3. Execution and Visualization
+## 3. Execution and Visualization (using $\tilde{\delta}$)
 
 ```{r}
 # Parameters
@@ -393,6 +393,52 @@ cat("==========================================\n")
 b
 ```
 
+## 3. Execution and Visualization (using $\delta$)
+
+```{r}
+# Parameters
+set.seed(123)
+
+alpha_param <- alpha <- 0.05
+delta <- 0.693147   # Effect size (e.g., log-hazard ratio or mean diff)
+
+K <- 3
+
+beta <- 0.3
+
+delta_param <- 2*qnorm(1-alpha)*delta/(qnorm(1-alpha)+qnorm(1-beta))
+
+
+Imax_param  <- (sqrt(4*0.583^2/K + 8*log(1/(2*alpha))) - 2*0.583/sqrt(K))^2/delta_param^2    # Max Information (depends on variance and N)
+
+K_param     <- 3   # Number of looks
+N_SIM       <- 10000
+
+# Get Boundaries for plotting
+b <- get_boundaries(alpha_param, delta_param, Imax_param, K_param)
+
+# --- Run Simulation: Power (True Theta = Delta) ---
+res_power <- simulate_gst(N_SIM, alpha_param, delta, Imax_param, K_param, 
+                          true_theta = 0.693147)
+
+# --- Run Simulation: Type I Error (True Theta = 0) ---
+res_type1 <- simulate_gst(N_SIM, alpha_param, delta, Imax_param, K_param, 
+                          true_theta = 0)
+
+# 4. Print Results
+cat("==========================================\n")
+cat("Group Sequential Trial Simulation Results\n")
+cat("==========================================\n")
+cat(sprintf("Parameters: alpha=%.3f, delta=%.2f, Imax=%.1f, K=%d\n", 
+            alpha_param, delta_param, Imax_param, K_param))
+cat("------------------------------------------\n")
+cat(sprintf("Estimated Power (Theta = %.2f):     %.4f\n", delta_param, res_power$rate))
+cat(sprintf("Estimated Type I Error (Theta = 0): %.4f\n", res_type1$rate))
+cat("==========================================\n")
+b
+```
+
+Note that when simulating under $\tilde{\delta}$ the values of $\alpha$ and $\beta$ are near the nominal values. However, when simulating under $\delta$, $\alpha$ and $\beta$ are not near the nominal values (see above parentheticals in code).
 
 ```{r}
 dave_test <- calc_bounds_triangular(n_analyses = 5, alpha = 0.05, delta = 0.66)
@@ -449,7 +495,8 @@ calc_bounds_triangular_new <- function(n_analyses = 3,
   return(list(upper_bounds = e_l, 
               lower_bounds = f_l, 
               delta_tilde = delta_tilde,
-              info = I_L_fracs))
+              info = I_L_fracs,
+              sq_info = sqrt(I_L_fracs)))
   
   
 }
@@ -461,6 +508,73 @@ calc_bounds_triangular_new(power=0.9)
 ```
 
 
+
+```{r}
+calc_bounds_triangular_new(power=0.7)
+```
+
+Note above that regardless of power selected, the triangular bounds are the same on the $Z$ score scale. However, there are large differences in the square root of the information ($\sqrt{I_l} = \texttt{sq_info}$) and the score bounds are indeed different. The function below calculates under the score scale.
+
+
+```{r}
+calc_bounds_triangular_new_score <- function(n_analyses = 3,
+                                       alpha = 0.05,
+                                       power = 0.7,
+                                       delta = 0.693147) {
+  
+  beta <- 1-power
+  
+  delta_tilde <- (2 * qnorm(1-alpha) * delta) / (qnorm(1-alpha) + qnorm(1-beta))
+  
+  I_L_term1 <- (4 * (0.583^2)) / n_analyses
+  I_L_term2 <- 8 * log(1/(2*alpha))
+  I_L_term3 <- (2 * 0.583) / sqrt(n_analyses)
+  
+  # replace delta with delta_tilde
+  I_L <- (sqrt(I_L_term1 + I_L_term2) - I_L_term3)^2 * (1 / delta_tilde)^2
+  
+  # replace delta with delta_tilde
+  bounds_term1 <- (2/delta_tilde) * log(1/(2*alpha))
+  
+  # unchanged
+  bounds_term2 <- 0.583 * sqrt(I_L / n_analyses)
+  
+  analysis_fracs <- (1:n_analyses / n_analyses)
+  I_L_fracs <- I_L * analysis_fracs
+  
+  # replace delta with delta_tilde
+  # we are commenting out the standardization sqrt(I_L_fracs)
+  e_l <- (bounds_term1 - bounds_term2 + ((0.25*delta_tilde) * analysis_fracs * I_L )) #/ sqrt(I_L_fracs)
+  
+  # replace delta with delta_tilde
+  # we are commenting out the standardization sqrt(I_L_fracs)
+  f_l <- (-bounds_term1 + bounds_term2 + ((0.75*delta_tilde) * analysis_fracs * I_L )) #/ sqrt(I_L_fracs)
+  
+  # return delta_tilde as well
+  return(list(upper_bounds = e_l, 
+              lower_bounds = f_l, 
+              delta_tilde = delta_tilde,
+              info = I_L_fracs,
+              sq_info = sqrt(I_L_fracs)))
+  
+  
+}
+```
+
+
+```{r}
+calc_bounds_triangular_new_score(power=0.9)
+```
+
+
+
+```{r}
+calc_bounds_triangular_new_score(power=0.7)
+```
+
+Note the large difference in the bounds, the information, the square root of the information given the change in the power.
+
+
 ```{r}
 gsd_simulations(n_analyses = 3, upper_bounds = calc_bounds_triangular_new()$upper_bounds,
                 lower_bounds = calc_bounds_triangular_new()$lower_bounds,
@@ -470,7 +584,7 @@ gsd_simulations(n_analyses = 3, upper_bounds = calc_bounds_triangular_new()$uppe
 
 The difference between my code and David's is:  
 1. the mean and standard deviation calculated in my code is using `n_patients` and `variance` while David's code is using `mean = true_theta * info_increment` and standard deviation is `sd = sqrt(info_increment)`.  
-2. the boundaries and simulation is occuring on the score scale for David's code while it's occuring on the standard Z scale in mine.
+2. the boundaries and simulation is occurring on the score scale for David's code while it's occurring on the standard Z scale in mine.
 
 
 Results on the score scale for my code are (and were) correct.
