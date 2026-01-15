@@ -1,5 +1,5 @@
 ---
-title: "GSD and GP regression - week 6"
+title: "GSD - week 7"
 output: 
   html_document:
     toc: true
