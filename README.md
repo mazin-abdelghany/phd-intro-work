@@ -62,4 +62,4 @@ To run Jupyter notebooks:
 7. Copy and paste the token outputted in the terminal after the `docker compose` command executed above
 8. Files in the directory should appear in the JupyterLab environment.
 
-The folders with format `YYYY-MM_Week-` should be available within the Jupyter environment. Notebooks can be run as normal.
+The folders with format `YYYY-MM_tX` should be available within the Jupyter environment. Notebooks can be run as normal.
