@@ -206,17 +206,17 @@ gsd_simulations <- function(n_analyses = 3,
     # n = 3, need to fill all but 11, 22, 33
     # n = 4, need to fill all but 11, 22, 33, 44
     # etc.
-    for(i in 1:i) {
-      for(j  in 1:i) {
+    for(j in 1:i) {
+      for(k  in 1:i) {
 
         # leave the 1s on the diagonal, skip this iteration of for loop
-        if(i == j) next
+        if(j == k) next
 
         # when i is less than j, the lower number of patients will be in numerator
-        if(i < j) SIGMA[i,j] <- sqrt(n_patients[i] / n_patients[j])
+        if(j < k) SIGMA[j,k] <- sqrt(n_patients[j] / n_patients[k])
 
         # when i is greater than j, the lower number of patients will be in numerator
-        if(i > j) SIGMA[i,j] <- sqrt(n_patients[j] / n_patients[i])
+        if(j > k) SIGMA[j,k] <- sqrt(n_patients[k] / n_patients[j])
 
       }
     }
@@ -290,7 +290,7 @@ gsd_simulations <- function(n_analyses = 3,
     efficacy_null <- pmvnorm(lower = efficacy_l_bounds[[i]],
                              upper = efficacy_u_bounds[[i]],
                              mean = mean_0, corr = SIGMA_list[[i]])
-    # futility under alt
+    # efficacy under alt
     efficacy_alt <- pmvnorm(lower = efficacy_l_bounds[[i]],
                             upper = efficacy_u_bounds[[i]],
                             mean = mean_1, corr = SIGMA_list[[i]])
