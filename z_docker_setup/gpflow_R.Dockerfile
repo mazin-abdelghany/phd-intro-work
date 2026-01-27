@@ -117,7 +117,6 @@ RUN /setup.python.sh ${PYTHON_VERSION}
 RUN pip install --no-cache-dir ${TENSORFLOW_PACKAGE} 
 
 # Install and setup jupyter
-
 COPY jupyter.requirements.txt /jupyter.requirements.txt
 RUN python3 -m pip install --no-cache-dir -r /jupyter.requirements.txt -U
 RUN jupyter server extension enable --py jupyter_http_over_ws
