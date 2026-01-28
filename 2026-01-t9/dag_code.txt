@@ -1,0 +1,15 @@
+dag {
+"Difference of interest (delta)" [pos="-1.009,-0.699"]
+"Maximum expected sample size" [pos="-0.419,-1.014"]
+"Trial design (boundaries)" [pos="0.149,-0.707"]
+"Trial sample size" [pos="-0.936,-0.182"]
+"Type I error (alpha)" [pos="0.215,-0.304"]
+"Type II error (beta)" [pos="-0.472,-0.489"]
+"Variance of delta" [pos="-0.362,-0.182"]
+"Difference of interest (delta)" -> "Maximum expected sample size"
+"Trial design (boundaries)" -> "Maximum expected sample size"
+"Trial sample size" -> "Type II error (beta)"
+"Type I error (alpha)" -> "Trial design (boundaries)"
+"Type II error (beta)" -> "Maximum expected sample size"
+"Variance of delta" -> "Type II error (beta)"
+}
