@@ -12,4 +12,5 @@ src/py_group_sequential_designs/simulate.py
 src/py_group_sequential_designs.egg-info/PKG-INFO
 src/py_group_sequential_designs.egg-info/SOURCES.txt
 src/py_group_sequential_designs.egg-info/dependency_links.txt
+src/py_group_sequential_designs.egg-info/requires.txt
 src/py_group_sequential_designs.egg-info/top_level.txt
