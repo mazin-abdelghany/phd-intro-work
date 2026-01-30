@@ -1,0 +1,15 @@
+LICENSE
+README.md
+pyproject.toml
+src/py_group_sequential_designs/__init__.py
+src/py_group_sequential_designs/boundaries.py
+src/py_group_sequential_designs/feasibility_penalty.py
+src/py_group_sequential_designs/format_boundaries_after_ask.py
+src/py_group_sequential_designs/function_to_minimize.py
+src/py_group_sequential_designs/generate_gpr_input.py
+src/py_group_sequential_designs/sample_size.py
+src/py_group_sequential_designs/simulate.py
+src/py_group_sequential_designs.egg-info/PKG-INFO
+src/py_group_sequential_designs.egg-info/SOURCES.txt
+src/py_group_sequential_designs.egg-info/dependency_links.txt
+src/py_group_sequential_designs.egg-info/top_level.txt

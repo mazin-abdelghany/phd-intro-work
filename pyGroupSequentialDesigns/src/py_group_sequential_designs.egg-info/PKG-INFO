@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: py_group_sequential_designs
+Version: 0.0.1
+Summary: Package with functions for group sequential design generation and Bayesian optimization loop
+Author-email: Mazin Abdelghany <me@exam.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/mazin-abdelghany/phd-bayesopt-esd/pyGroupSequentialDesigns/
+Project-URL: Issues, https://github.com/mazin-abdelghany/phd-bayesopt-esd/pyGroupSequentialDesigns/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# Example Package
+
+This is a simple example package. You can use
+[GitHub-flavored Markdown](https://guides.github.com/features/mastering-markdown/)
+to write your content.
