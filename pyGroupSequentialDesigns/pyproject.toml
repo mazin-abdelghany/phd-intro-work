@@ -11,6 +11,11 @@ authors = [
 description = "Package with functions for group sequential design generation and Bayesian optimization loop"
 readme = "README.md"
 requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy"
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
