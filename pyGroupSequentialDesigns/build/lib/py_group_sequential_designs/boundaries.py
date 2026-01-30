@@ -146,7 +146,8 @@ def calculate_of_boundaries(
 def calculate_triangular_boundaries(
         n_analyses = 3,
         alpha = 0.05,
-        delta = 0.5):
+        delta = 0.5,
+        n_patients = 20):
 
     # maximum information calculation
     I_L_term1 = (4 * (0.583**2))/n_analyses
@@ -167,8 +168,19 @@ def calculate_triangular_boundaries(
 
     f_l = (-bounds_term1 + bounds_term2 + ((0.75*delta) * analysis_fracs * I_L ))/np.sqrt(I_L_fracs)
 
+    # calculate the simulation
+    probs, sim_alpha, power, ess = sim.group_sequential_designs(
+        n_analyses = n_analyses,
+        upper_bounds = e_l,
+        lower_bounds = f_l,
+        n_patients = n_patients
+    )
+
     return [
         e_l,
-        f_l, 
-        I_L_fracs
+        f_l,
+        probs,
+        sim_alpha,
+        power,
+        ess
     ]
