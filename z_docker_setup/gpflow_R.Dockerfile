@@ -146,9 +146,18 @@ RUN pip install rpy2 pandas plotly
 RUN pip install gpflow
 RUN pip install trieste trieste[plotting]
 
-# Run the notebook
+# add marimo notebook code 
+# install uv for fast package management
+COPY --from=ghcr.io/astral-sh/uv:0.4.20 /uv /bin/uv
+ENV UV_SYSTEM_PYTHON=1
 
+RUN pip install marimo
+
+# set the working directory
 WORKDIR /tf
-EXPOSE 8888
 
-CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --notebook-dir=/tf --ip 0.0.0.0 --no-browser --allow-root"]
+# expose the ports for two notebooks
+EXPOSE 8888
+EXPOSE 8080
+
+# run commands for notebooks are in docker compose YAML
