@@ -1,7 +1,9 @@
-name: gpflow-trieste-r
+name: bayes-opt
 
 services:
-  tensorflow:
+
+  jupyter-nb:
+    image: bayes-opt
     build:
       context: .
       dockerfile: gpflow_R.Dockerfile
@@ -11,4 +13,15 @@ services:
       - type: bind
         source: ..
         target: /tf
+    command: sh -c "jupyter notebook --notebook-dir=/tf --ip 0.0.0.0 --no-browser --allow-root"
+
+  marimo-nb:
+    image: bayes-opt
+    ports:
+      - 8080:8080
+    volumes:
+      - type: bind
+        source: ..
+        target: /tf
+    command: sh -c "marimo edit --host 0.0.0.0 --port 8080 --headless --no-token"
     
