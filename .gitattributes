@@ -9,6 +9,7 @@
 
 gpflow_updated.html                           linguist-generated
 GPGO_bayesian-optimization.html               linguist-generated
+bayes_opt_loop_gsd.html                       linguist-generated
 
 *.ipynb                                       linguist-vendored
 
