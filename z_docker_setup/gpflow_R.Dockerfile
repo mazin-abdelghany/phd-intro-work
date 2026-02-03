@@ -150,7 +150,6 @@ RUN pip install trieste trieste[plotting]
 # install uv for fast package management
 COPY --from=ghcr.io/astral-sh/uv:0.4.20 /uv /bin/uv
 ENV UV_SYSTEM_PYTHON=1
-
 RUN pip install marimo
 
 # set the working directory
