@@ -30,7 +30,7 @@ def _():
     from py_group_sequential_designs import generate_gpr_input as gen_input
     from py_group_sequential_designs import simulate as sim
     from py_group_sequential_designs import sample_size as ss
-    return (fp,)
+    return fp, ss
 
 
 @app.cell(hide_code=True)
@@ -42,7 +42,7 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(ss):
     # some set defaults
     num_analyses = 3
     target_alpha = 0.05
@@ -51,15 +51,14 @@ def _():
     assumed_variance = 3
 
     # to obtain mu (sample size at one stage)
-    # assume 1:1 randomization
-    group_ratio = 1
-    return (
-        assumed_variance,
-        group_ratio,
-        important_diff_delta,
-        target_alpha,
-        target_power,
+    mu = ss.sample_size_means(
+        ratio=1,
+        variance=assumed_variance,
+        power=target_power,
+        alpha=target_alpha,
+        delta=important_diff_delta
     )
+    return mu, target_alpha, target_power
 
 
 @app.cell
@@ -70,63 +69,46 @@ def _(np):
 
 
 @app.cell
-def _(
-    assumed_variance,
-    beta_range,
-    fp,
-    group_ratio,
-    important_diff_delta,
-    np,
-    target_alpha,
-    target_power,
-):
+def _(beta_range, fp, mu, np, target_alpha, target_power):
     # generate several penalty lines
     penalty_plot_1 = np.empty(len(beta_range))
     for i_1, beta_1 in enumerate(beta_range):
         penalty_plot_1[i_1] = fp.feasibility_penalty(
-            ratio = group_ratio,
-            variance = assumed_variance,
+            mu = mu,
             power = target_power,
             alpha = target_alpha,
-            delta = important_diff_delta,
             beta_prime = beta_1,
-            alpha_prime = 0.5
+            alpha_prime = 0.9
         )
 
     penalty_plot_2 = np.empty(len(beta_range))
     for i_1, beta_1 in enumerate(beta_range):
         penalty_plot_2[i_1] = fp.feasibility_penalty(
-            ratio = group_ratio,
-            variance = assumed_variance,
+            mu = mu,
             power = target_power,
             alpha = target_alpha,
-            delta = important_diff_delta,
             beta_prime = beta_1,
-            alpha_prime = 0.1
+            alpha_prime = 0.5
         )
 
     penalty_plot_3 = np.empty(len(beta_range))
     for i_1, beta_1 in enumerate(beta_range):
         penalty_plot_3[i_1] = fp.feasibility_penalty(
-            ratio = group_ratio,
-            variance = assumed_variance,
+            mu = mu,
             power = target_power,
             alpha = target_alpha,
-            delta = important_diff_delta,
             beta_prime = beta_1,
-            alpha_prime = 0.01
+            alpha_prime = 0.1
         )
 
     penalty_plot_4 = np.empty(len(beta_range))
     for i_1, beta_1 in enumerate(beta_range):
         penalty_plot_4[i_1] = fp.feasibility_penalty(
-            ratio = group_ratio,
-            variance = assumed_variance,
+            mu = mu,
             power = target_power,
             alpha = target_alpha,
-            delta = important_diff_delta,
             beta_prime = beta_1,
-            alpha_prime = 0.9
+            alpha_prime = 0.01
         )
     return penalty_plot_1, penalty_plot_2, penalty_plot_3, penalty_plot_4
 
@@ -213,11 +195,9 @@ def _(penalty_plot_z):
 @app.cell
 def _(
     alpha_range,
-    assumed_variance,
     beta_range,
     fp,
-    group_ratio,
-    important_diff_delta,
+    mu,
     penalty_plot_z,
     target_alpha,
     target_power,
@@ -225,11 +205,9 @@ def _(
     for i, beta in enumerate(beta_range):
         for j, alpha in enumerate(alpha_range):
             penalty_plot_z[i,j] = fp.feasibility_penalty(
-                ratio = group_ratio,
-                variance = assumed_variance,
+                mu = mu,
                 power = target_power,
                 alpha = target_alpha,
-                delta = important_diff_delta,
                 beta_prime = beta,
                 alpha_prime = alpha
             )
@@ -446,6 +424,11 @@ def _(X, Y, go, new_surface1):
         zaxis_title_text="penalty"
     )
     fig_3d_new.show()
+    return
+
+
+@app.cell
+def _():
     return
 
 
