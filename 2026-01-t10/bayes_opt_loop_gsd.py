@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.19.7"
-app = marimo.App()
+app = marimo.App(auto_download=["html", "ipynb"])
 
 
 @app.cell
@@ -83,7 +83,7 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(ss):
     # some set defaults
     num_analyses = 3
     target_alpha = 0.05
@@ -92,12 +92,17 @@ def _():
     assumed_variance = 3
 
     # to obtain mu (sample size at one stage)
-    # assume 1:1 randomization
-    group_ratio = 1
+    mu = ss.sample_size_means(
+        ratio=1,
+        variance=assumed_variance,
+        power=target_power,
+        alpha=target_alpha,
+        delta=important_diff_delta
+    )
     return (
         assumed_variance,
-        group_ratio,
         important_diff_delta,
+        mu,
         num_analyses,
         target_alpha,
         target_power,
@@ -121,16 +126,14 @@ def _(mo):
 
 
 @app.cell
-def _(fn_min, fp, gen_input, important_diff_delta, np, ss):
+def _(fn_min, fp, gen_input, np, ss):
     # create a function that generates the points x and y that will be
     # included in the design matrix X and Y
     def generate_x_y(
+            mu,
             upper_bounds,
             lower_bounds,
             n_analyses,
-            alt_hypothesis,
-            variance,
-            ratio,
             target_power,
             target_alpha,
             alpha_prime,
@@ -153,11 +156,9 @@ def _(fn_min, fp, gen_input, important_diff_delta, np, ss):
             n_patients=n_power09)
 
         penalty = fp.feasibility_penalty(
-            ratio=ratio,
-            variance=variance,
+            mu = mu,
             power=target_power,
             alpha=target_alpha,
-            delta=important_diff_delta,
             beta_prime=beta_prime,
             alpha_prime=alpha_prime
         )
@@ -183,8 +184,8 @@ def _(
     assumed_variance,
     bd,
     generate_x_y,
-    group_ratio,
     important_diff_delta,
+    mu,
     num_analyses,
     ss,
     target_alpha,
@@ -208,12 +209,10 @@ def _(
     )
 
     x1, y1 = generate_x_y(
+        mu = mu,
         upper_bounds = poc_simulation[0],
         lower_bounds = poc_simulation[1],
         n_analyses = num_analyses,
-        alt_hypothesis = important_diff_delta,
-        variance = assumed_variance,
-        ratio = group_ratio,
         target_power = target_power,
         target_alpha = target_alpha,
         alpha_prime = poc_simulation[3],
@@ -236,8 +235,8 @@ def _(
     assumed_variance,
     bd,
     generate_x_y,
-    group_ratio,
     important_diff_delta,
+    mu,
     num_analyses,
     ss,
     target_alpha,
@@ -260,12 +259,10 @@ def _(
     )
 
     x2, y2 = generate_x_y(
+        mu = mu,
         upper_bounds = of_simulation[0],
         lower_bounds = of_simulation[1],
         n_analyses = num_analyses,
-        alt_hypothesis = important_diff_delta,
-        variance = assumed_variance,
-        ratio = group_ratio,
         target_power = target_power,
         target_alpha = target_alpha,
         alpha_prime = of_simulation[3],
@@ -288,8 +285,8 @@ def _(
     assumed_variance,
     bd,
     generate_x_y,
-    group_ratio,
     important_diff_delta,
+    mu,
     num_analyses,
     ss,
     target_alpha,
@@ -313,12 +310,10 @@ def _(
     )
 
     x3, y3 = generate_x_y(
+        mu = mu,
         upper_bounds = tri_simulation[0],
         lower_bounds = tri_simulation[1],
         n_analyses = num_analyses,
-        alt_hypothesis = important_diff_delta,
-        variance = assumed_variance,
-        ratio = group_ratio,
         target_power = target_power,
         target_alpha = target_alpha,
         alpha_prime = tri_simulation[3],
@@ -522,7 +517,8 @@ def _(bayes_opt_model, initial_data, search_space, trieste):
         datasets = initial_data,
         models = bayes_opt_model,
         acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
-            optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer(
+            optimizer = 
+              trieste.acquisition.optimizer.generate_continuous_optimizer(
                 num_optimization_runs = 5000
             )
         )
@@ -538,8 +534,8 @@ def _(
     design_matrix_std,
     fmt_bd,
     generate_x_y,
-    group_ratio,
     important_diff_delta,
+    mu,
     normalize_forward,
     num_analyses,
     output_vals_mean,
@@ -576,12 +572,10 @@ def _(
         )
 
         new_x, new_y = generate_x_y(
+            mu = mu,
             upper_bounds = unnormed_new_inputs[0],
             lower_bounds= unnormed_new_inputs[1],
             n_analyses = num_analyses,
-            alt_hypothesis = important_diff_delta,
-            variance = assumed_variance,
-            ratio = group_ratio,
             target_power = target_power,
             target_alpha = target_alpha,
             alpha_prime = new_sim_trial[1],
@@ -626,13 +620,13 @@ def _(ask_tell, tf):
 
 @app.cell
 def _(ask_tell):
-    ask_tell.to_result().try_get_final_dataset().observations[8]
+    ask_tell.to_result().try_get_final_dataset().observations[6]
     return
 
 
 @app.cell
 def _(ask_tell):
-    ask_tell.to_result().try_get_final_dataset().query_points[8].numpy()
+    ask_tell.to_result().try_get_final_dataset().query_points[6].numpy()
     return
 
 
@@ -646,7 +640,7 @@ def _(initial_data):
 def _(ask_tell, design_matrix_mean, design_matrix_std):
     normalize_backward(
         ask_tell.to_result(
-        ).try_get_final_dataset().query_points[8].numpy()[0:5],
+        ).try_get_final_dataset().query_points[6].numpy()[0:5],
         design_matrix_mean,
         design_matrix_std
     )
@@ -656,7 +650,7 @@ def _(ask_tell, design_matrix_mean, design_matrix_std):
 @app.cell
 def _(ask_tell, output_vals_mean, output_vals_std):
     normalize_backward(
-        ask_tell.to_result().try_get_final_dataset().query_points[8].numpy()[5],
+        ask_tell.to_result().try_get_final_dataset().query_points[6].numpy()[5],
         output_vals_mean,
         output_vals_std
     )
@@ -666,9 +660,9 @@ def _(ask_tell, output_vals_mean, output_vals_std):
 @app.cell
 def _(assumed_variance, important_diff_delta, sim):
     sim.group_sequential_designs(
-        upper_bounds = [24.6063769 ,   1.80355163, -16.07168531],
-        lower_bounds = [21.16032468, -21.74696048,  -16.07168531],
-        n_patients = 61.95367115536981,
+        upper_bounds = [25.70870463, 25.70870463, 25.70870463],
+        lower_bounds = [25.70870463, -6.11222712,  25.70870463],
+        n_patients = 198.40449301946862,
         alt_hypothesis = important_diff_delta,
         variance = assumed_variance
     )
@@ -676,20 +670,11 @@ def _(assumed_variance, important_diff_delta, sim):
 
 
 @app.cell
-def _(
-    assumed_variance,
-    fp,
-    group_ratio,
-    important_diff_delta,
-    target_alpha,
-    target_power,
-):
+def _(fp, mu, target_alpha, target_power):
     fp.feasibility_penalty(
-        ratio=group_ratio,
-        variance=assumed_variance,
+        mu = mu,
         power=target_power,
         alpha=target_alpha,
-        delta=important_diff_delta,
         beta_prime=0,
         alpha_prime=0
     )
