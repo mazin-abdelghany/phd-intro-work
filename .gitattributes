@@ -11,6 +11,7 @@ gpflow_updated.html                           linguist-generated
 GPGO_bayesian-optimization.html               linguist-generated
 bayes_opt_loop_gsd.html                       linguist-generated
 penalty_function_exploration.html             linguist-generated
+bayes_opt_loop_gsd_new_penalty.html           linguist-generated
 
 *.ipynb                                       linguist-vendored
 
