@@ -511,7 +511,7 @@ def _(normed_design_matix, normed_output_vals, trieste):
 @app.cell
 def _():
     # normalize the search space
-    x_search_space = [-20, -20, -20, 20, 20]
+    x_search_space = [-5, -5, -5, 5, 5]
     y_search_space = 1000
     return x_search_space, y_search_space
 
@@ -541,8 +541,8 @@ def _(normalize_forward, output_vals_mean, output_vals_std, y_search_space):
 def _(Box):
     # create the search space using trieste Box function
     search_space = Box(
-        lower = [-5, -5, -5, -5, -5, 2], 
-        upper = [5, 5, 5, 5, 5, 1000]
+        lower = [-1.5, -1.5, -1.5, -1.5, -1.5, 1], 
+        upper = [0.2, 0.2, 0.2, 0.2, 0.2, 150]
     )
     return (search_space,)
 
@@ -588,7 +588,7 @@ def _(
     target_power,
     trieste,
 ):
-    num_repeats = 1000
+    num_repeats = 100
 
     for i in range(num_repeats):
         normed_results = ask_tell.ask()
@@ -709,12 +709,46 @@ def _(ask_tell, min_idx, output_vals_mean, output_vals_std):
 @app.cell
 def _(assumed_variance, important_diff_delta, sim):
     sim.group_sequential_designs(
-        upper_bounds = [6.23615582, -3.99476778, 40.10007342],
-        lower_bounds = [37.55283927, 34.79535977,  25.70870463],
-        n_patients = 49698.61542851937,
+        upper_bounds = [0.67243294,  3.04163463,  3.86972319],
+        lower_bounds = [-0.31240441,  1.62332745,  3.86972319],
+        n_patients = 66.63525785464368,
         alt_hypothesis = important_diff_delta,
         variance = assumed_variance
     )
+    return
+
+
+@app.cell
+def _(fp, mu):
+    fp.new_penalty(
+        mu=mu,
+        alpha_prime=0.25,
+        beta_prime=1-0.998,
+        alpha=0.05,
+        beta=0.1
+    )
+    return
+
+
+@app.cell
+def _(assumed_variance, num_analyses, ss):
+    ss.max_ess(
+        n_analyses=num_analyses,
+        delta_start=0,
+        upper_bounds=[0.67243294,  3.04163463,  3.86972319],
+        lower_bounds=[-0.31240441,  1.62332745,  3.86972319],
+        n_patients=66.63525,
+        null_hypothesis=0,
+        variance=assumed_variance
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    The above notes that the penalties on the unnormalzied state does not seem to translate well to the penalties on the normalized state. Though the above boundaries are reasonable!
+    """)
     return
 
 
