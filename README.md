@@ -57,8 +57,8 @@ Open the RMarkdown file, and run as normal.
 
 In Week 5 and onwards, Gaussian process (GP) regression is implemented using `GPflow`, a library built in Python on TensorFlow. Bayesian optimization is run using `Trieste`.
 
-There are two options with which notebooks can be run:
-    - JupyterLab and notebooks
+There are two options with which notebooks can be run:  
+    - JupyterLab and notebooks  
     - Marimo notebooks
 
 These two notebook environments are two containers built using the same Dockerfile. When the Docker compose command is run, two containers will spin up simultaneously allowing the choice between Jupyter notebooks or Marimo notebooks.
