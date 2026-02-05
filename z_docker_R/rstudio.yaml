@@ -1,0 +1,17 @@
+name: rstudio-gsd
+
+services:
+
+  r-studio:
+    image: rstudio-gsd
+    build:
+      context: .
+      dockerfile: r-gsd.Dockerfile
+    ports:
+      - 8787:8787
+    volumes:
+      - type: bind
+        source: ..
+        target: /project
+    environment:
+      - PASSWORD=UW8aihei1oongaen
