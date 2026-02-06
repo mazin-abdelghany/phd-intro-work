@@ -14,17 +14,11 @@ RUN install2.r --error \
 
 RUN Rscript -e 'install.packages("devtools", dependencies = TRUE)'
 
+## to install RStan, uncomment the below
+# RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
+# RUN Rscript -e 'install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies = TRUE)'
+
 WORKDIR /project
 
 RUN chown -R rstudio:rstudio /project
 RUN chmod -R a+rwX /project
-
-## install RStan
-# RUN Rscript -e 'Sys.setenv(DOWNLOAD_STATIC_LIBV8 = 1)'
-# RUN Rscript -e 'install.packages("rstan", repos = "https://cloud.r-project.org/", dependencies = TRUE)'
-
-# run command, not detached
-# docker run --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 rstudio-gsd
-
-# run command, detached with password
-# docker run -d -e PASSWORD=aeSoochif9moonga --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 rstudio-gsd
