@@ -18,7 +18,7 @@ def feasibility_penalty(
         if beta_prime > beta: return 1
         return 0
 
-    return mu * ( 
+    return mu * (
         (((alpha_prime-alpha)/alpha)*alpha_indicator(alpha_prime)) + 
         (((beta_prime-beta)/power)*beta_indicator(beta_prime)) 
     )
@@ -33,3 +33,12 @@ def new_penalty(
     if (alpha_prime > alpha) and (beta_prime > beta):
         return mu * ((alpha_prime - alpha)**2 + (beta_prime - beta)**2)
     return mu
+    
+# smooth feasibility penalty
+def smooth_penalty(
+        mu,
+        alpha_prime,
+        beta_prime,
+        alpha,
+        beta):
+    return mu * ((alpha_prime - alpha)**2 + (beta_prime - beta)**2)
