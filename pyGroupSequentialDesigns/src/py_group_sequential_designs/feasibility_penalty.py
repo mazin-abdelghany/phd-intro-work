@@ -37,8 +37,12 @@ def new_penalty(
 # smooth feasibility penalty
 def smooth_penalty(
         mu,
-        alpha_prime,
-        beta_prime,
+        power,
         alpha,
-        beta):
+        alpha_prime,
+        beta_prime):
+    
+    # calculate beta from power
+    beta = 1-power
+
     return mu * ((alpha_prime - alpha)**2 + (beta_prime - beta)**2)
