@@ -1,5 +1,5 @@
+**/.DS_Store
 /groupSequentialDesigns/.Rproj.user
-.DS_Store
 
 # ignore all LaTeX output files except .tex, .pdf, and .bib
 /derivations/**/*.aux
