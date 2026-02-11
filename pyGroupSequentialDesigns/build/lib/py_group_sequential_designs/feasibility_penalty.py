@@ -26,10 +26,14 @@ def feasibility_penalty(
 # new feasibility penalty
 def new_penalty(
         mu,
-        alpha_prime,
-        beta_prime,
+        power,
         alpha,
-        beta):
+        alpha_prime,
+        beta_prime):
+    
+    # calculate power from beta
+    beta = 1-power
+    
     if (alpha_prime > alpha) and (beta_prime > beta):
         return mu * ((alpha_prime - alpha)**2 + (beta_prime - beta)**2)
     return mu
