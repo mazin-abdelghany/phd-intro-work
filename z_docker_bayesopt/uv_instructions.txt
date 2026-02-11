@@ -1,0 +1,22 @@
+Once the container has started,
+in a terminal, run
+
+uv pip freeze > requirements.txt
+
+uv init
+
+macOS requirements cannot be resolved for this project.
+Therefore, within the toml file add
+
+[tool.uv]
+environments = [
+    "sys_platform == 'linux'",
+]
+
+This forces linux use only
+
+Then,
+
+uv add --active -r requirements.txt
+
+the --active flag ensures that uv uses the environment setup during container creation (/opt/venv)
