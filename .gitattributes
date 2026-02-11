@@ -3,17 +3,19 @@
 2025-10-30_GP-regression-and-GSDs_week-3.html linguist-generated
 2025-11-06_GP-regression-and-GSDs_week-4.html linguist-generated
 2025-11-13_GP-regression-and-GSDs_week-5.html linguist-generated
-2025-12-04_GSDs_week-6.html                   linguist-generated
-2025-12-11_GSDs_week-7.html                   linguist-generated
-2026-01-15_GSDs_week-8.html                   linguist-generated
 
-gpflow_updated.html                           linguist-generated
-GPGO_bayesian-optimization.html               linguist-generated
-bayes_opt_loop_gsd.html                       linguist-generated
-penalty_function_exploration.html             linguist-generated
-penalty_function_exploration2.html            linguist-generated
-penalty_function_exploration3.html            linguist-generated
-bayes_opt_loop_gsd_new_penalty.html           linguist-generated
+2025-12-04_GSDs_week-6.html linguist-generated
+2025-12-11_GSDs_week-7.html linguist-generated
+2026-01-15_GSDs_week-8.html linguist-generated
+
+gpflow_updated.html linguist-generated
+GPGO_bayesian-optimization.html linguist-generated
+bayes_opt_loop_gsd.html linguist-generated
+penalty_function_exploration.html linguist-generated
+penalty_function_exploration2.html linguist-generated
+penalty_function_exploration3.html linguist-generated
+bayes_opt_loop_gsd_new_penalty.html linguist-generated
+bayes-opt-kernel-and-normalization-exploration.html linguist-generated
 
 *.ipynb                                       linguist-vendored
 
