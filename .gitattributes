@@ -16,6 +16,7 @@ penalty_function_exploration2.html linguist-generated
 penalty_function_exploration3.html linguist-generated
 bayes_opt_loop_gsd_new_penalty.html linguist-generated
 bayes-opt-kernel-and-normalization-exploration.html linguist-generated
+boundary_assessment.html linguist-generated
 
 *.ipynb                                       linguist-vendored
 
