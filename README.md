@@ -4,7 +4,7 @@
 2. [PhD topics - Year 1](#phd-topics---year-1)
 3. [Running Code in Docker](#running-code-in-docker)
    - [R environment](#r-environment)
-   - [Python environment with `TensorFlow`, `GPflow`, and `Trieste`](#python-environment-with-tensorflow-gpflow-and-trieste)
+   - [Python environment](#python-environment)
 
 # PhD project
 
