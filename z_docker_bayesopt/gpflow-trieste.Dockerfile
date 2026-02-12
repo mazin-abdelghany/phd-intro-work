@@ -98,7 +98,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # gpflow print_summary utility error
 RUN uv pip install pandas numpy matplotlib \
   jupyter jupyter_http_over_ws \
-  tensorflow gpflow 'setuptools==80.10.2' \
+  tensorflow gpflow setuptools==80.10.2 \
   ipython==8.38.0 \
   trieste trieste[plotting] marimo \
   rpy2 plotly
