@@ -1,0 +1,22 @@
+{
+  "name": "C++ Dev Environment",
+  "dockerComposeFile": "../cpp.yaml",
+  "service": "dev-container",
+  "workspaceFolder": "/project",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cpptools-themes",
+        "twxs.cmake",
+        "ms-vscode-remote.remote-containers",
+        "ms-azuretools.vscode-containers",
+        "vscodevim.vim"
+      ]
+    }
+  }
+
+}
