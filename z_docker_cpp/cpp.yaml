@@ -1,0 +1,15 @@
+name: cpp
+
+services:
+
+  dev-container:
+    image: cpp-dev
+    build:
+      context: .
+      dockerfile: cpp.Dockerfile
+    volumes:
+      - type: bind
+        source: ..
+        target: /project
+    # keeps the container alive
+    tty: true
