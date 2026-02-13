@@ -30,6 +30,8 @@ This repository will serve as a central location for coding examples, presentati
 
 # Running Code in Docker
 
+Note: the below environments are development environments. Therefore, the Docker containers that are used do not include a so-called "lockfile" (e.g., renv.lock or uv.lock). After completion of the project, a lockfile can easily be created in order to ensure that the development environment is portable to another Docker container without issue.
+
 ## R environment
 
 To run RMarkdown files:
