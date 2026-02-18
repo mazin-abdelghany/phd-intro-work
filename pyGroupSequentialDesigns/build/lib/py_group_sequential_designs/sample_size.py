@@ -17,7 +17,7 @@ def sample_size_means(
     z_power = stats.norm.ppf(power)
     
     # z statistic for alpha
-    z_alpha = abs(stats.norm.ppf(alpha))
+    z_alpha = stats.norm.ppf(1-alpha)
 
     # sample size
     n = r * ((variance**2 * (z_power+z_alpha)**2) / delta**2)
