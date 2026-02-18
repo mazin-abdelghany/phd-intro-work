@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
+#include <math.h> // technically should be changed to cmath
 #include <fstream>
 #include <iomanip>
 #include <cstdio>
@@ -11,12 +11,11 @@
 
 using namespace std;
 
-
-
 void printvector(vector<double>& vector)
 {
-
-  int i;
+  // change from original
+  // to compare .size() to i, i must be of type size_t (long unsigned int)
+  size_t i;
 
   for(i=0;i<vector.size();i++)
     {
@@ -26,9 +25,9 @@ void printvector(vector<double>& vector)
 }
 
 
-//uniform random number generator:
-
-double asran(void) {
+// uniform random number generator:
+double asran(void)
+{
   static long ix=1,iy=1, iz=1;
  
   double r;
@@ -42,42 +41,68 @@ double asran(void) {
 }
 
 
-//finds normal pdf, cdf and inverse cdf
-
-
+// finds normal pdf, cdf and inverse cdf
 double normalpdf(double z)
 {
   return ((1.0)/sqrt(2*3.14159265))*exp(-pow(z,2)/2);
 }
 
-//NEEDS CREDITING
+// Abramowitz & Stegun (1964) approximation 
+// of the standard normal cdf accurate to < 7.5e-8 based on
+// Abramowitz/Stegun 26.2.17
+// maybe originally in  Approximations for Digital Computers
+// Cecil Hastings 1955
 
-double normalcdf(double z){
-  if(z>6.0){return 1.0;}
-  if(z<-6.0){return 0.0;}
+double normalcdf(double z)
+{
+  if (z > 6.0)
+  {
+    return 1.0;
+  }
+  
+  if (z < -6.0)
+  {
+    return 0.0;
+  }
 
-  double b1=0.31938153;
+  double b1 = 0.31938153;
   double b2=-0.356563782;
   double b3=1.781477937;
   double b4=-1.821255978;
   double b5=1.330274429;
+
   double p=0.2316419;
+
+  // numerical approximation for 1/sqrt(2*pi)
   double c2=0.3989423;
 
-  double a=fabs(z);
-  double t=1.0/(1.0+a*p);
+  double a = fabs(z);
+  double t = 1.0/(1.0+a*p);
 
-  double b=c2*exp((-z)*(z/2.0));
-  double n=((((b5*t+b4)*t+b3)*t+b2)*t+b1)*t;
-  n=1.0-b*n;
-  if(z<0.0) 
-    {
-      n=1.0-n;
-    }
+  // 1 - 1/sqrt(2*pi) * exp( -(pow(z,2)/2) ) * ( b1*t + b2*pow(t,2.0) 
+  //                                             + b3*pow(t,3.0) + b4*pow(t,4.0) 
+  //                                             + b5*pow(t,5.0) )
+
+  double b = c2*exp((-z)*(z/2.0));
+  double n = ((((b5*t+b4)*t+b3)*t+b2)*t+b1)*t;
+
+  n = 1.0 - b*n;
+
+  if (z < 0.0) 
+  {
+    n = 1.0 - n;
+  }
+
   return n;
 }
 
+// pulled from: https://web.archive.org/web/20151030215612/http://home.online.no/~pjacklam/notes/invnorm/#Computer_implementations
+// error is 1.15e-9
 
+// scipy uses a different approximation from W.J. Cody published in AMS
+// "Rational Chebyshev approximations for the error function" by W. J. Cody
+// https://www.ams.org/journals/mcom/1969-23-107/S0025-5718-1969-0247736-4/S0025-5718-1969-0247736-4.pdf
+// maximal relative error is 6e-19 to 3e-20
 double inversenormalcdf(double p)
 {
 
@@ -150,7 +175,7 @@ double inversenormalcdf(double p)
 //finds K-stage triangular design for given design parameters. The resulting design is put in the vector `parameters'
 
 
-void findtriangulardesign(double delta0,double delta1,double sigma,double K,double requiredalpha,double requiredbeta,vector<double>& parameters)
+void findtriangulardesign(double delta0,double delta1,double sigma, double K,double requiredalpha,double requiredbeta,vector<double>& parameters)
 {
   
   double delta=delta1-delta0,i,information;
@@ -159,11 +184,11 @@ void findtriangulardesign(double delta0,double delta1,double sigma,double K,doub
   double Imax=pow(sqrt(((4*pow(0.583,2))/K)+8*log((1.0/(2*requiredalpha))))-2*0.583/sqrt(K),2)/(pow(delta,2));
 
  
-  int numberindividualsperstage=ceil(Imax*2*sigma*sigma/K);
-  vector<int> cumulativesamplesize;
+  int numberindividualsperstage=static_cast<int>(ceil(Imax*2*sigma*sigma/K));
+  vector<double> cumulativesamplesize;
   double c,d;
   cumulativesamplesize.push_back(numberindividualsperstage);
-  for(i=1;i<K;i++)
+  for(size_t i = 1; i < static_cast<size_t>(K); i++)
     {
       cumulativesamplesize.push_back(numberindividualsperstage+cumulativesamplesize.at(i-1));
      
@@ -207,12 +232,12 @@ double information(double numberindividuals,double sigma)
 double expectedsamplesize(vector<double> phi,vector<double> psi,vector<double> parameters)
 {
 
-  int i;
+  size_t i;
   double expectedsamplesize=0;
 
   for(i=0;i<phi.size();i++)
     {
-      expectedsamplesize+=(i+1)*parameters.at(0)*(phi.at(i)+psi.at(i));
+      expectedsamplesize+=(static_cast<double>(i)+1)*parameters.at(0)*(phi.at(i)+psi.at(i));
     }
 
   return expectedsamplesize;
@@ -222,9 +247,9 @@ double expectedsamplesize(vector<double> phi,vector<double> psi,vector<double> p
 
 void converthtopsi(vector<vector<double> >& h,vector<vector<double> >& z,vector<double>& psi,vector<double>& parameters,double delta0,double newdelta,double sigma)
 {
-  int i,j;
+  size_t i,j;
 
- psi.clear();
+  psi.clear();
  
   psi.push_back(normalcdf(parameters.at(1)-newdelta*sqrt(parameters.at(0))/sqrt(2*sigma*sigma)));
  
@@ -235,7 +260,7 @@ void converthtopsi(vector<vector<double> >& h,vector<vector<double> >& z,vector<
       for(j=0;j<z.at(i-1).size();j++)
 	{
 	  
-	    psi.at(i)+=(exp((newdelta-delta0)*z.at(i-1).at(j)*sqrt(information(i*parameters.at(0),sigma))-(pow(newdelta,2)-pow(delta0,2))*information(i*parameters.at(0),sigma)/2)*(h.at(i-1).at(j)*(1-normalcdf((z.at(i-1).at(j)*sqrt(information(i*parameters.at(0),sigma))-parameters.at((i+1)*2-1)*sqrt(information((i+1)*parameters.at(0),sigma))+newdelta*(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma)))/(sqrt(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma)))))));
+	    psi.at(i)+=(exp((newdelta-delta0)*z.at(i-1).at(j)*sqrt(information(static_cast<double>(i)*parameters.at(0),sigma))-(pow(newdelta,2)-pow(delta0,2))*information(static_cast<double>(i)*parameters.at(0),sigma)/2)*(h.at(i-1).at(j)*(1-normalcdf((z.at(i-1).at(j)*sqrt(information(static_cast<double>(i)*parameters.at(0),sigma))-parameters.at((i+1)*2-1)*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+newdelta*(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))/(sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))))));
 
 	  
 	  
@@ -251,9 +276,9 @@ void converthtopsi(vector<vector<double> >& h,vector<vector<double> >& z,vector<
 
 void converthtophi(vector<vector<double> >& h,vector<vector<double> >& z,vector<double>& phi,vector<double>& parameters,double delta0,double newdelta,double sigma)
 {
-  int i,j;
+  size_t i,j;
 
- phi.clear();
+  phi.clear();
  
   phi.push_back(1-normalcdf(parameters.at(2)-newdelta*sqrt(parameters.at(0))/sqrt(2*sigma*sigma)));
  
@@ -264,7 +289,7 @@ void converthtophi(vector<vector<double> >& h,vector<vector<double> >& z,vector<
       for(j=0;j<z.at(i-1).size();j++)
 	{
 	  
-	    phi.at(i)+=(exp((newdelta-delta0)*z.at(i-1).at(j)*sqrt(information(i*parameters.at(0),sigma))-(pow(newdelta,2)-pow(delta0,2))*information(i*parameters.at(0),sigma)/2)*(h.at(i-1).at(j)*(normalcdf((z.at(i-1).at(j)*sqrt(information(i*parameters.at(0),sigma))-parameters.at((i+1)*2)*sqrt(information((i+1)*parameters.at(0),sigma))+newdelta*(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma)))/(sqrt(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma)))))));
+	    phi.at(i)+=(exp((newdelta-delta0)*z.at(i-1).at(j)*sqrt(information(static_cast<double>(i)*parameters.at(0),sigma))-(pow(newdelta,2)-pow(delta0,2))*information(static_cast<double>(i)*parameters.at(0),sigma)/2)*(h.at(i-1).at(j)*(normalcdf((z.at(i-1).at(j)*sqrt(information(static_cast<double>(i)*parameters.at(0),sigma))-parameters.at((i+1)*2)*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+newdelta*(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))/(sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))))));
 
 	  
 	  
@@ -277,7 +302,7 @@ void converthtophi(vector<vector<double> >& h,vector<vector<double> >& z,vector<
 
 //finds the delta which gives highest expected sample size for a given design
 
-void finddeltaminimax_seq(vector<vector<double> >& h,vector<vector<double> >& z,vector<double>& phi,vector<double>& parameters,double delta0,double newdelta,double sigma,double *deltaminimax,double *maxen)
+void finddeltaminimax_seq(vector<vector<double> >& h,vector<vector<double> >& z,[[maybe_unused]]vector<double>& phi,vector<double>& parameters,double delta0,double newdelta,double sigma,double *deltaminimax,double *maxen)
 {
 
   
@@ -395,14 +420,14 @@ void trialproperties_seq(vector<double>& parameters,double delta0,double delta1,
   *worstcasedelta=0;
   *expectedsamplesize_dm=0;
 
-  int i,j;
+  size_t i,j;
  
   //get grid of points to use
   vector<vector<double> > x;
 
   vector<double> tempvector;
 
-  for(i=0;i<(parameters.size()-1.0)/2-1;i++)
+  for(i=0;i<(parameters.size()-1)/2-1;i++)
     {
       
       
@@ -410,9 +435,9 @@ void trialproperties_seq(vector<double>& parameters,double delta0,double delta1,
       tempvector.push_back(parameters.at(i*2+1));
       for(j=1;j<=15;j++)
 	{
-	  if(delta0*sqrt(information((i+1)*parameters.at(0),sigma))-(3+4*log(16.0/j))<parameters.at(i*2+2) && delta0*sqrt(information((i+1)*parameters.at(0),sigma))-(3.0+4*log(16.0/j))>parameters.at(i*2+1))
+	  if(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3+4*log(16.0/static_cast<double>(j)))<parameters.at(i*2+2) && delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0+4*log(16.0/static_cast<double>(j)))>parameters.at(i*2+1))
 	    {
-	      tempvector.push_back(delta0*sqrt(information((i+1)*parameters.at(0),sigma))-(3.0+4*log(16.0/j)));
+	      tempvector.push_back(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0+4*log(16.0/static_cast<double>(j))));
 	    }
 	  
 	}
@@ -420,9 +445,9 @@ void trialproperties_seq(vector<double>& parameters,double delta0,double delta1,
       for(j=16;j<=5*16;j++)
 	{
 	  
-	  if(delta0*sqrt(information((i+1)*parameters.at(0),sigma))-(3.0-3*(j-16.0)/(2*16.0))<parameters.at(i*2+2) && delta0*sqrt(information((i+1)*parameters.at(0),sigma))-(3.0-3*(j-16.0)/(2*16.0))>parameters.at(i*2+1))
+	  if(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0-3*(static_cast<double>(j)-16.0)/(2*16.0))<parameters.at(i*2+2) && delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0-3*(static_cast<double>(j)-16.0)/(2*16.0))>parameters.at(i*2+1))
 	    {
-	      tempvector.push_back(delta0*sqrt(information((i+1)*parameters.at(0),sigma))-(3.0-3*(j-16.0)/(2*16.0)));
+	      tempvector.push_back(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0-3*(static_cast<double>(j)-16.0)/(2*16.0)));
 	      
 	    }
 	  
@@ -431,10 +456,10 @@ void trialproperties_seq(vector<double>& parameters,double delta0,double delta1,
       for(j=5*16+1;j<=6*16-1;j++)
 	{
 	  
-	  if(delta0*sqrt(information((i+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-j)))<parameters.at(i*2+2) && delta0*sqrt(information((i+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-j)))>parameters.at(i*2+1))
+	  if(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-static_cast<double>(j))))<parameters.at(i*2+2) && delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-static_cast<double>(j))))>parameters.at(i*2+1))
 	    {
 	      
-	      tempvector.push_back(delta0*sqrt(information((i+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-j))));
+	      tempvector.push_back(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-static_cast<double>(j)))));
 	    }
 	  
 	}
@@ -494,7 +519,7 @@ tempvector.push_back((z.at(i).at(j+1)-z.at(i).at(j-3))/6);
   //h is a matrix which has values of h at each point
 
   vector<vector<double> > h;
-  int k;
+  size_t k;
 
   for(i=0;i<z.size();i++)
     {
@@ -503,7 +528,7 @@ tempvector.push_back((z.at(i).at(j+1)-z.at(i).at(j-3))/6);
 	{
 	  for(j=0;j<z.at(i).size();j++)
 	    {
-	      tempvector.push_back(weights.at(i).at(j)*normalpdf(z.at(i).at(j)-delta0*sqrt(information((i+1)*parameters.at(0),sigma))));
+	      tempvector.push_back(weights.at(i).at(j)*normalpdf(z.at(i).at(j)-delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))));
 	     
 	    }
 	}
@@ -514,7 +539,7 @@ tempvector.push_back((z.at(i).at(j+1)-z.at(i).at(j-3))/6);
 	      tempvector.push_back(0);
 	      for(k=0;k<z.at(i-1).size();k++)
 		{
-		  tempvector.at(j)+=h.at(i-1).at(k)*weights.at(i).at(j)*(sqrt(information((i+1)*parameters.at(0),sigma))/sqrt(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma)))*normalpdf((z.at(i).at(j)*sqrt(information((i+1)*parameters.at(0),sigma))-z.at(i-1).at(k)*sqrt(information(i*parameters.at(0),sigma))-delta0*(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma)))/(sqrt(information((i+1)*parameters.at(0),sigma)-information(i*parameters.at(0),sigma))));
+		  tempvector.at(j)+=h.at(i-1).at(k)*weights.at(i).at(j)*(sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))/sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))*normalpdf((z.at(i).at(j)*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-z.at(i-1).at(k)*sqrt(information(static_cast<double>(i)*parameters.at(0),sigma))-delta0*(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))/(sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma))));
 	 
 	     
 		}
@@ -576,7 +601,7 @@ converthtopsi(h,z,psi,parameters,delta0,delta1,sigma);
     }
 
 
-double functionvalue_deltaminimax(vector<double>& candidateparameters,double delta0,double delta1,double sigma,double K,double requiredtypeIerror,double requiredtypeIIerror,double penaltyparameter,int numberrestarts)
+double functionvalue_deltaminimax(vector<double>& candidateparameters,double delta0,double delta1,double sigma,[[maybe_unused]]double K,double requiredtypeIerror,double requiredtypeIIerror,double penaltyparameter,int numberrestarts)
 {
 
  
@@ -613,7 +638,7 @@ double functionvalue_deltaminimax(vector<double>& candidateparameters,double del
 double checkdesignconstraints(vector<double>& design)
 {
   double validdesign=1;
-  int numberstages=(design.size()-1)/2,i;
+  size_t numberstages=(design.size()-1)/2,i;
   //check that first efficacy parameter is more than futility parameter
 
   if(design.at(1)>=design.at(2))
@@ -665,16 +690,18 @@ void generatecandidatestate_deltaminimax(vector<double>& currentparameters,vecto
 {
   //for each candidate generation, pick one stage, and perturb that stage's parameters and the sample size per stage
 
-  double i,u,y,temp;
+  size_t i;
+  double u, temp;
+  [[maybe_unused]] double y;
   candidateparameters=currentparameters;
 
   
   u=asran();
 
- int numberofstages=(currentparameters.size()-1)/2;
+ size_t numberofstages=(currentparameters.size()-1)/2;
 
-  int stagetochange=floor(numberofstages*u);
-
+  double temp_stagetochange=floor(static_cast<double>(numberofstages)*u);
+  size_t stagetochange = static_cast<size_t>(temp_stagetochange);
   
   if(stagetochange==(numberofstages-1))
     {
@@ -757,15 +784,16 @@ void simulatedannealing_deltaminimax(double delta0,double delta1,double sigma,do
 {
 
  
-  int i;
+  size_t i;
   vector<double> currentparameters=initialparameters;
   double newfunctionvalue,minimumfunctionvalue=functionvalue_deltaminimax(initialparameters,delta0,delta1,sigma,K,requiredtypeIerror,(1-requiredpower),penaltyparameter,-2),x,numbersincereduction=0,currentfunctionvalue,reductioninfunctionvalue;
  
   
   vector<double> parametersigmas,minimumparameters=currentparameters,candidateparameters;
   parametersigmas=initialparameterssigma;
- double numberrestarts=0,previousrestart,minimumloss,candidategenerations=0,costtemperature=initialcosttemperature,rhocost=pow(finalcosttemperature/initialcosttemperature,1.0/numbercandidategenerationsperrestart),rhosigma=pow(finalparametersigma/parametersigmas.at(0),1.0/numbercandidategenerationsperrestart);
-
+ int numberrestarts=0;
+ double previousrestart, candidategenerations=0,costtemperature=initialcosttemperature,rhocost=pow(finalcosttemperature/initialcosttemperature,1.0/numbercandidategenerationsperrestart),rhosigma=pow(finalparametersigma/parametersigmas.at(0),1.0/numbercandidategenerationsperrestart);
+[[maybe_unused]] double minimumloss;
 
 do
   {
@@ -963,7 +991,8 @@ string outfilename=argv[7];
 
 //set initial seed:
 
-int seed=time(0),i,j;
+time_t seed=time(0),i;
+[[maybe_unused]] int j;
    for(i=0;i<seed%10000;i++)
     {
       asran();
@@ -972,7 +1001,8 @@ int seed=time(0),i,j;
 
 //standardise problem:
 
-   double delta=(delta1-delta0)/initialsigma,sigma=1,singlestagesamplesize=onestagesamplesize(delta,sigma,requiredtypeIerror,(1-requiredpower),1),typeIerror,power,expectedsamplesize_null,expectedsamplesize_crd,worstcasedelta,expectedsamplesize_dm,expectedloss;
+   double delta=(delta1-delta0)/initialsigma,sigma=1,singlestagesamplesize=onestagesamplesize(delta,sigma,requiredtypeIerror,(1-requiredpower),1),typeIerror,power,expectedsamplesize_null,expectedsamplesize_crd,worstcasedelta,expectedsamplesize_dm;
+   [[maybe_unused]] double expectedloss;
    vector<double> parameters,currentparameters,candidateparameters,lowerranges,upperranges,parametersigmas,initialparametersigmas;
    
 findtriangulardesign(0,delta,sigma,K,requiredtypeIerror*49/50,(1-requiredpower),parameters);
@@ -1016,9 +1046,9 @@ trialproperties_seq(finalparameters,0,delta,sigma,&typeIerror,&power,&expectedsa
  ofstream outfile;
  outfile.open(outfilename.c_str(),ios_base::app);
  outfile<<requiredtypeIerror<<" "<<requiredpower<<" "<<K<<" "<<seed<<" "<<typeIerror<<" "<<power<<" "<<expectedsamplesize_null<<" "<<expectedsamplesize_crd<<" "<<expectedsamplesize_dm<<" ";
- for(i=0;i<finalparameters.size();i++)
+ for(i=0;i<static_cast<int>(finalparameters.size());i++)
    {
-     outfile<<finalparameters.at(i)<<" ";
+     outfile<<finalparameters.at(static_cast<size_t>(i))<<" ";
    }
  outfile<<"\n";
  outfile.close();
