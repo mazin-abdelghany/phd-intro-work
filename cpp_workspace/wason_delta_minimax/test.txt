@@ -1,2 +1,0 @@
-alpha power variance seed sim_alpha sim_power info@each stage? sample_size? l_1 u_1 l_2    u_2     l_3     u_3
-0.05 0.9 3 1771286212 0.0499989 0.900001 99.064 109.92 126.551 70 0.323462 2.02944 1.21169 1.89071 1.86033 1.86033 
