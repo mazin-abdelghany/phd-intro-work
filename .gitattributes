@@ -17,7 +17,9 @@ penalty_function_exploration3.html linguist-generated
 bayes_opt_loop_gsd_new_penalty.html linguist-generated
 bayes-opt-kernel-and-normalization-exploration.html linguist-generated
 boundary_assessment.html linguist-generated
+three_stage_designs.html linguist-generated
+two_stage_designs.html linguist-generated
 
-*.ipynb                                       linguist-vendored
+*.ipynb linguist-vendored
 
 *.Rmd linguist-language=R
