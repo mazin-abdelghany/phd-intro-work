@@ -1,4 +1,4 @@
-requiredtypeIerror requiredpower K seed typeIerror power expected_sample_size_null expected_sample_size_crd expected_sample_size_dm per_group lower1 upper1 lower2 upper2 lower3
+requiredtypeIerror requiredpower K seed typeIerror power expected_sample_size_null expected_sample_size_crd expected_sample_size_dm per_group lower1 upper1 lower2 upper2 lower3 upper3
 0.05 0.9 3 1771536144 0.0499982 0.900001 99.7398 110.972 127.005 70 0.279307 2.06581 1.29147 1.89472 1.78111 1.78111 
 0.05 0.9 3 1771892620 0.0499989 0.900001 98.4425 110.617 126.149 62 0.0251642 2.26501 1.01449 1.90363 1.77274 1.77274 
 0.05 0.9 3 1771900177 0.0499989 0.9 96.3755 113.509 127.104 63 0.158042 2.35101 1.05064 1.94625 1.67934 1.67934 
