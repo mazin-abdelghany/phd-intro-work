@@ -26,7 +26,7 @@ else
     cat run*.txt > new_data.txt
 
     # add a row at the top, in place, that names each column created by the 
-    # loops this cannot be placed on multiple lines without adding extra space  
+    # loops. this cannot be placed on multiple lines without adding extra space  
     # in output files
     sed -i "1i requiredtypeIerror requiredpower K seed typeIerror power expected_sample_size_null expected_sample_size_crd expected_sample_size_dm per_group lower1 upper1 lower2 upper2 lower3 upper3" new_data.txt
 
