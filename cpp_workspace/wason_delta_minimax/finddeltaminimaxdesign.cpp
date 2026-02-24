@@ -283,7 +283,7 @@ double expected_sample_size(
     double expected_sample_size {0};
     double n_per_stage = parameters.at(0);
 
-    // separating indexing vector with multiplication without loop by 
+    // separating indexing vector with multiplication without loop variable by 
     // initializing a new variable mult
     double mult = 1;
     for(size_t i = 0; i < phi.size(); i++)
@@ -403,123 +403,66 @@ void converthtophi(
 }
 
 // finds the delta which gives highest expected sample size for a given design
+// this function was rewritten from the original and now uses interval 
+// bisection
 void finddeltaminimax_seq(
         std::vector<std::vector<double>>& h,
         std::vector<std::vector<double>>& z,
         std::vector<double>& parameters,
         double delta0,
-        double new_delta,
+        double delta1,
         double sigma,
         double *deltaminimax,
         double *maxen)
 {
-
-    double lowerdelta=delta0;
-    double middelta=new_delta;
-    double upperdelta=delta0+2*(new_delta-delta0);
-    double tempdelta;
-    double loweren;
-    double miden;
-    double upperen;
-    double tempen;
-
+    // this is the accuracy at which to find the delta 
+    double epsilon {1e-4};
+    
+    // lower and upper bounds for the delta values
+    // delta1 is multiplied by a large number to start at the edge
+    double lowerdelta = delta0;
+    double upperdelta = delta1 * 10.; 
+    
+    // calculate the first sample sizes for the lower and upper bounds
+    // lower bounds need a set of phi and psi and upper bounds need a set of
+    // phi and psi
     std::vector<double> lowerphi;
-    std::vector<double> lowerpsi;
-    std::vector<double> midphi;
-    std::vector<double> midpsi;
     std::vector<double> upperphi;
+    
+    std::vector<double> lowerpsi;
     std::vector<double> upperpsi;
-    std::vector<double> tempphi;
-    std::vector<double> temppsi;
-
-    converthtophi(h,z,lowerphi,parameters,delta0,lowerdelta,sigma);
-    converthtophi(h,z,midphi,parameters,delta0,middelta,sigma);
-    converthtophi(h,z,upperphi,parameters,delta0,upperdelta,sigma);
-    converthtopsi(h,z,lowerpsi,parameters,delta0,lowerdelta,sigma);
-    converthtopsi(h,z,midpsi,parameters,delta0,middelta,sigma);
-    converthtopsi(h,z,upperpsi,parameters,delta0,upperdelta,sigma);
-
-    loweren = expected_sample_size(lowerphi,lowerpsi,parameters);
-    miden = expected_sample_size(midphi,midpsi,parameters); 
-    upperen = expected_sample_size(upperphi,upperpsi,parameters);
-
-    //check whether miden is higher than both loweren and upperen
     
-    while (miden<loweren || miden<upperen)
-    {
-        lowerdelta-=(new_delta-delta0);
-        upperdelta+=(new_delta-delta0);
-        converthtophi(h,z,lowerphi,parameters,delta0,lowerdelta,sigma);
-        converthtophi(h,z,upperphi,parameters,delta0,upperdelta,sigma);
-        converthtopsi(h,z,lowerpsi,parameters,delta0,lowerdelta,sigma);
-        converthtopsi(h,z,upperpsi,parameters,delta0,upperdelta,sigma);
-        loweren=expected_sample_size(lowerphi,lowerpsi,parameters);
-        upperen=expected_sample_size(upperphi,upperpsi,parameters);
-    }
+    double lower_ess = expected_sample_size(lowerphi, lowerpsi, parameters);
+    double upper_ess = expected_sample_size(upperphi, upperpsi, parameters);
     
-    //find delta which gives maximum expected sample size:
-    while((middelta-lowerdelta)>1e-3 || (upperdelta-middelta)>1e-3) 
+    // while the difference between the deltas being used to search is larger
+    // than the accuracy, divide the interval into two and start again
+    while( std::abs(lowerdelta - upperdelta) > epsilon ) 
     {
-        if ((upperdelta-middelta)>(middelta-lowerdelta))
-        {
-            tempdelta=(upperdelta+middelta)/2;
-            converthtophi(h,z,tempphi,parameters,delta0,tempdelta,sigma);
-            converthtopsi(h,z,temppsi,parameters,delta0,tempdelta,sigma);
-            tempen=expected_sample_size(tempphi,temppsi,parameters);
-            
-            if (tempen<miden)
-            {
-                upperen=tempen;
-                upperdelta=tempdelta;
-                upperphi=tempphi;
-                upperpsi=temppsi;
-            }
-            
-            else
-            {
-                loweren=miden;
-                lowerdelta=middelta;
-                lowerphi=midphi;
-                lowerpsi=midpsi;
-                miden=tempen;
-                middelta=tempdelta;
-                midphi=tempphi;
-                midpsi=temppsi;
-            }
-        }
+
+        converthtophi(h, z, lowerphi, parameters, delta0, lowerdelta, sigma);
+        converthtopsi(h, z, lowerpsi, parameters, delta0, lowerdelta, sigma);
+
+        converthtophi(h, z, upperphi, parameters, delta0, upperdelta, sigma);
+        converthtopsi(h, z, upperpsi, parameters, delta0, upperdelta, sigma);
+
+        lower_ess = expected_sample_size(lowerphi, lowerpsi, parameters);
+        upper_ess = expected_sample_size(upperphi, upperpsi, parameters);
         
+        if (upper_ess > lower_ess)
+        {
+            lowerdelta = (lowerdelta + upperdelta) / 2;
+        }
+
         else
         {
-            tempdelta=(lowerdelta+middelta)/2;
-            converthtophi(h,z,tempphi,parameters,delta0,tempdelta,sigma);
-            converthtopsi(h,z,temppsi,parameters,delta0,tempdelta,sigma);
-            tempen=expected_sample_size(tempphi,temppsi,parameters);
-            
-            if(tempen<miden)
-            {
-                loweren=tempen;
-                lowerdelta=tempdelta;
-                lowerphi=tempphi;
-                lowerpsi=temppsi;
-            }
-            
-            else
-            {
-                upperen=miden;
-                upperdelta=middelta;
-                upperphi=midphi;
-                upperpsi=midpsi;
-                miden=tempen;
-                middelta=tempdelta;
-                midphi=tempphi;
-                midpsi=temppsi;
-            }
+            upperdelta = (lowerdelta + upperdelta) / 2;
         }
     }
-    
-    *deltaminimax=middelta;
-    *maxen=miden;
 
+    // these values are filled to be used in other functions
+    *deltaminimax = upperdelta;
+    *maxen = upper_ess;
 }
 
 // trialproperties_seq uses the method given in Section 19.2 of Jennison and 
@@ -540,10 +483,7 @@ void trialproperties_seq(
 {
 
     // Function will find typeIerror and power for trial parameters. If 
-    // checkdm==1, the worst-case scenario delta will be found together with its 
-    // expected sample size. Else, both will be returned as 0
-    *worstcasedelta = 0;
-    *expected_sample_size_dm = 0;
+
 
     size_t i{};
     double j{};
@@ -767,13 +707,17 @@ void trialproperties_seq(
     
     *expected_sample_size_crd = expected_sample_size(phi, psi, parameters);
     
-    double deltaminimax;
+    // if checkdm==1, the worst-case scenario delta will be found together with 
+    // its expected sample size. Else, both will be returned as 0
+    *worstcasedelta = 0;
+    *expected_sample_size_dm = 0;
+    double deltaminimax {};
     
     if(checkdm == 1)
     {
         finddeltaminimax_seq(
-            h, z, parameters, delta0, delta1, sigma,
-            &deltaminimax, expected_sample_size_dm
+            h, z, parameters, delta0, delta1, sigma, 
+            &deltaminimax, expected_sample_size_dm 
         );
 
         *worstcasedelta=deltaminimax;
@@ -787,7 +731,6 @@ double functionvalue_deltaminimax(
         double delta0,
         double delta1,
         double sigma,
-        [[maybe_unused]] double K,
         double required_typeIerror,
         double required_typeIIerror,
         double penaltyparameter,
@@ -812,7 +755,7 @@ double functionvalue_deltaminimax(
         &expected_sample_size_crd,
         &worstcasedelta,
         &expected_sample_size_dm,
-        1
+        1 // checkdm, which finds worst case delta
     );
     
     if (typeIerror > required_typeIerror)
@@ -993,7 +936,6 @@ void simulatedannealing_deltaminimax(
         double delta0,
         double delta1,
         double sigma,
-        double K,
         double requiredtypeIerror,
         double requiredpower,
         std::vector<double> &initialparameters,
@@ -1019,7 +961,6 @@ void simulatedannealing_deltaminimax(
         delta0,
         delta1,
         sigma,
-        K,
         requiredtypeIerror,
         (1-requiredpower),
         penaltyparameter,
@@ -1044,8 +985,6 @@ void simulatedannealing_deltaminimax(
     double rhocost = pow(finalcosttemperature/initialcosttemperature, 1.0/numbercandidategenerationsperrestart);
     double rhosigma = pow(finalparametersigma/parametersigmas.at(0), 1.0/numbercandidategenerationsperrestart);
     
-    [[maybe_unused]] double minimumloss;
-    
     do
     {
         generatecandidatestate_deltaminimax(
@@ -1062,7 +1001,6 @@ void simulatedannealing_deltaminimax(
             delta0,
             delta1,
             sigma,
-            K,
             requiredtypeIerror,
             (1-requiredpower),
             penaltyparameter,
@@ -1134,7 +1072,6 @@ void simulatedannealing_deltaminimax(
             delta0,
             delta1,
             sigma,
-            K,
             requiredtypeIerror,
             (1-requiredpower),
             penaltyparameter,
@@ -1164,7 +1101,6 @@ void simulatedannealing_deltaminimax(
                 delta0,
                 delta1,
                 sigma,
-                K,
                 requiredtypeIerror,
                 (1-requiredpower),
                 penaltyparameter,
@@ -1233,7 +1169,6 @@ void simulatedannealing_deltaminimax(
                     delta0,
                     delta1,
                     sigma,
-                    K,
                     requiredtypeIerror,
                     (1-requiredpower),
                     penaltyparameter,
@@ -1370,7 +1305,6 @@ int main(int argc, char *argv[])
         0,
         delta,
         sigma,
-        K,
         requiredtypeIerror,
         requiredpower,
         initialparameters,
