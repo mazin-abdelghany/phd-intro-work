@@ -11,7 +11,7 @@
 // Wichmann, Brian A.; Hill, I. David (1982). "Algorithm AS 183: An Efficient 
 // and Portable Pseudo-Random Number Generator". Journal of the Royal 
 // Statistical Society. Series C (Applied Statistics). 
-double uniform_random_01(void)
+double uniform_random_01()
 {
     static long ix{1};
     static long iy{1};
@@ -185,15 +185,15 @@ void find_triangular_design(
         double required_beta,
         std::vector<double>& parameters)
 {
-    // used to calculate psi
+    // used to calculate delta_tilde
     double inv_norm_cdf_alpha = inverse_normal_cdf(1 - required_alpha);
     double inv_norm_cdf_beta = inverse_normal_cdf(1 - required_beta);
 
     // correction for delta to achieve required alpha and beta (delta_tilde)
     // from Wason 2018 paper
-    double psi = (2*inv_norm_cdf_alpha) / (inv_norm_cdf_alpha + inv_norm_cdf_beta); 
+    double delta_tilde = (2*inv_norm_cdf_alpha) / (inv_norm_cdf_alpha + inv_norm_cdf_beta); 
     
-    double delta = psi * (delta1 - delta0);
+    double delta = delta_tilde * (delta1 - delta0);
 
     // calculating maximum information by splitting the terms
     double Imax_term1 = (4. * pow(0.583, 2.))/K;
@@ -288,6 +288,9 @@ double expected_sample_size(
     double mult = 1;
     for(size_t i = 0; i < phi.size(); i++)
     {
+        // based on expected sample size equation, suspect that:
+        // phi is the probability of stopping for efficacy and
+        // psi is the probability of stopping for futility 
         expected_sample_size += mult * n_per_stage * (phi.at(i)+psi.at(i));
         mult++;
     }
@@ -322,18 +325,29 @@ void converthtopsi(
              j < z.at(static_cast<size_t>(i)-1).size(); 
              j++)
         {
+            // this calculation is the same as the below in convert to phi with
+            // two minor differences
             psi.at(static_cast<size_t>(i))
-                +=exp((new_delta-delta0)*z.at(static_cast<size_t>(i)-1).at(j)*sqrt(information(i*parameters.at(0),sigma))
-                - (pow(new_delta,2) - pow(delta0,2))
+                // equation ell(z_k, I_k | theta_2, theta_1) near equation 19.13    
+                += exp((new_delta-delta0)*z.at(static_cast<size_t>(i)-1).at(j)*sqrt(information(i*parameters.at(0),sigma))
+                - (pow(new_delta,2)-pow(delta0,2))
                 * information(i*parameters.at(0),sigma)/2)
-                * (h.at(static_cast<size_t>(i)-1).at(j)*(1-normal_cdf((z.at(static_cast<size_t>(i)-1).at(j)*sqrt(information(i*parameters.at(0),sigma))
-                - parameters.at(static_cast<size_t>((i+1)*2-1))*sqrt(information((i+1)*parameters.at(0),sigma))
-                + new_delta * (information((i+1)*parameters.at(0),sigma)
-                - information(i*parameters.at(0),sigma)))/(sqrt(information((i+1)*parameters.at(0),sigma)
-                - information(i*parameters.at(0),sigma))))));
+                // equation h_k-1(i_k-1 | theta1)
+                * (h.at(static_cast<size_t>(i)-1).at(j)
+                // this is e_k-1(z_k-1(i_k-1)), b_k | theta2)
+                // except 1- is at the front
+                * (1 - normal_cdf(
+                    (z.at(static_cast<size_t>(i)-1).at(j)*sqrt(information(i*parameters.at(0),sigma))
+                    // term 1 of eqution 19.6 except we are indexing the odd value
+                    // here we have (i+1)*2-1 rather than (i+1)*2
+                    - parameters.at(static_cast<size_t>((i+1)*2-1))*sqrt(information((i+1)*parameters.at(0),sigma))
+                    // term 2 of equation 19.6
+                    + new_delta * (information((i+1)*parameters.at(0),sigma)
+                        - information(i*parameters.at(0),sigma)))
+                    // divided by sqrt(delta_k) in equation 19.6 
+                    / (sqrt(information((i+1)*parameters.at(0),sigma) - information(i*parameters.at(0),sigma))))));
         }
     
-        fflush(0);
     }
 
 }
@@ -364,17 +378,26 @@ void converthtophi(
         for(j = 0; j < z.at(static_cast<size_t>(i)-1).size(); j++)
         {
             phi.at(static_cast<size_t>(i)) 
+                // equation ell(z_k, I_k | theta_2, theta_1) near equation 19.13    
                 += exp((new_delta-delta0)*z.at(static_cast<size_t>(i)-1).at(j)*sqrt(information(i*parameters.at(0),sigma))
                 - (pow(new_delta,2)-pow(delta0,2))
                 * information(i*parameters.at(0),sigma)/2)
-                * (h.at(static_cast<size_t>(i)-1).at(j)*(normal_cdf((z.at(static_cast<size_t>(i)-1).at(j)*sqrt(information(i*parameters.at(0),sigma))
-                - parameters.at(static_cast<size_t>((i+1)*2))*sqrt(information((i+1)*parameters.at(0),sigma))
-                + new_delta*(information((i+1)*parameters.at(0),sigma)
-                - information(i*parameters.at(0),sigma)))/(sqrt(information((i+1)*parameters.at(0),sigma)
-                - information(i*parameters.at(0),sigma))))));
+                // equation h_k-1(i_k-1 | theta1)
+                * (h.at(static_cast<size_t>(i)-1).at(j)
+                // e_k-1(z_k-1(i_k-1)), b_k | theta2)
+                // equation 19.6
+                * (normal_cdf(
+                    // term 1 of equation 19.6
+                    (z.at(static_cast<size_t>(i)-1).at(j) * sqrt(information(i*parameters.at(0),sigma))
+                    // term 3 of equation 19.6
+                    - parameters.at(static_cast<size_t>((i+1)*2))*sqrt(information((i+1)*parameters.at(0),sigma))
+                    // term 2 of equation 19.6
+                    + new_delta*(information((i+1)*parameters.at(0),sigma)
+                        - information(i*parameters.at(0),sigma)))
+                    // divided by sqrt(delta_k) in equation 19.6
+                    / (sqrt(information((i+1)*parameters.at(0),sigma) - information(i*parameters.at(0),sigma))))));
         }
     
-        fflush(0);
     }
 
 }
@@ -383,7 +406,6 @@ void converthtophi(
 void finddeltaminimax_seq(
         std::vector<std::vector<double>>& h,
         std::vector<std::vector<double>>& z,
-        [[maybe_unused]] std::vector<double>& phi,
         std::vector<double>& parameters,
         double delta0,
         double new_delta,
@@ -524,54 +546,93 @@ void trialproperties_seq(
     *expected_sample_size_dm = 0;
 
     size_t i{};
-    size_t j{};
+    double j{};
 
-    // get grid of points to use
-    std::vector<std::vector<double>> x;
-
+    // this temporary vector will be used throughout all of the below for loops
+    // as a placeholder for the actual vector being calculated
     std::vector<double> tempvector;
 
+    // get grid of points to use
+    // the grid is x_i with elements {x_1, . . . , x_6r-1} (see immediately 
+    // below equation 19.9)
+    // r is defined as 16 in the code below
+    // Also note that x is a 2 dimensional vector, that can have different 
+    // lengths for each dimension, for example:
+    // [[1, 2, 3],
+    //  [4, 5, 6, 7, 8]]
+    // x has the same number of rows as boundary pairs minus 1
+    std::vector<std::vector<double>> x;
+
+    // loop through the boudaries
+    // parameters.size is one larger than 2*stages because it also contains
+    // the sample size within it. Also, subtract 1 because the last boundary
+    // is equal in one-stage designs, hence (parameters.size-1)/2-1
     for (i = 0; i < (parameters.size()-1)/2 - 1; i++)
     {
         tempvector.clear();
+
+        // add the first boundary value to the grid of points
         tempvector.push_back(parameters.at(i*2+1));
         
+        // initialize mean at each stage
+        // mean_at_stage is theta * sqrt(information at each stage)
+        double mean_at_stage  = delta0 * sqrt(
+            information((static_cast<double>(i)+1)*parameters.at(0),sigma)
+        );
+        
+        // these are the first 15 grid points
         for (j = 1; j <= 15; j++)
         {
-            if(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3+4*log(16.0/static_cast<double>(j)))<parameters.at(i*2+2) && delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0+4*log(16.0/static_cast<double>(j)))>parameters.at(i*2+1))
+            // the following if statements check to see if the value of the 
+            // next grid point is between the two boundary values of interest
+            // if not, it would be invalid and therefore is not included in
+            // the grid
+            if (mean_at_stage - (3+4*log(16.0/j)) < parameters.at(i*2+2) 
+                && mean_at_stage - (3+4*log(16.0/j)) > parameters.at(i*2+1))
             {
-                tempvector.push_back(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0+4*log(16.0/static_cast<double>(j))));
+                tempvector.push_back(mean_at_stage-(3+4*log(16.0/j)));
             }
         }
         
+        // these are the next 79 grid points
         for (j = 16; j <= 5*16; j++)
         {
-            if(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0-3*(static_cast<double>(j)-16.0)/(2*16.0))<parameters.at(i*2+2) && delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0-3*(static_cast<double>(j)-16.0)/(2*16.0))>parameters.at(i*2+1))
+            if (mean_at_stage-(3.0-3*(j-16.0)/(2*16.0)) < parameters.at(i*2+2) 
+                && mean_at_stage-(3.0-3*(j-16.0)/(2*16.0)) > parameters.at(i*2+1))
             {
-                tempvector.push_back(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-(3.0-3*(static_cast<double>(j)-16.0)/(2*16.0)));
+                tempvector.push_back(mean_at_stage-(3.0-3*(j-16.0)/(2*16.0)));
             }
         }
         
+        // these are the last 15 grid points
         for (j = 5*16+1; j <= 6*16-1; j++)
         {
-            if(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-static_cast<double>(j))))<parameters.at(i*2+2) && delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-static_cast<double>(j))))>parameters.at(i*2+1))
+            if (mean_at_stage+(3.0+4*log(16.0/(6*16-j))) < parameters.at(i*2+2) 
+                && mean_at_stage+(3.0+4*log(16.0/(6*16-j)))>parameters.at(i*2+1))
             {
-                tempvector.push_back(delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))+(3.0+4*log(16.0/(6*16-static_cast<double>(j)))));
+                tempvector.push_back(mean_at_stage+(3.0+4*log(16.0/(6*16-j))));
             }
         }
         
+        // add the last boundary value to the grid of points
         tempvector.push_back(parameters.at(i*2+2));
+
+        // fill our grid with the temporary vector
         x.push_back(tempvector);
     }
     
-    //get z's - odd numbered points are the x's, even numbered points are their midpoints 
+    // to integrate from -inf to inf, 12r-3 grid points are used. Recall r is 
+    // defined as 16 above. The odd numbered grid points were defined above in
+    // the vector x. The final z vector will include the even numbered grid
+    // points as the midpoints. For example, if x = {1, 2, 3}, then temp would
+    // be {1.5, 2.5} and the full z vector {1, 1.5, 2, 2.5, 3}.
     std::vector<std::vector<double>> z;
     
     for (i = 0; i < x.size(); i++)
     {
         tempvector.clear();
         
-        for (j = 0; j < x.at(i).size()-1; j++)
+        for (size_t j = 0; j < x.at(i).size()-1; j++)
         {
             tempvector.push_back(x.at(i).at(j));
             tempvector.push_back((x.at(i).at(j)+x.at(i).at(j+1))/2);
@@ -582,33 +643,40 @@ void trialproperties_seq(
 
     }
     
-    //z's define the weights used in the integration:
+    // the weights are calculated based on equation 19.10
+    // quadrature approximation is used based on Simpson's rule
     std::vector<std::vector<double>> weights;
     
     for (i = 0; i < z.size();  i++)
     {
+        // the first weight
         tempvector.clear();
         tempvector.push_back((z.at(i).at(2)-z.at(i).at(0))/6);
         
-        for (j = 2; j <= z.at(i).size() - 1; j++)
+        for (size_t j = 2; j <= z.at(i).size() - 1; j++)
         {
+            // for even numbered weights after the first weight
             if (j % 2 == 0)
             {
                 tempvector.push_back(4.0*(z.at(i).at(j)-z.at(i).at(j-2))/6);
             }
             
-            else if (j % 2 == 1)
+            // for odd numbered weights after the first weight
+            else
             {
                 tempvector.push_back((z.at(i).at(j+1)-z.at(i).at(j-3))/6);
             }
         }
         
+        // the last weight
         tempvector.push_back((z.at(i).at(z.at(i).size()-1)-z.at(i).at(z.at(i).size()-3))/6);
         weights.push_back(tempvector);
 
     }
     
-    // h is a matrix which has values of h at each point
+    // h is the vector of k-1 dimensions (k = num stages) that collects the 
+    // elements of a sum of for quick calculation of integrals between the 
+    // z grid points defined above
     std::vector<std::vector<double>> h;
     
     size_t k;
@@ -617,23 +685,46 @@ void trialproperties_seq(
     {
         tempvector.clear();
         
+        double info_k = information((static_cast<double>(i)+1)*parameters.at(0),sigma); 
+        double info_kminus1 =information(static_cast<double>(i)*parameters.at(0),sigma);
+        double delta_k = info_k - info_kminus1;
+
         if (i == 0)
         {
-            for (j = 0; j < z.at(i).size(); j++)
+            for (size_t j = 0; j < z.at(i).size(); j++)
             {
-                tempvector.push_back(weights.at(i).at(j)*normal_pdf(z.at(i).at(j)-delta0*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))));
+                // f_1(z_1 | sigma) just before equation 19.4
+                tempvector.push_back(
+                    weights.at(i).at(j)*normal_pdf(z.at(i).at(j)-delta0*sqrt(info_k))
+                );
             }
         }
         
         else
         {
-            for (j = 0; j < z.at(i).size(); j++)
+            for (size_t j = 0; j < z.at(i).size(); j++)
             {
                 tempvector.push_back(0);
                 
                 for (k = 0; k < z.at(i-1).size(); k++)
                 {
-                    tempvector.at(j)+=h.at(i-1).at(k)*weights.at(i).at(j)*(sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))/sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))*normal_pdf((z.at(i).at(j)*sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma))-z.at(i-1).at(k)*sqrt(information(static_cast<double>(i)*parameters.at(0),sigma))-delta0*(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma)))/(sqrt(information((static_cast<double>(i)+1)*parameters.at(0),sigma)-information(static_cast<double>(i)*parameters.at(0),sigma))));
+                    tempvector.at(j) += 
+                        // h_k-1(i_k-1 | theta)
+                        h.at(i-1).at(k)
+                        // w_k(i_k)
+                        * weights.at(i).at(j)
+                        // equation 19.4
+                        * (sqrt(info_k)/sqrt(delta_k))
+                        * normal_pdf(
+                            // term 1
+                            (z.at(i).at(j)*sqrt(info_k)
+                            // term 2
+                            - z.at(i-1).at(k)*sqrt(info_kminus1)
+                            // term 3
+                            - delta0*(delta_k))
+                            // divided by
+                            / (sqrt(delta_k))
+                        );
                 }
             }
         }
@@ -646,7 +737,10 @@ void trialproperties_seq(
     std::vector<double> phi;
     std::vector<double> psi;
 
-    converthtophi(h,z,phi,parameters,delta0,delta0,sigma);
+    // this is being used to calculate the probabilities from the h vectors
+    // it is taking two of the same delta values because its using the trick
+    // discussed after equation 19.13
+    converthtophi(h, z, phi, parameters, delta0, delta0, sigma);
     
     //calculate typeIerror by summing up phi:
     *typeIerror = 0;
@@ -656,36 +750,32 @@ void trialproperties_seq(
         *typeIerror += phi.at(i);
     }
     
-    converthtopsi(h,z,psi,parameters,delta0,delta0,sigma);
+    converthtopsi(h, z, psi, parameters, delta0, delta0, sigma);
     
     *expected_sample_size_null = expected_sample_size(phi, psi, parameters);
     
-    converthtophi(h,z,phi,parameters,delta0,delta1,sigma);
+    converthtophi(h, z, phi, parameters, delta0, delta1, sigma);
     
     *power = 0;
     
     for(i = 0; i < phi.size(); i++)
     {
-        // cout<<phi.at(i)<<" ";
         *power += phi.at(i);
     }
-    // cout<<"\n";
 
-    converthtopsi(h,z,psi,parameters,delta0,delta1,sigma);
+    converthtopsi(h, z, psi, parameters, delta0, delta1, sigma);
     
-//    for(i=0;i<psi.size();i++)
-//    {
-//        cout<<psi.at(i)<<" ";
-//    }
-//    cout<<"\n";
-
-    *expected_sample_size_crd = expected_sample_size(phi,psi,parameters);
+    *expected_sample_size_crd = expected_sample_size(phi, psi, parameters);
     
     double deltaminimax;
     
     if(checkdm == 1)
     {
-        finddeltaminimax_seq(h,z,phi,parameters,delta0,delta1,sigma,&deltaminimax,expected_sample_size_dm);
+        finddeltaminimax_seq(
+            h, z, parameters, delta0, delta1, sigma,
+            &deltaminimax, expected_sample_size_dm
+        );
+
         *worstcasedelta=deltaminimax;
     }
 
