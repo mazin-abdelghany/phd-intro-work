@@ -587,6 +587,7 @@ void finddeltaminimax_seq(
 }
 
 // finds the delta which gives highest expected sample size for a given design
+// now using interval bisection
 void new_finddeltaminimax_seq(
         std::vector<std::vector<double>>& h,
         std::vector<std::vector<double>>& z,
@@ -595,12 +596,17 @@ void new_finddeltaminimax_seq(
         double delta1,
         double sigma)
 {
-
+    // this is the accuracy at which to find the delta 
     double epsilon {1e-4};
     
+    // lower and upper bounds for the delta values
+    // delta1 is multiplied by a large number to start at the edge
     double lowerdelta = delta0;
     double upperdelta = delta1 * 10.; 
     
+    // calculate the first sample sizes for the lower and upper bounds
+    // lower bounds need a set of phi and psi and upper bounds need a set of
+    // phi and psi
     std::vector<double> lowerphi;
     std::vector<double> upperphi;
     
@@ -610,7 +616,8 @@ void new_finddeltaminimax_seq(
     double lower_ess = expected_sample_size(lowerphi, lowerpsi, parameters);
     double upper_ess = expected_sample_size(upperphi, upperpsi, parameters); 
 
-    //find delta which gives maximum expected sample size:
+    // while the difference between the deltas being used to search is larger
+    // than the accuracy, divide the interval into two and start again
     while( std::abs(lowerdelta - upperdelta) > epsilon ) 
     {
 
