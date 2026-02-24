@@ -19,6 +19,7 @@ bayes-opt-kernel-and-normalization-exploration.html linguist-generated
 boundary_assessment.html linguist-generated
 three_stage_designs.html linguist-generated
 two_stage_designs.html linguist-generated
+three_stage_designs_small_box.html linguist-generated
 
 *.ipynb linguist-vendored
 
