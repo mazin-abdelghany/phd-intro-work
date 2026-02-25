@@ -3,6 +3,10 @@
 # how many times should delta minimax run
 num_runs=2
 
+printf "\n"
+echo "Simulated annealing loop will run $num_runs times"
+printf "\n"
+
 # delta minimax parameter values
 null_hypothesis=0
 alt_hypothesis=1
@@ -15,7 +19,7 @@ num_stages=3
 for ((i = 1; i <= num_runs; i++))
 do
     ./finddeltaminimaxdesign $null_hypothesis $alt_hypothesis $variance \
-                             $alpha $power $variance run_$i.txt
+                             $alpha $power $num_stages run_$i.txt
 done
 
 if [ -f new_data.txt ]; then
@@ -33,4 +37,3 @@ else
     # delete the num_run created files
     rm -rf run*.txt
 fi
-
