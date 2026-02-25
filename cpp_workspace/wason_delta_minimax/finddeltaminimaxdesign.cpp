@@ -682,7 +682,7 @@ void trialproperties_seq(
     // discussed after equation 19.13
     converthtophi(h, z, phi, parameters, delta0, delta0, sigma);
     
-    //calculate typeIerror by summing up phi:
+    // calculate typeIerror by summing up phi under the null
     *typeIerror = 0;
     
     for(i = 0; i < phi.size(); i++)
@@ -696,6 +696,7 @@ void trialproperties_seq(
     
     converthtophi(h, z, phi, parameters, delta0, delta1, sigma);
     
+    // calculate power by summing phi under the alternative
     *power = 0;
     
     for(i = 0; i < phi.size(); i++)
@@ -715,7 +716,8 @@ void trialproperties_seq(
     
     if(checkdm == 1)
     {
-        finddeltaminimax_seq(
+        finddeltaminimax_seq
+        (
             h, z, parameters, delta0, delta1, sigma, 
             &deltaminimax, expected_sample_size_dm 
         );
@@ -725,7 +727,7 @@ void trialproperties_seq(
 
 }
 
-
+// START HERE
 double functionvalue_deltaminimax(
         std::vector<double>& candidateparameters,
         double delta0,
@@ -742,8 +744,9 @@ double functionvalue_deltaminimax(
     double expected_sample_size_crd;
     double worstcasedelta;
     double expected_sample_size_dm;
-    double functionvalue=0;
 
+    // get the trial properties for the candidate parameters using the 
+    // function input
     trialproperties_seq(
         candidateparameters,
         delta0,
@@ -755,9 +758,12 @@ double functionvalue_deltaminimax(
         &expected_sample_size_crd,
         &worstcasedelta,
         &expected_sample_size_dm,
-        1 // checkdm, which finds worst case delta
+        1 // when checkdm==1, finds worst case delta
     );
     
+    // start the penalty at 0
+    double functionvalue=0;
+
     if (typeIerror > required_typeIerror)
     {
         functionvalue += (penaltyparameter 
@@ -772,7 +778,8 @@ double functionvalue_deltaminimax(
                          * penaltyparameter;
     }
     
-    if ((typeIerror>required_typeIerror || (1-power) > required_typeIIerror) && numberrestarts >= (-1))
+    if ((typeIerror > required_typeIerror || (1-power) > required_typeIIerror) 
+         && numberrestarts >= (-1))
     {
         functionvalue += penaltyparameter/10;
     }
@@ -783,12 +790,16 @@ double functionvalue_deltaminimax(
 
 }
 
+// this function is used exclusively during the function that generates
+// candidate designs
 double checkdesignconstraints(std::vector<double>& design)
 {
     double validdesign {1};
-    size_t numberstages = (design.size()-1)/2,i;
+    size_t numberstages = (design.size()-1)/2;
+    size_t i;
     
-    // check that first efficacy parameter is more than futility parameter
+    // if the first lower bound is larger than or equal to the first upper 
+    // bound, this is an invalid design
     if (design.at(1) >= design.at(2))
     {
         validdesign=0;
@@ -796,22 +807,34 @@ double checkdesignconstraints(std::vector<double>& design)
     
     for (i = 1; i < numberstages - 1; i++)
     {
+        // if each lower bound after the first is larger than or equal to the 
+        // next upper bound, this is an invalid design 
         if (design.at(i*2+1) >= design.at(i*2+2))
         {
             validdesign = 0;
         }
         
+        // these are odd values only (corresponding to the lower bounds)
+        // each subsequent lower bound must be equal or greater than the prior
+        // e.g., if the first lower bound is -2, then then next lower bound 
+        // must be >= -2 or else the design will be invalid
         if (design.at(i*2+1) < design.at(i*2-1))
         {
             validdesign = 0;
         }
         
+        // these are even values only (corresponding to the upper bounds)
+        // each subsequent lower bound must be equal or greater than the prior
+        // e.g., if the first upper bound is 2, then the next upper bound
+        // must be <= 2 or else the design will be invalid
         if (design.at(i*2+2) > design.at(i*2))
         {
             validdesign = 0;
         }
     }
-    
+   
+    // check if the last upper bound is smaller than the second to last upper
+    // bound
     if (design.at(numberstages*2) > design.at((numberstages-1)*2))
     {
         validdesign=0;
@@ -819,7 +842,7 @@ double checkdesignconstraints(std::vector<double>& design)
     
     return validdesign;
 
-}    
+}
 
 
 double generatenormalrandomvariable()
