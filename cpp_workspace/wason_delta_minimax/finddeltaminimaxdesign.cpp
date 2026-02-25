@@ -298,7 +298,7 @@ double expected_sample_size(
     return expected_sample_size;
 }
 
-void converthtopsi(
+void convert_h_to_psi(
         std::vector<std::vector<double>>& h,
         std::vector<std::vector<double>>& z,
         std::vector<double>& psi,
@@ -352,7 +352,7 @@ void converthtopsi(
 
 }
 
-void converthtophi(
+void convert_h_to_phi(
         std::vector<std::vector<double>>& h,
         std::vector<std::vector<double>>& z,
         std::vector<double>& phi,
@@ -405,7 +405,7 @@ void converthtophi(
 // finds the delta which gives highest expected sample size for a given design
 // this function was rewritten from the original and now uses interval 
 // bisection
-void finddeltaminimax_seq(
+void find_delta_minimax_seq(
         std::vector<std::vector<double>>& h,
         std::vector<std::vector<double>>& z,
         std::vector<double>& parameters,
@@ -440,11 +440,11 @@ void finddeltaminimax_seq(
     while( std::abs(lowerdelta - upperdelta) > epsilon ) 
     {
 
-        converthtophi(h, z, lowerphi, parameters, delta0, lowerdelta, sigma);
-        converthtopsi(h, z, lowerpsi, parameters, delta0, lowerdelta, sigma);
+        convert_h_to_phi(h, z, lowerphi, parameters, delta0, lowerdelta, sigma);
+        convert_h_to_psi(h, z, lowerpsi, parameters, delta0, lowerdelta, sigma);
 
-        converthtophi(h, z, upperphi, parameters, delta0, upperdelta, sigma);
-        converthtopsi(h, z, upperpsi, parameters, delta0, upperdelta, sigma);
+        convert_h_to_phi(h, z, upperphi, parameters, delta0, upperdelta, sigma);
+        convert_h_to_psi(h, z, upperpsi, parameters, delta0, upperdelta, sigma);
 
         lower_ess = expected_sample_size(lowerphi, lowerpsi, parameters);
         upper_ess = expected_sample_size(upperphi, upperpsi, parameters);
@@ -465,10 +465,10 @@ void finddeltaminimax_seq(
     *maxen = upper_ess;
 }
 
-// trialproperties_seq uses the method given in Section 19.2 of Jennison and 
+// trial_properties_seq uses the method given in Section 19.2 of Jennison and 
 // Turnbull (2000) to find the probability of stopping at each stage in a 
 // sequential trial using Z-tests
-void trialproperties_seq(
+void trial_properties_seq(
         std::vector<double>& parameters,
         double delta0,
         double delta1,
@@ -680,7 +680,7 @@ void trialproperties_seq(
     // this is being used to calculate the probabilities from the h vectors
     // it is taking two of the same delta values because its using the trick
     // discussed after equation 19.13
-    converthtophi(h, z, phi, parameters, delta0, delta0, sigma);
+    convert_h_to_phi(h, z, phi, parameters, delta0, delta0, sigma);
     
     // calculate typeIerror by summing up phi under the null
     *typeIerror = 0;
@@ -690,11 +690,11 @@ void trialproperties_seq(
         *typeIerror += phi.at(i);
     }
     
-    converthtopsi(h, z, psi, parameters, delta0, delta0, sigma);
+    convert_h_to_psi(h, z, psi, parameters, delta0, delta0, sigma);
     
     *expected_sample_size_null = expected_sample_size(phi, psi, parameters);
     
-    converthtophi(h, z, phi, parameters, delta0, delta1, sigma);
+    convert_h_to_phi(h, z, phi, parameters, delta0, delta1, sigma);
     
     // calculate power by summing phi under the alternative
     *power = 0;
@@ -704,7 +704,7 @@ void trialproperties_seq(
         *power += phi.at(i);
     }
 
-    converthtopsi(h, z, psi, parameters, delta0, delta1, sigma);
+    convert_h_to_psi(h, z, psi, parameters, delta0, delta1, sigma);
     
     *expected_sample_size_crd = expected_sample_size(phi, psi, parameters);
     
@@ -716,7 +716,7 @@ void trialproperties_seq(
     
     if(checkdm == 1)
     {
-        finddeltaminimax_seq
+        find_delta_minimax_seq
         (
             h, z, parameters, delta0, delta1, sigma, 
             &deltaminimax, expected_sample_size_dm 
@@ -727,7 +727,7 @@ void trialproperties_seq(
 
 }
 
-double functionvalue_deltaminimax(
+double function_value_delta_minimax(
         std::vector<double>& candidateparameters,
         double delta0,
         double delta1,
@@ -746,7 +746,7 @@ double functionvalue_deltaminimax(
 
     // get the trial properties for the candidate parameters using the 
     // function input
-    trialproperties_seq(
+    trial_properties_seq(
         candidateparameters,
         delta0,
         delta1,
@@ -791,7 +791,7 @@ double functionvalue_deltaminimax(
 
 // this function is used exclusively during the function that generates
 // candidate designs
-double checkdesignconstraints(std::vector<double>& design)
+double check_design_constraints(std::vector<double>& design)
 {
     double validdesign {1};
     size_t numberstages = (design.size()-1)/2;
@@ -847,7 +847,7 @@ double checkdesignconstraints(std::vector<double>& design)
 // variables into a normal(0, 1) random variable
 // this is considered more computationally efficient than inverse transform 
 // sampling
-double generatenormalrandomvariable()
+double normal_01_rng()
 {
     double u1{};
     double u2{};
@@ -896,7 +896,7 @@ void generatecandidatestate_deltaminimax(
             i = 0;
             do
             {
-                temp=generatenormalrandomvariable();
+                temp=normal_01_rng();
                 temp=temp*parametersigmas.at(i);
                 candidateparameters.at(i)=temp+currentparameters.at(i);
             }
@@ -906,12 +906,12 @@ void generatecandidatestate_deltaminimax(
         i = stagetochange * 2 + 1;
         do
         {
-            temp = generatenormalrandomvariable();
+            temp = normal_01_rng();
             temp = temp * parametersigmas.at(i);
             candidateparameters.at(i) = temp + currentparameters.at(i);
             candidateparameters.at(i+1) = candidateparameters.at(i);
         }
-        while((candidateparameters.at(i) >= upperranges.at(i) || candidateparameters.at(i) <= lowerranges.at(i)) || checkdesignconstraints(candidateparameters) == 0);
+        while((candidateparameters.at(i) >= upperranges.at(i) || candidateparameters.at(i) <= lowerranges.at(i)) || check_design_constraints(candidateparameters) == 0);
     }
     
     else
@@ -926,7 +926,7 @@ void generatecandidatestate_deltaminimax(
                 i = 0;
                 do
                 {
-                    temp=generatenormalrandomvariable();
+                    temp=normal_01_rng();
                     temp=temp*parametersigmas.at(i);
                     candidateparameters.at(i)=temp+currentparameters.at(i);
                 }
@@ -936,7 +936,7 @@ void generatecandidatestate_deltaminimax(
             i = stagetochange * 2 + 1;
             do
             {
-                temp = generatenormalrandomvariable();
+                temp = normal_01_rng();
                 temp = temp * parametersigmas.at(i);
                 candidateparameters.at(i) = temp + currentparameters.at(i);
             }
@@ -945,13 +945,13 @@ void generatecandidatestate_deltaminimax(
             i = stagetochange * 2 + 2;
             do
             {
-                temp=generatenormalrandomvariable();
+                temp=normal_01_rng();
                 temp=temp*parametersigmas.at(i);
                 candidateparameters.at(i)=temp+currentparameters.at(i);
             }
             while(candidateparameters.at(i) >= upperranges.at(i) || candidateparameters.at(i) <= lowerranges.at(i));
         }
-        while(checkdesignconstraints(candidateparameters) == 0);
+        while(check_design_constraints(candidateparameters) == 0);
     }
 
 }
@@ -981,7 +981,7 @@ void simulatedannealing_deltaminimax(
     
     double newfunctionvalue;
 
-    double minimumfunctionvalue = functionvalue_deltaminimax(
+    double minimumfunctionvalue = function_value_delta_minimax(
         initialparameters,
         delta0,
         delta1,
@@ -1021,7 +1021,7 @@ void simulatedannealing_deltaminimax(
             0
         );
         
-        newfunctionvalue = functionvalue_deltaminimax(
+        newfunctionvalue = function_value_delta_minimax(
             candidateparameters,
             delta0,
             delta1,
@@ -1092,7 +1092,7 @@ void simulatedannealing_deltaminimax(
         while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
         
         minimumparameters.at(0) = floor(minimumparameters.at(0));
-        minimumfunctionvalue = functionvalue_deltaminimax(
+        minimumfunctionvalue = function_value_delta_minimax(
             minimumparameters,
             delta0,
             delta1,
@@ -1121,7 +1121,7 @@ void simulatedannealing_deltaminimax(
                 1
             );
                 
-            newfunctionvalue = functionvalue_deltaminimax(
+            newfunctionvalue = function_value_delta_minimax(
                 candidateparameters,
                 delta0,
                 delta1,
@@ -1189,7 +1189,7 @@ void simulatedannealing_deltaminimax(
                 std::cout << "Restart " << numberrestarts << ", function value = " << minimumfunctionvalue << "\n";
                 reductioninfunctionvalue = previousrestart - minimumfunctionvalue;
                 
-                minimumfunctionvalue = functionvalue_deltaminimax(
+                minimumfunctionvalue = function_value_delta_minimax(
                     minimumparameters,
                     delta0,
                     delta1,
@@ -1279,7 +1279,7 @@ int main(int argc, char *argv[])
     );
     
     // find trial properties of triangular design
-    trialproperties_seq(
+    trial_properties_seq(
         parameters,
         0,
         delta,
@@ -1346,7 +1346,7 @@ int main(int argc, char *argv[])
         singlestagesamplesize
     );
     
-    trialproperties_seq(
+    trial_properties_seq(
         finalparameters,
         0,
         delta,
