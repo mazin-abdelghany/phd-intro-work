@@ -727,7 +727,6 @@ void trialproperties_seq(
 
 }
 
-// START HERE
 double functionvalue_deltaminimax(
         std::vector<double>& candidateparameters,
         double delta0,
@@ -844,7 +843,10 @@ double checkdesignconstraints(std::vector<double>& design)
 
 }
 
-
+//  this is the Box-Muller transform for transforming two uniform(0, 1) random
+// variables into a normal(0, 1) random variable
+// this is considered more computationally efficient than inverse transform 
+// sampling
 double generatenormalrandomvariable()
 {
     double u1{};
