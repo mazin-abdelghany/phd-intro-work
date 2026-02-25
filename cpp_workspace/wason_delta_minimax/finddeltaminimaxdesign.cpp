@@ -998,10 +998,10 @@ void simulatedannealing_delta_minimax(
         double sigma,
         double required_type_I_error,
         double required_power,
-        std::vector<double> &initial_parameters,
-        std::vector<double> lower_ranges,
-        std::vector<double> upper_ranges,
-        std::vector<double>& initial_parameters_sigma,
+        std::vector<double> &initial_parameters, // starts as 65 3.13269e-16 2.13029 1.12976 1.88293 1.84489 1.84489 
+        std::vector<double> lower_ranges, // starts as 2 -4 -4 -4 -4 -4 -4
+        std::vector<double> upper_ranges, // starts as 154.149 4 4 4 4 4 4
+        std::vector<double>& initial_parameters_sigma, // starts as 30.8299 3 3 3 3 3 3
         double initial_cost_temp,
         double finalparametersigma,
         double final_cost_temp,
@@ -1246,7 +1246,19 @@ void simulatedannealing_delta_minimax(
 
 }
 
-
+// this is the high-level sequence of events in main()
+// 1. standardize to normal 0, 1
+// 2. get the one stage sample size
+// 3. find the triangular design parameters
+// 4. get the trial properties of the triangular design
+// 5. set the:
+//    - inital sigma parameters
+//    - lower ranges of the parameters (this is the box to search in, it seems)
+//    - upper ranges of the parameters
+//    - initial parameters (triangular design)
+// 6. perform the simulated annealing
+// 7. get the final trial properties
+// 8. write the results to the file
 int main(int argc, char *argv[])
 {
     if(argc != 8)
@@ -1285,7 +1297,7 @@ int main(int argc, char *argv[])
 
     // standardise problem:
     double delta = (delta1-delta0)/initial_sigma;
-    double sigma = 1;
+    double sigma{1};
 
     double singlestagesamplesize = one_stage_sample_size(
         delta,
@@ -1295,20 +1307,20 @@ int main(int argc, char *argv[])
         1
     );
     
-    double type_I_error;
-    double power;
-    double expected_sample_size_null;
-    double expected_sample_size_crd;
-    double worse_case_delta;
-    double expected_sample_size_dm;
+    double type_I_error{};
+    double power{};
+    double expected_sample_size_null{};
+    double expected_sample_size_crd{};
+    double worse_case_delta{};
+    double expected_sample_size_dm{};
     
-    std::vector<double> parameters;
-    std::vector<double> current_params;
-    std::vector<double> candidate_params;
-    std::vector<double> lower_ranges;
-    std::vector<double> upper_ranges;
-    std::vector<double> param_sigmas;
-    std::vector<double> initial_param_sigmas;
+    std::vector<double> parameters{};
+    std::vector<double> current_params{};
+    std::vector<double> candidate_params{};
+    std::vector<double> lower_ranges{};
+    std::vector<double> upper_ranges{};
+    std::vector<double> param_sigmas{};
+    std::vector<double> initial_param_sigmas{};
     
     find_triangular_design(
         0,
@@ -1360,6 +1372,24 @@ int main(int argc, char *argv[])
     for (auto num : initial_parameters)
         std::cout << num << " ";
 
+    std::cout << "\n";
+
+    // DEBUG
+    for (auto num : lower_ranges)
+        std::cout << num << " ";
+
+    std::cout << "\n";
+
+    // DEBUG
+    for (auto num : upper_ranges)
+        std::cout << num << " ";
+
+    std::cout << "\n";
+
+    // DEBUG
+    for (auto num : initial_param_sigmas)
+        std::cout << num << " ";
+
     // DEBUG
     std::cout << "\n";
 
@@ -1369,20 +1399,20 @@ int main(int argc, char *argv[])
     // After, the sample size is rounded to the nearest integer, and the 
     // stopping boundaries only are searched over.
     simulatedannealing_delta_minimax(
-        0,
+        0, // delta0
         delta,
         sigma,
         required_type_I_error,
         required_power,
-        initial_parameters,
-        lower_ranges,
-        upper_ranges,
-        initial_param_sigmas,
-        100,
-        0.005,
-        0.005,
-        10000,
-        5,
+        initial_parameters, // starts as 65 3.13269e-16 2.13029 1.12976 1.88293 1.84489 1.84489 
+        lower_ranges,       // starts as 2 -4 -4 -4 -4 -4 -4
+        upper_ranges,       // starts as 154.149 4 4 4 4 4 4
+        initial_param_sigmas, // starts as 30.8299 3 3 3 3 3 3
+        100, // initial cost temp
+        0.005, // final parameters sigma 
+        0.005, // final cost temp
+        10000, // num candidate restarts
+        5, // min num restarts
         finalparameters,
         &finalfunctionvalue,
         singlestagesamplesize
