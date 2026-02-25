@@ -253,18 +253,18 @@ void find_triangular_design(
 double one_stage_sample_size(
         double difference,
         double sigma,
-        double typeIerror,
-        double typeIIerror,
+        double type_I_error,
+        double type_II_error,
         double R)
 {
     // ratio of smaller group to larger group
     double r = (1+R)/R;
 
     // z statistic for alpha
-    double z_alpha = inverse_normal_cdf(1-typeIerror);
+    double z_alpha = inverse_normal_cdf(1-type_I_error);
 
     // z statistic for power
-    double z_power = inverse_normal_cdf(1-typeIIerror);
+    double z_power = inverse_normal_cdf(1-type_II_error);
     
     return r * ((pow(sigma, 2) * pow(z_alpha + z_power, 2))/(difference*difference));
 }
@@ -412,57 +412,57 @@ void find_delta_minimax_seq(
         double delta0,
         double delta1,
         double sigma,
-        double *deltaminimax,
-        double *maxen)
+        double *delta_minimax,
+        double *max_expected_n)
 {
     // this is the accuracy at which to find the delta 
     double epsilon {1e-4};
     
     // lower and upper bounds for the delta values
     // delta1 is multiplied by a large number to start at the edge
-    double lowerdelta = delta0;
-    double upperdelta = delta1 * 10.; 
+    double lower_delta = delta0;
+    double upper_delta = delta1 * 10.; 
     
     // calculate the first sample sizes for the lower and upper bounds
     // lower bounds need a set of phi and psi and upper bounds need a set of
     // phi and psi
-    std::vector<double> lowerphi;
-    std::vector<double> upperphi;
+    std::vector<double> lower_phi;
+    std::vector<double> upper_phi;
     
-    std::vector<double> lowerpsi;
-    std::vector<double> upperpsi;
+    std::vector<double> lower_psi;
+    std::vector<double> upper_psi;
     
-    double lower_ess = expected_sample_size(lowerphi, lowerpsi, parameters);
-    double upper_ess = expected_sample_size(upperphi, upperpsi, parameters);
+    double lower_ess = expected_sample_size(lower_phi, lower_psi, parameters);
+    double upper_ess = expected_sample_size(upper_phi, upper_psi, parameters);
     
     // while the difference between the deltas being used to search is larger
     // than the accuracy, divide the interval into two and start again
-    while( std::abs(lowerdelta - upperdelta) > epsilon ) 
+    while( std::abs(lower_delta - upper_delta) > epsilon ) 
     {
 
-        convert_h_to_phi(h, z, lowerphi, parameters, delta0, lowerdelta, sigma);
-        convert_h_to_psi(h, z, lowerpsi, parameters, delta0, lowerdelta, sigma);
+        convert_h_to_phi(h, z, lower_phi, parameters, delta0, lower_delta, sigma);
+        convert_h_to_psi(h, z, lower_psi, parameters, delta0, lower_delta, sigma);
 
-        convert_h_to_phi(h, z, upperphi, parameters, delta0, upperdelta, sigma);
-        convert_h_to_psi(h, z, upperpsi, parameters, delta0, upperdelta, sigma);
+        convert_h_to_phi(h, z, upper_phi, parameters, delta0, upper_delta, sigma);
+        convert_h_to_psi(h, z, upper_psi, parameters, delta0, upper_delta, sigma);
 
-        lower_ess = expected_sample_size(lowerphi, lowerpsi, parameters);
-        upper_ess = expected_sample_size(upperphi, upperpsi, parameters);
+        lower_ess = expected_sample_size(lower_phi, lower_psi, parameters);
+        upper_ess = expected_sample_size(upper_phi, upper_psi, parameters);
         
         if (upper_ess > lower_ess)
         {
-            lowerdelta = (lowerdelta + upperdelta) / 2;
+            lower_delta = (lower_delta + upper_delta) / 2;
         }
 
         else
         {
-            upperdelta = (lowerdelta + upperdelta) / 2;
+            upper_delta = (lower_delta + upper_delta) / 2;
         }
     }
 
     // these values are filled to be used in other functions
-    *deltaminimax = upperdelta;
-    *maxen = upper_ess;
+    *delta_minimax = upper_delta;
+    *max_expected_n = upper_ess;
 }
 
 // trial_properties_seq uses the method given in Section 19.2 of Jennison and 
@@ -473,16 +473,16 @@ void trial_properties_seq(
         double delta0,
         double delta1,
         double sigma,
-        double *typeIerror,
+        double *type_I_error,
         double *power,
         double *expected_sample_size_null,
         double *expected_sample_size_crd,
-        double *worstcasedelta,
+        double *worse_case_delta,
         double *expected_sample_size_dm,
-        int checkdm)
+        int check_dm)
 {
 
-    // Function will find typeIerror and power for trial parameters. If 
+    // Function will find type_I_error and power for trial parameters. If 
 
 
     size_t i{};
@@ -682,12 +682,12 @@ void trial_properties_seq(
     // discussed after equation 19.13
     convert_h_to_phi(h, z, phi, parameters, delta0, delta0, sigma);
     
-    // calculate typeIerror by summing up phi under the null
-    *typeIerror = 0;
+    // calculate type_I_error by summing up phi under the null
+    *type_I_error = 0;
     
     for(i = 0; i < phi.size(); i++)
     {
-        *typeIerror += phi.at(i);
+        *type_I_error += phi.at(i);
     }
     
     convert_h_to_psi(h, z, psi, parameters, delta0, delta0, sigma);
@@ -708,79 +708,79 @@ void trial_properties_seq(
     
     *expected_sample_size_crd = expected_sample_size(phi, psi, parameters);
     
-    // if checkdm==1, the worst-case scenario delta will be found together with 
+    // if check_dm==1, the worst-case scenario delta will be found together with 
     // its expected sample size. Else, both will be returned as 0
-    *worstcasedelta = 0;
+    *worse_case_delta = 0;
     *expected_sample_size_dm = 0;
-    double deltaminimax {};
+    double delta_minimax {};
     
-    if(checkdm == 1)
+    if(check_dm == 1)
     {
         find_delta_minimax_seq
         (
             h, z, parameters, delta0, delta1, sigma, 
-            &deltaminimax, expected_sample_size_dm 
+            &delta_minimax, expected_sample_size_dm 
         );
 
-        *worstcasedelta=deltaminimax;
+        *worse_case_delta=delta_minimax;
     }
 
 }
 
 double function_value_delta_minimax(
-        std::vector<double>& candidateparameters,
+        std::vector<double>& candidate_params,
         double delta0,
         double delta1,
         double sigma,
-        double required_typeIerror,
-        double required_typeIIerror,
-        double penaltyparameter,
+        double required_type_I_error,
+        double required_type_II_error,
+        double penalty_parameter,
         int numberrestarts)
 {
-    double typeIerror;
+    double type_I_error;
     double power;
     double expected_sample_size_null;
     double expected_sample_size_crd;
-    double worstcasedelta;
+    double worse_case_delta;
     double expected_sample_size_dm;
 
     // get the trial properties for the candidate parameters using the 
     // function input
     trial_properties_seq(
-        candidateparameters,
+        candidate_params,
         delta0,
         delta1,
         sigma,
-        &typeIerror,
+        &type_I_error,
         &power,
         &expected_sample_size_null,
         &expected_sample_size_crd,
-        &worstcasedelta,
+        &worse_case_delta,
         &expected_sample_size_dm,
-        1 // when checkdm==1, finds worst case delta
+        1 // when check_dm==1, finds worst case delta
     );
     
     // start the penalty at 0
     double functionvalue=0;
 
-    if (typeIerror > required_typeIerror)
+    if (type_I_error > required_type_I_error)
     {
-        functionvalue += (penaltyparameter 
-                          + (typeIerror-required_typeIerror)/required_typeIerror)
-                          * penaltyparameter;
+        functionvalue += (penalty_parameter 
+                          + (type_I_error-required_type_I_error)/required_type_I_error)
+                          * penalty_parameter;
     }
     
-    if ((1-power) > required_typeIIerror)
+    if ((1-power) > required_type_II_error)
     {
-        functionvalue += penaltyparameter
-                         + (((1-power)-required_typeIIerror)/required_typeIIerror)
-                         * penaltyparameter;
+        functionvalue += penalty_parameter
+                         + (((1-power)-required_type_II_error)/required_type_II_error)
+                         * penalty_parameter;
     }
     
-    if ((typeIerror > required_typeIerror || (1-power) > required_typeIIerror) 
+    if ((type_I_error > required_type_I_error || (1-power) > required_type_II_error) 
          && numberrestarts >= (-1))
     {
-        functionvalue += penaltyparameter/10;
+        functionvalue += penalty_parameter/10;
     }
     
     functionvalue += expected_sample_size_dm;
@@ -859,12 +859,12 @@ double normal_01_rng()
 }
 
 
-void generatecandidatestate_deltaminimax(
-        std::vector<double>& currentparameters,
-        std::vector<double>& candidateparameters,
-        std::vector<double>& lowerranges,
-        std::vector<double>& upperranges,
-        std::vector<double>& parametersigmas,
+void gen_candidate_state_delta_minimax(
+        std::vector<double>& current_params,
+        std::vector<double>& candidate_params,
+        std::vector<double>& lower_ranges,
+        std::vector<double>& upper_ranges,
+        std::vector<double>& param_sigmas,
         int fixsamplesize)
 {
     // for each candidate generation, pick one stage, and perturb that stage's 
@@ -873,13 +873,12 @@ void generatecandidatestate_deltaminimax(
     size_t i{};
     double u{};
     double temp{};
-    [[maybe_unused]] double y{};
 
-    candidateparameters = currentparameters;
+    candidate_params = current_params;
 
     u = uniform_random_01();
     
-    size_t numberofstages = (currentparameters.size() - 1)/2;
+    size_t numberofstages = (current_params.size() - 1)/2;
     
     double temp_stagetochange = floor(static_cast<double>(numberofstages) * u);
     
@@ -888,7 +887,7 @@ void generatecandidatestate_deltaminimax(
     if (stagetochange == (numberofstages - 1))
     {
         
-        candidateparameters = currentparameters;
+        candidate_params = current_params;
         // perturb sample size and last stage threshold:
         
         if (fixsamplesize == 0)
@@ -897,28 +896,28 @@ void generatecandidatestate_deltaminimax(
             do
             {
                 temp=normal_01_rng();
-                temp=temp*parametersigmas.at(i);
-                candidateparameters.at(i)=temp+currentparameters.at(i);
+                temp=temp*param_sigmas.at(i);
+                candidate_params.at(i)=temp+current_params.at(i);
             }
-            while(candidateparameters.at(i)>=upperranges.at(i) || candidateparameters.at(i)<=lowerranges.at(i));
+            while(candidate_params.at(i)>=upper_ranges.at(i) || candidate_params.at(i)<=lower_ranges.at(i));
         }
         
         i = stagetochange * 2 + 1;
         do
         {
             temp = normal_01_rng();
-            temp = temp * parametersigmas.at(i);
-            candidateparameters.at(i) = temp + currentparameters.at(i);
-            candidateparameters.at(i+1) = candidateparameters.at(i);
+            temp = temp * param_sigmas.at(i);
+            candidate_params.at(i) = temp + current_params.at(i);
+            candidate_params.at(i+1) = candidate_params.at(i);
         }
-        while((candidateparameters.at(i) >= upperranges.at(i) || candidateparameters.at(i) <= lowerranges.at(i)) || check_design_constraints(candidateparameters) == 0);
+        while((candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i)) || check_design_constraints(candidate_params) == 0);
     }
     
     else
     {
         do
         {
-            candidateparameters = currentparameters;
+            candidate_params = current_params;
             
             // perturb sample size and last stage threshold:
             if (fixsamplesize == 0)
@@ -927,130 +926,130 @@ void generatecandidatestate_deltaminimax(
                 do
                 {
                     temp=normal_01_rng();
-                    temp=temp*parametersigmas.at(i);
-                    candidateparameters.at(i)=temp+currentparameters.at(i);
+                    temp=temp*param_sigmas.at(i);
+                    candidate_params.at(i)=temp+current_params.at(i);
                 }
-                while(candidateparameters.at(i)>=upperranges.at(i) || candidateparameters.at(i)<=lowerranges.at(i));
+                while(candidate_params.at(i)>=upper_ranges.at(i) || candidate_params.at(i)<=lower_ranges.at(i));
             }
             
             i = stagetochange * 2 + 1;
             do
             {
                 temp = normal_01_rng();
-                temp = temp * parametersigmas.at(i);
-                candidateparameters.at(i) = temp + currentparameters.at(i);
+                temp = temp * param_sigmas.at(i);
+                candidate_params.at(i) = temp + current_params.at(i);
             }
-            while(candidateparameters.at(i) >= upperranges.at(i) || candidateparameters.at(i) <= lowerranges.at(i));
+            while(candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i));
       
             i = stagetochange * 2 + 2;
             do
             {
                 temp=normal_01_rng();
-                temp=temp*parametersigmas.at(i);
-                candidateparameters.at(i)=temp+currentparameters.at(i);
+                temp=temp*param_sigmas.at(i);
+                candidate_params.at(i)=temp+current_params.at(i);
             }
-            while(candidateparameters.at(i) >= upperranges.at(i) || candidateparameters.at(i) <= lowerranges.at(i));
+            while(candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i));
         }
-        while(check_design_constraints(candidateparameters) == 0);
+        while(check_design_constraints(candidate_params) == 0);
     }
 
 }
 
 
-void simulatedannealing_deltaminimax(
+void simulatedannealing_delta_minimax(
         double delta0,
         double delta1,
         double sigma,
-        double requiredtypeIerror,
-        double requiredpower,
-        std::vector<double> &initialparameters,
-        std::vector<double> lowerranges,
-        std::vector<double> upperranges,
-        std::vector<double>& initialparameterssigma,
-        double initialcosttemperature,
+        double required_type_I_error,
+        double required_power,
+        std::vector<double> &initial_parameters,
+        std::vector<double> lower_ranges,
+        std::vector<double> upper_ranges,
+        std::vector<double>& initial_parameters_sigma,
+        double initial_cost_temp,
         double finalparametersigma,
-        double finalcosttemperature,
-        int numbercandidategenerationsperrestart,
+        double final_cost_temp,
+        int num_candidate_generations_per_restart,
         int minnumberrestarts,
         std::vector<double> &finalparameters,
         double *finalfunctionvalue,
-        double penaltyparameter)
+        double penalty_parameter)
 {
     size_t i;
-    std::vector<double> currentparameters = initialparameters;
+    std::vector<double> current_params = initial_parameters;
     
-    double newfunctionvalue;
+    double new_func_value;
 
-    double minimumfunctionvalue = function_value_delta_minimax(
-        initialparameters,
+    double min_func_value = function_value_delta_minimax(
+        initial_parameters,
         delta0,
         delta1,
         sigma,
-        requiredtypeIerror,
-        (1-requiredpower),
-        penaltyparameter,
+        required_type_I_error,
+        (1-required_power),
+        penalty_parameter,
         -2 // last parameter is number of restarts
     );
         
     double x;
     double numbersincereduction=0;
-    double currentfunctionvalue;
+    double current_func_value;
     double reductioninfunctionvalue;
     
-    std::vector<double> parametersigmas;
-    std::vector<double> minimumparameters = currentparameters;
-    std::vector<double> candidateparameters;
+    std::vector<double> param_sigmas;
+    std::vector<double> min_params = current_params;
+    std::vector<double> candidate_params;
 
-    parametersigmas = initialparameterssigma;
+    param_sigmas = initial_parameters_sigma;
     int numberrestarts {0};
     
     double previousrestart;
-    double candidategenerations {0};
-    double costtemperature = initialcosttemperature;
-    double rhocost = pow(finalcosttemperature/initialcosttemperature, 1.0/numbercandidategenerationsperrestart);
-    double rhosigma = pow(finalparametersigma/parametersigmas.at(0), 1.0/numbercandidategenerationsperrestart);
+    double candidate_generations {0};
+    double cost_temp = initial_cost_temp;
+    double rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+    double rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
     
     do
     {
-        generatecandidatestate_deltaminimax(
-            currentparameters,
-            candidateparameters,
-            lowerranges,
-            upperranges,
-            parametersigmas,
+        gen_candidate_state_delta_minimax(
+            current_params,
+            candidate_params,
+            lower_ranges,
+            upper_ranges,
+            param_sigmas,
             0
         );
         
-        newfunctionvalue = function_value_delta_minimax(
-            candidateparameters,
+        new_func_value = function_value_delta_minimax(
+            candidate_params,
             delta0,
             delta1,
             sigma,
-            requiredtypeIerror,
-            (1-requiredpower),
-            penaltyparameter,
+            required_type_I_error,
+            (1-required_power),
+            penalty_parameter,
             numberrestarts-minnumberrestarts
         );
             
-            for(i=0;i<parametersigmas.size();i++)
+            for(i=0;i<param_sigmas.size();i++)
             {
-                parametersigmas.at(i) *= rhosigma;
+                param_sigmas.at(i) *= rhosigma;
             }
             
             x = uniform_random_01();
             
-            candidategenerations++;
+            candidate_generations++;
             
-            if (exp(-(newfunctionvalue - currentfunctionvalue)/costtemperature) > x)
+            if (exp(-(new_func_value - current_func_value)/cost_temp) > x)
             {
-                currentfunctionvalue = newfunctionvalue;
-                costtemperature *= rhocost;
-                currentparameters = candidateparameters;
+                current_func_value = new_func_value;
+                cost_temp *= rhocost;
+                current_params = candidate_params;
                 
-                if (newfunctionvalue < minimumfunctionvalue)
+                if (new_func_value < min_func_value)
                 {
-                    minimumparameters = currentparameters;
-                    minimumfunctionvalue = newfunctionvalue;
+                    min_params = current_params;
+                    min_func_value = new_func_value;
                     numbersincereduction = 0;
                 }
                 
@@ -1067,91 +1066,91 @@ void simulatedannealing_deltaminimax(
             
             if (static_cast<int>(numbersincereduction) % 25 == 0)
             {
-                currentparameters = minimumparameters;
-                currentfunctionvalue = minimumfunctionvalue;
+                current_params = min_params;
+                current_func_value = min_func_value;
             }
             
-            if(candidategenerations >= numbercandidategenerationsperrestart)
+            if(candidate_generations >= num_candidate_generations_per_restart)
             {
                 //reset temperature
-                currentparameters = minimumparameters;
-                currentfunctionvalue = minimumfunctionvalue;
-                costtemperature = initialcosttemperature;
-                rhocost = pow(finalcosttemperature/initialcosttemperature, 1.0/numbercandidategenerationsperrestart);
-                parametersigmas = initialparameterssigma;
-                rhosigma = pow(finalparametersigma/parametersigmas.at(0), 1.0/numbercandidategenerationsperrestart);
+                current_params = min_params;
+                current_func_value = min_func_value;
+                cost_temp = initial_cost_temp;
+                rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+                param_sigmas = initial_parameters_sigma;
+                rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
                 
-                candidategenerations = 0;
+                candidate_generations = 0;
                 numberrestarts++;
                 
-                std::cout << "Restart " << numberrestarts << ", function value = " << minimumfunctionvalue << "\n";
-                reductioninfunctionvalue = previousrestart - minimumfunctionvalue;
-                previousrestart = minimumfunctionvalue;
+                std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
+                reductioninfunctionvalue = previousrestart - min_func_value;
+                previousrestart = min_func_value;
             }
         }
         while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
         
-        minimumparameters.at(0) = floor(minimumparameters.at(0));
-        minimumfunctionvalue = function_value_delta_minimax(
-            minimumparameters,
+        min_params.at(0) = floor(min_params.at(0));
+        min_func_value = function_value_delta_minimax(
+            min_params,
             delta0,
             delta1,
             sigma,
-            requiredtypeIerror,
-            (1-requiredpower),
-            penaltyparameter,
+            required_type_I_error,
+            (1-required_power),
+            penalty_parameter,
             1
         );
 
-        currentfunctionvalue=minimumfunctionvalue;
-        currentparameters=minimumparameters;
+        current_func_value=min_func_value;
+        current_params=min_params;
         
         // repeat, but fixing samplesize
-        candidategenerations = 0;
+        candidate_generations = 0;
         numberrestarts -= 4;
         
         do
         {
-            generatecandidatestate_deltaminimax(
-                currentparameters,
-                candidateparameters,
-                lowerranges,
-                upperranges,
-                parametersigmas,
+            gen_candidate_state_delta_minimax(
+                current_params,
+                candidate_params,
+                lower_ranges,
+                upper_ranges,
+                param_sigmas,
                 1
             );
                 
-            newfunctionvalue = function_value_delta_minimax(
-                candidateparameters,
+            new_func_value = function_value_delta_minimax(
+                candidate_params,
                 delta0,
                 delta1,
                 sigma,
-                requiredtypeIerror,
-                (1-requiredpower),
-                penaltyparameter,
+                required_type_I_error,
+                (1-required_power),
+                penalty_parameter,
                 1
             );
             
-            // cout<<minimumfunctionvalue<<" "<<newfunctionvalue<<"\n";
-            for (i = 0; i < parametersigmas.size(); i++)
+            // cout<<min_func_value<<" "<<new_func_value<<"\n";
+            for (i = 0; i < param_sigmas.size(); i++)
             {
-                parametersigmas.at(i) *= rhosigma;
+                param_sigmas.at(i) *= rhosigma;
             }
             
             x = uniform_random_01();
             
-            candidategenerations++;
+            candidate_generations++;
             
-            if (exp(-(newfunctionvalue-currentfunctionvalue)/costtemperature) > x)
+            if (exp(-(new_func_value-current_func_value)/cost_temp) > x)
             {
-                currentfunctionvalue = newfunctionvalue;
-                costtemperature *= rhocost;
-                currentparameters = candidateparameters;
+                current_func_value = new_func_value;
+                cost_temp *= rhocost;
+                current_params = candidate_params;
                 
-                if (newfunctionvalue < minimumfunctionvalue)
+                if (new_func_value < min_func_value)
                 {
-                    minimumparameters = currentparameters;
-                    minimumfunctionvalue = newfunctionvalue;
+                    min_params = current_params;
+                    min_func_value = new_func_value;
                     numbersincereduction = 0;
                 }
                 
@@ -1168,46 +1167,46 @@ void simulatedannealing_deltaminimax(
             
             if (static_cast<int>(numbersincereduction) % 10 == 0)
             {
-                currentparameters = minimumparameters;
-                currentfunctionvalue = minimumfunctionvalue;
+                current_params = min_params;
+                current_func_value = min_func_value;
             }
             
-            if (candidategenerations >= numbercandidategenerationsperrestart)
+            if (candidate_generations >= num_candidate_generations_per_restart)
             {
                 //reset temperature
-                currentparameters = minimumparameters;
-                currentfunctionvalue = minimumfunctionvalue;
-                costtemperature = initialcosttemperature;
+                current_params = min_params;
+                current_func_value = min_func_value;
+                cost_temp = initial_cost_temp;
                 
-                rhocost = pow(finalcosttemperature/initialcosttemperature, 1.0/numbercandidategenerationsperrestart);
-                parametersigmas = initialparameterssigma;
+                rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+                param_sigmas = initial_parameters_sigma;
                 
-                rhosigma = pow(finalparametersigma/parametersigmas.at(0), 1.0/numbercandidategenerationsperrestart);
-                candidategenerations = 0;
+                rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
+                candidate_generations = 0;
                 numberrestarts++;
                 
-                std::cout << "Restart " << numberrestarts << ", function value = " << minimumfunctionvalue << "\n";
-                reductioninfunctionvalue = previousrestart - minimumfunctionvalue;
+                std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
+                reductioninfunctionvalue = previousrestart - min_func_value;
                 
-                minimumfunctionvalue = function_value_delta_minimax(
-                    minimumparameters,
+                min_func_value = function_value_delta_minimax(
+                    min_params,
                     delta0,
                     delta1,
                     sigma,
-                    requiredtypeIerror,
-                    (1-requiredpower),
-                    penaltyparameter,
+                    required_type_I_error,
+                    (1-required_power),
+                    penalty_parameter,
                     numberrestarts - minnumberrestarts
                 );
                     
-                previousrestart = minimumfunctionvalue;
+                previousrestart = min_func_value;
             
             }
 
     } while (numberrestarts <= minnumberrestarts || reductioninfunctionvalue > 0);
   
-    finalparameters = minimumparameters;
-    *finalfunctionvalue = minimumfunctionvalue;
+    finalparameters = min_params;
+    *finalfunctionvalue = min_func_value;
 
 }
 
@@ -1216,16 +1215,16 @@ int main(int argc, char *argv[])
 {
     if(argc != 8)
     {
-        std::cout<<"Usage: ./finddeltaminimaxdesign <delta0> <delta1> <sigma> <typeIerror> <power> <number of stages> <outfile>\n";
+        std::cout<<"Usage: ./finddeltaminimaxdesign <delta0> <delta1> <sigma> <type_I_error> <power> <number of stages> <outfile>\n";
         return 0;
     }
     
     // pull all the values from the user input
     double delta0 = atof(argv[1]);
     double delta1 = atof(argv[2]);
-    double initialsigma = atof(argv[3]);
-    double requiredtypeIerror = atof(argv[4]);
-    double requiredpower = atof(argv[5]);
+    double initial_sigma = atof(argv[3]);
+    double required_type_I_error = atof(argv[4]);
+    double required_power = atof(argv[5]);
     int K = atoi(argv[6]);
     std::string outfilename = argv[7];
     
@@ -1242,39 +1241,39 @@ int main(int argc, char *argv[])
     std::cout << "Seed = " << seed << "\n";
     
     // standardise problem:
-    double delta = (delta1-delta0)/initialsigma;
+    double delta = (delta1-delta0)/initial_sigma;
     double sigma = 1;
 
     double singlestagesamplesize = one_stage_sample_size(
         delta,
         sigma,
-        requiredtypeIerror,
-        (1-requiredpower),
+        required_type_I_error,
+        (1-required_power),
         1
     );
     
-    double typeIerror;
+    double type_I_error;
     double power;
     double expected_sample_size_null;
     double expected_sample_size_crd;
-    double worstcasedelta;
+    double worse_case_delta;
     double expected_sample_size_dm;
     
     std::vector<double> parameters;
-    std::vector<double> currentparameters;
-    std::vector<double> candidateparameters;
-    std::vector<double> lowerranges;
-    std::vector<double> upperranges;
-    std::vector<double> parametersigmas;
-    std::vector<double> initialparametersigmas;
+    std::vector<double> current_params;
+    std::vector<double> candidate_params;
+    std::vector<double> lower_ranges;
+    std::vector<double> upper_ranges;
+    std::vector<double> param_sigmas;
+    std::vector<double> initial_param_sigmas;
     
     find_triangular_design(
         0,
         delta,
         sigma,
         K,
-        requiredtypeIerror * 49/50,
-        (1-requiredpower),
+        required_type_I_error * 49/50,
+        (1-required_power),
         parameters
     );
     
@@ -1284,38 +1283,38 @@ int main(int argc, char *argv[])
         0,
         delta,
         sigma,
-        &typeIerror,
+        &type_I_error,
         &power,
         &expected_sample_size_null,
         &expected_sample_size_crd,
-        &worstcasedelta,
+        &worse_case_delta,
         &expected_sample_size_dm,
         1
     );
     
     // set lower ranges for parameters in simulated annealing
-    lowerranges.push_back(2);
-    upperranges.push_back(singlestagesamplesize);
+    lower_ranges.push_back(2);
+    upper_ranges.push_back(singlestagesamplesize);
     
-    initialparametersigmas.push_back(singlestagesamplesize/5);
+    initial_param_sigmas.push_back(singlestagesamplesize/5);
     for (i = 0; i < K; i++)
     {
-        lowerranges.push_back(-4);
-        upperranges.push_back(4);
-        lowerranges.push_back(-4);
-        upperranges.push_back(4);
+        lower_ranges.push_back(-4);
+        upper_ranges.push_back(4);
+        lower_ranges.push_back(-4);
+        upper_ranges.push_back(4);
         
-        initialparametersigmas.push_back(3);
-        initialparametersigmas.push_back(3);
+        initial_param_sigmas.push_back(3);
+        initial_param_sigmas.push_back(3);
     }
     
-    std::vector<double> initialparameters = parameters;
+    std::vector<double> initial_parameters = parameters;
     std::vector<double> finalparameters;
     
     double finalfunctionvalue;
     
     // DEBUG
-    for (auto num : initialparameters)
+    for (auto num : initial_parameters)
         std::cout << num << " ";
 
     // DEBUG
@@ -1326,16 +1325,16 @@ int main(int argc, char *argv[])
     // non-integer, searching over the sample size and stopping boundaries.
     // After, the sample size is rounded to the nearest integer, and the 
     // stopping boundaries only are searched over.
-    simulatedannealing_deltaminimax(
+    simulatedannealing_delta_minimax(
         0,
         delta,
         sigma,
-        requiredtypeIerror,
-        requiredpower,
-        initialparameters,
-        lowerranges,
-        upperranges,
-        initialparametersigmas,
+        required_type_I_error,
+        required_power,
+        initial_parameters,
+        lower_ranges,
+        upper_ranges,
+        initial_param_sigmas,
         100,
         0.005,
         0.005,
@@ -1351,11 +1350,11 @@ int main(int argc, char *argv[])
         0,
         delta,
         sigma,
-        &typeIerror,
+        &type_I_error,
         &power,
         &expected_sample_size_null,
         &expected_sample_size_crd,
-        &worstcasedelta,
+        &worse_case_delta,
         &expected_sample_size_dm,
         1
     );
@@ -1364,8 +1363,8 @@ int main(int argc, char *argv[])
     std::ofstream outfile;
     outfile.open(outfilename.c_str(), std::ios_base::app);
     
-    outfile << requiredtypeIerror << " " << requiredpower << " " << K 
-            << " " << seed << " " << typeIerror << " " << power << " " 
+    outfile << required_type_I_error << " " << required_power << " " << K 
+            << " " << seed << " " << type_I_error << " " << power << " " 
             << expected_sample_size_null << " " << expected_sample_size_crd
             << " " << expected_sample_size_dm << " ";
             
