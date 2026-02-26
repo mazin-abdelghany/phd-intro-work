@@ -1072,10 +1072,14 @@ void simulatedannealing_delta_minimax(
                 param_sigmas.at(i) *= rhosigma;
             }
             
-            x = uniform_random_01();
+            
             
             candidate_generations++;
             
+            // move from the current state with the following probability
+            // e^(f'(x) - f(x) / temp) if it is greater than a random uniform
+            // variable. this is the crux of the simulated annealing step
+            x = uniform_random_01();
             if (exp(-(new_func_value - current_func_value)/cost_temp) > x)
             {
                 current_func_value = new_func_value;
