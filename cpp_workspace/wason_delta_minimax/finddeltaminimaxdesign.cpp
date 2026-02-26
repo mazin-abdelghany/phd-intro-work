@@ -1067,72 +1067,101 @@ void simulatedannealing_delta_minimax(
             numberrestarts-minnumberrestarts
         );
             
-            for(i=0;i<param_sigmas.size();i++)
+        for(i=0;i<param_sigmas.size();i++)
+        {
+            param_sigmas.at(i) *= rhosigma;
+        }
+        
+        
+        
+        candidate_generations++;
+        
+        // move from the current state with the following probability
+        // e^(f'(x) - f(x) / temp) if it is greater than a random uniform
+        // variable. this is the crux of the simulated annealing step
+        x = uniform_random_01();
+        if (exp(-(new_func_value - current_func_value)/cost_temp) > x)
+        {
+            current_func_value = new_func_value;
+            cost_temp *= rhocost;
+            current_params = candidate_params;
+            
+            if (new_func_value < min_func_value)
             {
-                param_sigmas.at(i) *= rhosigma;
-            }
-            
-            
-            
-            candidate_generations++;
-            
-            // move from the current state with the following probability
-            // e^(f'(x) - f(x) / temp) if it is greater than a random uniform
-            // variable. this is the crux of the simulated annealing step
-            x = uniform_random_01();
-            if (exp(-(new_func_value - current_func_value)/cost_temp) > x)
-            {
-                current_func_value = new_func_value;
-                cost_temp *= rhocost;
-                current_params = candidate_params;
-                
-                if (new_func_value < min_func_value)
-                {
-                    min_params = current_params;
-                    min_func_value = new_func_value;
-                    numbersincereduction = 0;
-                }
-                
-                else
-                {
-                    numbersincereduction++;
-                }
+                min_params = current_params;
+                min_func_value = new_func_value;
+                numbersincereduction = 0;
             }
             
             else
             {
                 numbersincereduction++;
             }
-            
-            if (static_cast<int>(numbersincereduction) % 25 == 0)
-            {
-                current_params = min_params;
-                current_func_value = min_func_value;
-            }
-            
-            if(candidate_generations >= num_candidate_generations_per_restart)
-            {
-                //reset temperature
-                current_params = min_params;
-                current_func_value = min_func_value;
-                cost_temp = initial_cost_temp;
-                rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
-                param_sigmas = initial_parameters_sigma;
-                rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
-                
-                candidate_generations = 0;
-                numberrestarts++;
-                
-                std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
-                reductioninfunctionvalue = previousrestart - min_func_value;
-                previousrestart = min_func_value;
-            }
         }
-        while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
         
-        min_params.at(0) = floor(min_params.at(0));
-        min_func_value = function_value_delta_minimax(
-            min_params,
+        else
+        {
+            numbersincereduction++;
+        }
+        
+        if (static_cast<int>(numbersincereduction) % 25 == 0)
+        {
+            current_params = min_params;
+            current_func_value = min_func_value;
+        }
+        
+        if(candidate_generations >= num_candidate_generations_per_restart)
+        {
+            //reset temperature
+            current_params = min_params;
+            current_func_value = min_func_value;
+            cost_temp = initial_cost_temp;
+            rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+            param_sigmas = initial_parameters_sigma;
+            rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
+            
+            candidate_generations = 0;
+            numberrestarts++;
+            
+            std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
+            reductioninfunctionvalue = previousrestart - min_func_value;
+            previousrestart = min_func_value;
+        }
+    }
+    while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
+        
+    min_params.at(0) = floor(min_params.at(0));
+    min_func_value = function_value_delta_minimax(
+        min_params,
+        delta0,
+        delta1,
+        sigma,
+        required_type_I_error,
+        (1-required_power),
+        penalty_parameter,
+        1
+    );
+
+    current_func_value=min_func_value;
+    current_params=min_params;
+    
+    // repeat, but fixing samplesize
+    candidate_generations = 0;
+    numberrestarts -= 4;
+    
+    do
+    {
+        gen_candidate_state_delta_minimax(
+            current_params,
+            candidate_params,
+            lower_ranges,
+            upper_ranges,
+            param_sigmas,
+            1
+        );
+            
+        new_func_value = function_value_delta_minimax(
+            candidate_params,
             delta0,
             delta1,
             sigma,
@@ -1141,107 +1170,78 @@ void simulatedannealing_delta_minimax(
             penalty_parameter,
             1
         );
-
-        current_func_value=min_func_value;
-        current_params=min_params;
         
-        // repeat, but fixing samplesize
-        candidate_generations = 0;
-        numberrestarts -= 4;
-        
-        do
+        // cout<<min_func_value<<" "<<new_func_value<<"\n";
+        for (i = 0; i < param_sigmas.size(); i++)
         {
-            gen_candidate_state_delta_minimax(
-                current_params,
-                candidate_params,
-                lower_ranges,
-                upper_ranges,
-                param_sigmas,
-                1
-            );
-                
-            new_func_value = function_value_delta_minimax(
-                candidate_params,
-                delta0,
-                delta1,
-                sigma,
-                required_type_I_error,
-                (1-required_power),
-                penalty_parameter,
-                1
-            );
+            param_sigmas.at(i) *= rhosigma;
+        }
+        
+        x = uniform_random_01();
+        
+        candidate_generations++;
+        
+        if (exp(-(new_func_value-current_func_value)/cost_temp) > x)
+        {
+            current_func_value = new_func_value;
+            cost_temp *= rhocost;
+            current_params = candidate_params;
             
-            // cout<<min_func_value<<" "<<new_func_value<<"\n";
-            for (i = 0; i < param_sigmas.size(); i++)
+            if (new_func_value < min_func_value)
             {
-                param_sigmas.at(i) *= rhosigma;
-            }
-            
-            x = uniform_random_01();
-            
-            candidate_generations++;
-            
-            if (exp(-(new_func_value-current_func_value)/cost_temp) > x)
-            {
-                current_func_value = new_func_value;
-                cost_temp *= rhocost;
-                current_params = candidate_params;
-                
-                if (new_func_value < min_func_value)
-                {
-                    min_params = current_params;
-                    min_func_value = new_func_value;
-                    numbersincereduction = 0;
-                }
-                
-                else
-                {
-                    numbersincereduction++;
-                }
+                min_params = current_params;
+                min_func_value = new_func_value;
+                numbersincereduction = 0;
             }
             
             else
             {
                 numbersincereduction++;
             }
+        }
+        
+        else
+        {
+            numbersincereduction++;
+        }
+        
+        if (static_cast<int>(numbersincereduction) % 10 == 0)
+        {
+            current_params = min_params;
+            current_func_value = min_func_value;
+        }
+        
+        if (candidate_generations >= num_candidate_generations_per_restart)
+        {
+            //reset temperature
+            current_params = min_params;
+            current_func_value = min_func_value;
+            cost_temp = initial_cost_temp;
             
-            if (static_cast<int>(numbersincereduction) % 10 == 0)
-            {
-                current_params = min_params;
-                current_func_value = min_func_value;
-            }
+            rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+            param_sigmas = initial_parameters_sigma;
             
-            if (candidate_generations >= num_candidate_generations_per_restart)
-            {
-                //reset temperature
-                current_params = min_params;
-                current_func_value = min_func_value;
-                cost_temp = initial_cost_temp;
-                
-                rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
-                param_sigmas = initial_parameters_sigma;
-                
-                rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
-                candidate_generations = 0;
-                numberrestarts++;
-                
-                std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
-                reductioninfunctionvalue = previousrestart - min_func_value;
-                
-                min_func_value = function_value_delta_minimax(
-                    min_params,
-                    delta0,
-                    delta1,
-                    sigma,
-                    required_type_I_error,
-                    (1-required_power),
-                    penalty_parameter,
-                    numberrestarts - minnumberrestarts
-                );
-                    
-                previousrestart = min_func_value;
+            rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
+            candidate_generations = 0;
+            numberrestarts++;
             
-            }
+            std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
+            reductioninfunctionvalue = previousrestart - min_func_value;
+            
+            min_func_value = function_value_delta_minimax(
+                min_params,
+                delta0,
+                delta1,
+                sigma,
+                required_type_I_error,
+                (1-required_power),
+                penalty_parameter,
+                numberrestarts - minnumberrestarts
+            );
+                
+            previousrestart = min_func_value;
+        
+        }
 
     } while (numberrestarts <= minnumberrestarts || reductioninfunctionvalue > 0);
   
