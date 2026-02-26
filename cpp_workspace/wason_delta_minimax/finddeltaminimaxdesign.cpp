@@ -1072,8 +1072,6 @@ void simulatedannealing_delta_minimax(
             param_sigmas.at(i) *= rhosigma;
         }
         
-        
-        
         candidate_generations++;
         
         // move from the current state with the following probability
@@ -1127,8 +1125,7 @@ void simulatedannealing_delta_minimax(
             reductioninfunctionvalue = previousrestart - min_func_value;
             previousrestart = min_func_value;
         }
-    }
-    while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
+    } while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
         
     min_params.at(0) = floor(min_params.at(0));
     min_func_value = function_value_delta_minimax(
@@ -1177,10 +1174,12 @@ void simulatedannealing_delta_minimax(
             param_sigmas.at(i) *= rhosigma;
         }
         
-        x = uniform_random_01();
-        
         candidate_generations++;
         
+        // move from the current state with the following probability
+        // e^(f'(x) - f(x) / temp) if it is greater than a random uniform
+        // variable. this is the crux of the simulated annealing step 
+        x = uniform_random_01();
         if (exp(-(new_func_value-current_func_value)/cost_temp) > x)
         {
             current_func_value = new_func_value;
@@ -1251,7 +1250,7 @@ void simulatedannealing_delta_minimax(
 }
 
 // this is the high-level sequence of events in main()
-// 1. standardize to normal 0, 1
+// 1. standardize the delta difference to normal 0, 1
 // 2. get the one stage sample size
 // 3. find the triangular design parameters
 // 4. get the trial properties of the triangular design
