@@ -829,53 +829,60 @@ double function_value_delta_minimax(
 // candidate designs
 double check_design_constraints(std::vector<double>& design)
 {
-    double validdesign {1};
-    size_t numberstages = (design.size()-1)/2;
-    size_t i;
-    
-    // if the first lower bound is larger than or equal to the first upper 
-    // bound, this is an invalid design
-    if (design.at(1) >= design.at(2))
+    // we check pairs, so only need to loop half of the vector length
+    // the vector also contains the sample size at index 0, so 1 must be
+    // subtracted
+    size_t pair_checks = (design.size() - 1) / 2;
+
+    // we loop through all of the boundaries, starting with i=1 because the 
+    // first index is the sample size.
+    for (size_t i = 1; i < pair_checks; i++)
     {
-        validdesign=0;
-    }
-    
-    for (i = 1; i < numberstages - 1; i++)
-    {
-        // if each lower bound after the first is larger than or equal to the 
-        // next upper bound, this is an invalid design 
-        if (design.at(i*2+1) >= design.at(i*2+2))
+
+        // all of the below if statements check for invalid designs. as soon
+        // as an invalid design is reached, then the function can stop checking
+        // and therefore returns. this is more efficienct than checking every
+        // constraint
+
+        // all lower bounds must be less than or equal to their successor. the
+        // lower bounds are at odd indexes. to perform the check: for example
+        // ell_1 <= ell_2 is valid, thus if ell_1 > ell_2 (index 1 > index 3),
+        // this design is invalid.
+        if (design[2 * i - 1] > design[2*(i + 1) - 1])
         {
-            validdesign = 0;
+            return 0;
+        }
+
+        // all upper bounds must be greater than or equal to their predecessor.
+        // the upper bounds are at even indexes. to perform the check: for 
+        // example u_1 >= u_2 is valid, thus if u_1 < u_2 (index 2 < index 4),
+        // this design is invalid
+        if (design[2 * i] < design[2 * (i + 1)])
+        {
+            return 0;
+        }
+
+        // all upper bounds must be greater than all lower bounds unless we are
+        // at the last bound 
+        if (design[2 * i] <= design[2 * i - 1])
+        {
+            return 0;
         }
         
-        // these are odd values only (corresponding to the lower bounds)
-        // each subsequent lower bound must be equal or greater than the prior
-        // e.g., if the first lower bound is -2, then then next lower bound 
-        // must be >= -2 or else the design will be invalid
-        if (design.at(i*2+1) < design.at(i*2-1))
-        {
-            validdesign = 0;
-        }
-        
-        // these are even values only (corresponding to the upper bounds)
-        // each subsequent lower bound must be equal or greater than the prior
-        // e.g., if the first upper bound is 2, then the next upper bound
-        // must be <= 2 or else the design will be invalid
-        if (design.at(i*2+2) > design.at(i*2))
-        {
-            validdesign = 0;
-        }
+        // if we are at the last iteration
+        //if (i == pair_checks - 1)
+        //{
+        //    // the last two bounds must be equal
+        //    if (design[2 * (i + 1)] != design[(2 * (i + 1)) - 1])
+        //    {
+        //        return 0;
+        //    }
+        //
+        //}
+
     }
-   
-    // check if the last upper bound is smaller than the second to last upper
-    // bound
-    if (design.at(numberstages*2) > design.at((numberstages-1)*2))
-    {
-        validdesign=0;
-    }
-    
-    return validdesign;
+
+    return 1;    
 
 }
 
@@ -903,72 +910,99 @@ void gen_candidate_state_delta_minimax(
         std::vector<double>& param_sigmas,
         int fixsamplesize)
 {
-    // for each candidate generation, pick one stage, and perturb that stage's 
-    // parameters and the sample size per stage
-
-    size_t i{};
+    // select a random stage to modify by generating a uniform(0, 1) random
+    // variable and multiplying the number of stages by it, then take its
+    // floor
     double u{};
-    double temp{};
-
-    candidate_params = current_params;
-
     u = uniform_random_01();
-    
-    size_t numberofstages = (current_params.size() - 1)/2;
-    
-    double temp_stagetochange = floor(static_cast<double>(numberofstages) * u);
-    
+
+    // number of stages requires -1 because the sample size is in the vector
+    // divide by two because there are two boudaries per stage
+    size_t num_stages = (current_params.size() - 1)/2;
+
+    // temp variable is created to respect typing of .size() and floor()
+    double temp_stagetochange = floor(static_cast<double>(num_stages) * u);
     size_t stagetochange = static_cast<size_t>(temp_stagetochange);
     
-    if (stagetochange == (numberofstages - 1))
+    // Fill candidate parameters with all zeros to pass the first while 
+    // loop check. We set the candidate_params to the current_params to bypass
+    // needing to know the size of the vector 
+    candidate_params = current_params;
+    for (size_t i = 0; i < candidate_params.size(); i++)
     {
-        
-        candidate_params = current_params;
-        // perturb sample size and last stage threshold:
-        
-        if (fixsamplesize == 0)
-        {
-            i = 0;
-            do
-            {
-                temp=normal_01_rng();
-                temp=temp*param_sigmas.at(i);
-                candidate_params.at(i)=temp+current_params.at(i);
-            }
-            while(candidate_params.at(i)>=upper_ranges.at(i) || candidate_params.at(i)<=lower_ranges.at(i));
-        }
-        
-        i = stagetochange * 2 + 1;
-        do
-        {
-            temp = normal_01_rng();
-            temp = temp * param_sigmas.at(i);
-            candidate_params.at(i) = temp + current_params.at(i);
-            candidate_params.at(i+1) = candidate_params.at(i);
-        }
-        while((candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i)) || check_design_constraints(candidate_params) == 0);
+        candidate_params.at(i) = 0;
     }
-    
-    else
+
+    // start generating candidate design
+    // run the loop while the design is not valid, exit the loop once a valid
+    // design has been generated
+    while (check_design_constraints(candidate_params) == 0)
     {
-        do
+        double temp{};
+        size_t i{};
+
+        // reset the candidates to the current (initially this is the 
+        // triangular design)
+        candidate_params = current_params;
+
+        // check if we are modifying the last stage. If so, then the pair of
+        // bounds will be the same
+        if (stagetochange == num_stages - 1)
         {
-            candidate_params = current_params;
-            
-            // perturb sample size and last stage threshold:
+
             if (fixsamplesize == 0)
             {
-                i = 0;
+
+                // do-while is used here because we need to perturb at least 
+                // once prior to check the conditions
                 do
                 {
-                    temp=normal_01_rng();
-                    temp=temp*param_sigmas.at(i);
-                    candidate_params.at(i)=temp+current_params.at(i);
+                    // generate a normal(0, 1) random variable, multiply it by
+                    // the sigma and then add this random noise to the bound
+                    temp = normal_01_rng();
+                    temp = temp * param_sigmas.at(0);
+                    candidate_params.at(0) = temp + current_params.at(0);
                 }
-                while(candidate_params.at(i)>=upper_ranges.at(i) || candidate_params.at(i)<=lower_ranges.at(i));
+                // make sure we remain within the box defined by upper_ and
+                // lower_ranges
+                while(candidate_params.at(0)>=upper_ranges.at(0) || candidate_params.at(0)<=lower_ranges.at(0));
+                
             }
             
             i = stagetochange * 2 + 1;
+
+            // same pattern as above
+            do
+            {
+                temp = normal_01_rng();
+                temp = temp * param_sigmas.at(i);
+                candidate_params.at(i) = temp + current_params.at(i);
+                candidate_params.at(i+1) = candidate_params.at(i);
+            }
+            while (candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i));
+            
+        }
+
+        // if we are not changing the last stage, start here.
+        else
+        {
+            if (fixsamplesize == 0)
+            {
+       
+                // same pattern as above
+                do
+                {
+                    temp = normal_01_rng();
+                    temp = temp * param_sigmas.at(0);
+                    candidate_params.at(0) = temp+current_params.at(0);
+                }
+                while(candidate_params.at(0)>=upper_ranges.at(0) || candidate_params.at(0)<=lower_ranges.at(0));
+                
+            }
+           
+            // change the lower bound
+            i = stagetochange * 2 + 1;
+
             do
             {
                 temp = normal_01_rng();
@@ -976,17 +1010,20 @@ void gen_candidate_state_delta_minimax(
                 candidate_params.at(i) = temp + current_params.at(i);
             }
             while(candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i));
-      
+            
+            // change the upper bound
             i = stagetochange * 2 + 2;
+            
             do
             {
-                temp=normal_01_rng();
-                temp=temp*param_sigmas.at(i);
-                candidate_params.at(i)=temp+current_params.at(i);
+                temp = normal_01_rng();
+                temp = temp * param_sigmas.at(i);
+                candidate_params.at(i) = temp+current_params.at(i);
             }
             while(candidate_params.at(i) >= upper_ranges.at(i) || candidate_params.at(i) <= lower_ranges.at(i));
+            
         }
-        while(check_design_constraints(candidate_params) == 0);
+
     }
 
 }
@@ -1034,7 +1071,7 @@ void simulatedannealing_delta_minimax(
     
     std::vector<double> param_sigmas;
     std::vector<double> min_params = current_params;
-    std::vector<double> candidate_params;
+    std::vector<double> candidate_params {};
 
     param_sigmas = initial_parameters_sigma;
     int numberrestarts {0};
