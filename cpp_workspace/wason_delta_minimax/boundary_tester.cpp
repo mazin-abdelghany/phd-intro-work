@@ -119,12 +119,18 @@ int checkBounds(const std::vector<double>& bounds) {
         {
             return 0;
         }
-
-        // the last two bounds must be equal
-        if (bounds[2 * (i + 1)] != bounds[(2 * (i + 1)) - 1])
+        
+        // if we are at the last iteration
+        if (i == pair_checks - 1)
         {
-            return 0;
+            // the last two bounds must be equal
+            if (bounds[2 * (i + 1)] != bounds[(2 * (i + 1)) - 1])
+            {
+                return 0;
+            }
+
         }
+
     }
 
     return 1;    
@@ -133,8 +139,12 @@ int checkBounds(const std::vector<double>& bounds) {
 
 int main()
 {
-                                            //  l1           u1        l2       u2       l3        u3
-    std::vector<double> parameters = { 61.1935, 3.13269e-16, 2.13029, 1.12976, 1.88293, -2.37106, -2.37106  };
+    // test parameters
+    // { 61.1935, 3.13269e-16, 2.13029, 1.12976, 1.88293, -2.37106, -2.37106  }
+    // {93, 0, 2.13, 1.129, 1.882, 0.3895, 0.3895}
+    // {65, 3.13269e-16, 2.13029, 1.12976, 1.88293, 1.84489, 1.84489}
+                                        //l1   u1   l2     u2   l3        u3
+    std::vector<double> parameters = {65, 3.13269e-16, 2.13029, 1.12976, 1.88293, 1.84489, 1.84489};
     std::cout << check_design_constraints(parameters);
     std::cout << "\n\n";
     std::cout << checkBounds(parameters);
