@@ -1043,16 +1043,50 @@ void simulatedannealing_delta_minimax(
         double finalparametersigma,
         double final_cost_temp,
         int num_candidate_generations_per_restart,
-        int minnumberrestarts,
+        int min_n_restarts,
         std::vector<double> &finalparameters,
         double *finalfunctionvalue,
         double penalty_parameter)
 {
-    size_t i;
+    /////////////
+    // VECTORS //
+    // parameter manipulations
     std::vector<double> current_params = initial_parameters;
-    
-    double new_func_value;
+    std::vector<double> min_params = current_params;
 
+    // search space will be reduced by reducing the param_sigma vector with
+    // each design generation loop
+    std::vector<double> param_sigmas;
+    param_sigmas = initial_parameters_sigma;
+    
+    std::vector<double> candidate_params {};
+    // END VECTORS //
+    ////////////////
+    
+    //////////////
+    // COUNTERS //
+    // counts for the number of restarts and the number of generated study
+    // design candidates. The maximum number of assessments that can occur,
+    // crudely, is n_restarts * n_generated_candidates
+    int n_restarts {0};
+    double n_generated_candidates {0};
+    double n_loops_since_last_func_improvement {0};
+    int reduction_count {0};
+    // END COUNTERS //
+    //////////////////
+
+    /////////////////////////
+    // SIMULATED ANNEALING //
+    // simulated annealing and search space parameters
+    double cost_temp = initial_cost_temp;
+    double rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+    double rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
+    // END SIMULATED ANNEALING //
+    /////////////////////////////
+
+    //////////////////////////////////////   
+    // OBJECTIVE FUNCTION VALUE HOLDERS //
+    // calculate the first minimum functinon value
     double min_func_value = function_value_delta_minimax(
         initial_parameters,
         delta0,
@@ -1063,34 +1097,42 @@ void simulatedannealing_delta_minimax(
         penalty_parameter,
         -2 // last parameter is number of restarts
     );
-        
-    double x;
-    double numbersincereduction=0;
-    double current_func_value;
-    double reductioninfunctionvalue;
-    
-    std::vector<double> param_sigmas;
-    std::vector<double> min_params = current_params;
-    std::vector<double> candidate_params {};
 
-    param_sigmas = initial_parameters_sigma;
-    int numberrestarts {0};
+    // holds the new objective function value after a new design candidate is
+    // generated
+    double new_func_value {};
+
+    // hold the current working function value (i.e., the objective function
+    // value from the last loop)
+    double current_func_value {};
+
+    // at each restart (i.e., after n_candidate_generations), the total 
+    // magnitude by which the function value has been reduced is saved using
+    // these two variables
+    double reduction_in_func_value {};
+    double min_func_value_at_last_restart {};
+    // END OBJECTIVE FUNCTION VALUE HOLDERS //
+    //////////////////////////////////////////
+
+    // to hold the uniform(0, 1) random variable as part of the probabilistic
+    // assessment for the simulated annealing move
+    double x {};
+
+    std::cout << "######################\n"
+              << "First loop starting...\n"
+              << "######################\n\n";
     
-    double previousrestart;
-    double candidate_generations {0};
-    double cost_temp = initial_cost_temp;
-    double rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
-    double rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
-    
-    do
+    while (n_restarts <= min_n_restarts || reduction_in_func_value < -0.005)
     {
+
+        
         gen_candidate_state_delta_minimax(
             current_params,
             candidate_params,
             lower_ranges,
             upper_ranges,
             param_sigmas,
-            0
+            0 // allow for sample size to change
         );
         
         new_func_value = function_value_delta_minimax(
@@ -1101,15 +1143,15 @@ void simulatedannealing_delta_minimax(
             required_type_I_error,
             (1-required_power),
             penalty_parameter,
-            numberrestarts-minnumberrestarts
+            n_restarts - min_n_restarts
         );
             
-        for(i=0;i<param_sigmas.size();i++)
+        for (size_t i = 0; i < param_sigmas.size(); i++)
         {
             param_sigmas.at(i) *= rhosigma;
         }
         
-        candidate_generations++;
+        n_generated_candidates++;
         
         // move from the current state with the following probability
         // e^(f'(x) - f(x) / temp) if it is greater than a random uniform
@@ -1118,51 +1160,68 @@ void simulatedannealing_delta_minimax(
         if (exp(-(new_func_value - current_func_value)/cost_temp) > x)
         {
             current_func_value = new_func_value;
-            cost_temp *= rhocost;
+            cost_temp *= rhocost; // reduce the temperature
             current_params = candidate_params;
             
+            // save the design if it is a new minimum
             if (new_func_value < min_func_value)
             {
                 min_params = current_params;
                 min_func_value = new_func_value;
-                numbersincereduction = 0;
+                n_loops_since_last_func_improvement = 0;
             }
             
             else
             {
-                numbersincereduction++;
+                n_loops_since_last_func_improvement++;
             }
         }
         
         else
         {
-            numbersincereduction++;
+            n_loops_since_last_func_improvement++;
         }
         
-        if (static_cast<int>(numbersincereduction) % 25 == 0)
+        // if the design has not been reduced in the last 25 attempts, reset
+        // the current parameters back to the minimum and try again from there
+        if (static_cast<int>(n_loops_since_last_func_improvement) % 25 == 0)
         {
             current_params = min_params;
             current_func_value = min_func_value;
         }
         
-        if(candidate_generations >= num_candidate_generations_per_restart)
+        // if num_candidate_generations_per_restart is 1000, for example,
+        // n_restarts is incremented every 1000 candidate generations. 
+        // Therefore, unless the function reduction is < 0.005, the loop will
+        // run for (n_restarts * num_candidate_generations_per_restart) times
+        if (n_generated_candidates >= num_candidate_generations_per_restart)
         {
-            //reset temperature
+            // set the current parameters to the minimum found so far
             current_params = min_params;
             current_func_value = min_func_value;
+            
+            // reset the temperature and search space parameters back to 
+            // initial values
             cost_temp = initial_cost_temp;
-            rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
             param_sigmas = initial_parameters_sigma;
-            rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
             
-            candidate_generations = 0;
-            numberrestarts++;
+            // reset the number of generated study design candidates to 0
+            n_generated_candidates = 0;
+
+            n_restarts++;
+            std::cout << "Restart " << n_restarts 
+                      << ", current minimum objective function value = " 
+                      << min_func_value << "\n";
             
-            std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
-            reductioninfunctionvalue = previousrestart - min_func_value;
-            previousrestart = min_func_value;
+            // calculate the decrease in the objective function value
+            reduction_in_func_value = min_func_value - min_func_value_at_last_restart;
+            std::cout << "Current minumum minus last minimum = " << reduction_in_func_value << "\n";
+            std::cout << "Negative value means reduction in objective function\n\n";
+
+            // reset the restart minimum function value
+            min_func_value_at_last_restart = min_func_value;
         }
-    } while(numberrestarts<=minnumberrestarts || reductioninfunctionvalue>0.005);
+    } 
         
     min_params.at(0) = floor(min_params.at(0));
     min_func_value = function_value_delta_minimax(
@@ -1180,10 +1239,16 @@ void simulatedannealing_delta_minimax(
     current_params=min_params;
     
     // repeat, but fixing samplesize
-    candidate_generations = 0;
-    numberrestarts -= 4;
+    n_generated_candidates = 0;
+    n_restarts -= 4;
+
+    std::cout << "######################\n"
+              << "Second loop starting...\n"
+              << "######################\n\n";
+
+    std::cout << "Searching with a fixed, integer sample size...\n";
     
-    do
+    while (n_restarts <= min_n_restarts || reduction_in_func_value < 0 || reduction_count < 2)
     {
         gen_candidate_state_delta_minimax(
             current_params,
@@ -1191,7 +1256,7 @@ void simulatedannealing_delta_minimax(
             lower_ranges,
             upper_ranges,
             param_sigmas,
-            1
+            1 // fix sample size
         );
             
         new_func_value = function_value_delta_minimax(
@@ -1205,86 +1270,99 @@ void simulatedannealing_delta_minimax(
             1
         );
         
-        // cout<<min_func_value<<" "<<new_func_value<<"\n";
-        for (i = 0; i < param_sigmas.size(); i++)
+        for (size_t i = 0; i < param_sigmas.size(); i++)
         {
             param_sigmas.at(i) *= rhosigma;
         }
         
-        candidate_generations++;
+        n_generated_candidates++;
         
         // move from the current state with the following probability
         // e^(f'(x) - f(x) / temp) if it is greater than a random uniform
         // variable. this is the crux of the simulated annealing step 
         x = uniform_random_01();
-        if (exp(-(new_func_value-current_func_value)/cost_temp) > x)
+        if (exp(-(new_func_value - current_func_value)/cost_temp) > x)
         {
             current_func_value = new_func_value;
-            cost_temp *= rhocost;
+            cost_temp *= rhocost; // reduce the temperature
             current_params = candidate_params;
             
+            // save the design if it is a new minimum
             if (new_func_value < min_func_value)
             {
                 min_params = current_params;
                 min_func_value = new_func_value;
-                numbersincereduction = 0;
+                n_loops_since_last_func_improvement = 0;
             }
             
             else
             {
-                numbersincereduction++;
+                n_loops_since_last_func_improvement++;
             }
         }
         
         else
         {
-            numbersincereduction++;
+            n_loops_since_last_func_improvement++;
         }
         
-        if (static_cast<int>(numbersincereduction) % 10 == 0)
+        // !!! above this is 25 attempts, now it is 10 attempts !!!
+        // if the design has not been reduced in the last 10 attempts, reset
+        // the current parameters back to the minimum and try again from there
+        if (static_cast<int>(n_loops_since_last_func_improvement) % 10 == 0)
         {
             current_params = min_params;
             current_func_value = min_func_value;
         }
         
-        if (candidate_generations >= num_candidate_generations_per_restart)
+        if (n_generated_candidates >= num_candidate_generations_per_restart)
         {
-            //reset temperature
+            // set the current parameters to the minimum found so far
             current_params = min_params;
             current_func_value = min_func_value;
-            cost_temp = initial_cost_temp;
             
-            rhocost = pow(final_cost_temp/initial_cost_temp, 1.0/num_candidate_generations_per_restart);
+            // reset the temperature and search space parameters back to 
+            // initial values
+            cost_temp = initial_cost_temp;
             param_sigmas = initial_parameters_sigma;
             
-            rhosigma = pow(finalparametersigma/param_sigmas.at(0), 1.0/num_candidate_generations_per_restart);
-            candidate_generations = 0;
-            numberrestarts++;
+            // reset the number of generated study design candidates to 0
+            n_generated_candidates = 0;
             
-            std::cout << "Restart " << numberrestarts << ", function value = " << min_func_value << "\n";
-            reductioninfunctionvalue = previousrestart - min_func_value;
+            n_restarts++;
+            std::cout << "Restart " << n_restarts 
+                      << ", current minimum objective function value = " 
+                      << min_func_value << "\n";
             
-            min_func_value = function_value_delta_minimax(
-                min_params,
-                delta0,
-                delta1,
-                sigma,
-                required_type_I_error,
-                (1-required_power),
-                penalty_parameter,
-                numberrestarts - minnumberrestarts
-            );
-                
-            previousrestart = min_func_value;
-        
+            // calculate the decrease in the objective function value
+            reduction_in_func_value = min_func_value - min_func_value_at_last_restart;
+            std::cout << "Current minumum minus last minimum = " << reduction_in_func_value << "\n";
+            std::cout << "Negative value means reduction in objective function\n\n";
+
+            // ensure that there are two iterations in a row where the objective
+            // function is not reduced in value at all
+            if (reduction_in_func_value == 0)
+            {
+                reduction_count++;
+            }
+
+            else
+            {
+                reduction_count = 0;
+            }
+
+            // reset the restart minimum function value
+            min_func_value_at_last_restart = min_func_value;
+            
         }
 
-    } while (numberrestarts <= minnumberrestarts || reductioninfunctionvalue > 0);
+    }
   
     finalparameters = min_params;
     *finalfunctionvalue = min_func_value;
 
 }
+
 
 // this is the high-level sequence of events in main()
 // 1. standardize the delta difference to normal 0, 1
@@ -1455,7 +1533,7 @@ int main(int argc, char *argv[])
         5, // min num restarts
         finalparameters,
         &finalfunctionvalue,
-        singlestagesamplesize
+        singlestagesamplesize // this is the penalty_parameter
     );
     
     trial_properties_seq(
