@@ -289,7 +289,7 @@ def _(pd):
 
 @app.cell
 def _(mo):
-    slider = mo.ui.slider(start=1, stop=3500, label="Slider", value=3)
+    slider = mo.ui.slider(start=0, stop=3500, label="Slider", value=3)
     return (slider,)
 
 
@@ -330,8 +330,49 @@ def _(objective_function_vals, plt, slider, temperature):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Five stage design exploration
+    """)
+    return
+
+
 @app.cell
-def _():
+def _(pd):
+    five_stage = pd.read_csv(filepath_or_buffer="/tf/cpp_workspace/wason_delta_minimax/minimax_tests/5_stage_designs.txt",
+                             sep=" ", index_col=False)
+    return (five_stage,)
+
+
+@app.cell
+def _(mo):
+    slider2 = mo.ui.slider(start=0, stop=99, label="Slider", value=3)
+    return (slider2,)
+
+
+@app.cell
+def _(slider2):
+    slider2
+    return
+
+
+@app.cell
+def _(five_stage, plt, slider2):
+    # 5-stage triangular boundary 
+    # 42 -0.854333 2.563 0.302052 2.11437 0.986499 1.973 1.49508 1.92225 1.91035 1.91035 
+
+    _fig, _ax = plt.subplots()
+
+    _ax.plot([1,2,3,4,5], [2.563, 2.11437, 1.973, 1.92225, 1.91035], lw=3, color="red")
+    _ax.plot([1,2,3,4,5], [-0.854333, 0.302052, 0.986499, 1.49508, 1.91035], lw=3, color="red")
+
+    _ax.plot([1,2,3,4,5], five_stage.iloc[slider2.value, [17, 19, 21, 23, 25]])
+    _ax.plot([1,2,3,4,5], five_stage.iloc[slider2.value, [18, 20, 22, 24, 26]])
+
+    _ax.set_ylim([-2, 3.5])
+
+    _fig
     return
 
 
