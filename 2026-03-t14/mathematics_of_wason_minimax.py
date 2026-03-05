@@ -376,5 +376,22 @@ def _(five_stage, plt, slider2):
     return
 
 
+@app.cell
+def _(five_stage):
+    five_stage.std()
+    return
+
+
+@app.cell
+def _(five_stage):
+    five_stage[five_stage["expected_sample_size_dm"]==116.951]
+    return
+
+
+@app.cell
+def _():
+    return
+
+
 if __name__ == "__main__":
     app.run()

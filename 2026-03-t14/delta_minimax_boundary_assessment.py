@@ -186,7 +186,7 @@ def _(columns_to_grab, large_sample, plt, quartiles_plotting):
         _ax.scatter(position, quartiles_plotting.iloc[1, position], marker='o', color='white', s=30, zorder=3)
         _ax.vlines(position, quartiles_plotting.iloc[0, position], 
                    quartiles_plotting.iloc[2, position], color='black', linestyle='-', lw=5)
-    
+
         _ax.scatter(position, large_sample[columns_to_grab[position-1]].max(), marker="_", color='black', s=30, zorder=3)
         _ax.scatter(position, large_sample[columns_to_grab[position]].max(), marker="_", color='black', s=30, zorder=3)
 
