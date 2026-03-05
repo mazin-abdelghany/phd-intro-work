@@ -1071,7 +1071,6 @@ void simulatedannealing_delta_minimax(
     int n_restarts {0};
     double n_generated_candidates {0};
     double n_loops_since_last_func_improvement {0};
-    int reduction_count {0};
     // END COUNTERS //
     //////////////////
 
@@ -1248,7 +1247,7 @@ void simulatedannealing_delta_minimax(
 
     std::cout << "Searching with a fixed, integer sample size...\n";
     
-    while (n_restarts <= min_n_restarts || reduction_in_func_value < 0 || reduction_count < 2)
+    while (n_restarts <= min_n_restarts || reduction_in_func_value < 0)
     {
         gen_candidate_state_delta_minimax(
             current_params,
@@ -1338,18 +1337,6 @@ void simulatedannealing_delta_minimax(
             reduction_in_func_value = min_func_value - min_func_value_at_last_restart;
             std::cout << "Current minumum minus last minimum = " << reduction_in_func_value << "\n";
             std::cout << "Negative value means reduction in objective function\n\n";
-
-            // ensure that there are two iterations in a row where the objective
-            // function is not reduced in value at all
-            if (reduction_in_func_value == 0)
-            {
-                reduction_count++;
-            }
-
-            else
-            {
-                reduction_count = 0;
-            }
 
             // reset the restart minimum function value
             min_func_value_at_last_restart = min_func_value;
