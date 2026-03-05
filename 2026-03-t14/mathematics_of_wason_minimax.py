@@ -11,6 +11,22 @@ def _():
     return (mo,)
 
 
+@app.cell
+def _(mo):
+    mo._runtime.context.get_context().marimo_config["runtime"]["output_max_bytes"] = 10000000000
+    return
+
+
+@app.cell
+def _():
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
+
+    return go, np, pd, plt
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -39,6 +55,120 @@ def _(mo):
     \mathbb{I}\{(\alpha_{\texttt{found}} > \alpha\,\,\texttt{or}\,\,\beta_{\texttt{found}} > \beta) \,\,\texttt{and}\,\,(r\ge-1)\}\left(\frac{p}{10}\right) + ESS_w
     \]
     """)
+    return
+
+
+@app.function
+def objective_function(
+        alpha,
+        alpha_found,
+        beta,
+        beta_found,
+        p,
+        r,
+        ess_worst
+):
+    function_value = 0
+
+    if alpha_found > alpha:
+        function_value += p * (p * ((alpha_found-alpha)/alpha) )
+    if beta_found > beta:
+        function_value += p * (p * ((beta_found-beta)/beta) )
+    if (alpha_found > alpha or beta_found > beta) and r >= -1:
+        function_value += p/10
+
+    function_value += ess_worst
+
+    return function_value
+
+
+@app.cell
+def _(np):
+    alpha_found = np.linspace(0, 1, 200)
+    beta_found = np.copy(alpha_found)
+
+    p = 154
+    r = -2
+    return alpha_found, beta_found, p, r
+
+
+@app.cell
+def _(alpha_found):
+    len(alpha_found)
+    return
+
+
+@app.cell
+def _(alpha_found, beta_found, np):
+    objective_function_z = np.empty(shape=(len(alpha_found), len(beta_found)))
+    return (objective_function_z,)
+
+
+@app.cell
+def _(objective_function_z):
+    objective_function_z.shape
+    return
+
+
+@app.cell
+def _(alpha_found, beta_found, objective_function_z, p, r):
+    # create values when r is -2
+    for _i, alpha_val in enumerate(alpha_found):
+        for _j, beta_val in enumerate(beta_found):
+            objective_function_z[_i, _j] = objective_function(
+                alpha = 0.05,
+                alpha_found = alpha_val,
+                beta = 0.1,
+                beta_found = beta_val, 
+                p = p, 
+                r = r, 
+                ess_worst= 120
+            )
+    return
+
+
+@app.cell
+def _(alpha_found, beta_found, np):
+    objective_function_z_r1 = np.ones(shape=(len(alpha_found), len(beta_found))) * 10000
+    return (objective_function_z_r1,)
+
+
+@app.cell
+def _(alpha_found, beta_found, objective_function_z_r1, p):
+    # create values when r is 1
+    for _i, _alpha_val in enumerate(alpha_found):
+        for _j, _beta_val in enumerate(beta_found):
+            objective_function_z_r1[_i, _j] = objective_function(
+                alpha = 0.05,
+                alpha_found = _alpha_val,
+                beta = 0.1,
+                beta_found = _beta_val, 
+                p = p, 
+                r = 1, 
+                ess_worst= 120
+            )
+    return
+
+
+@app.cell
+def _(alpha_found, beta_found, np):
+    X, Y = np.meshgrid(alpha_found, beta_found)
+    return X, Y
+
+
+@app.cell
+def _(X, Y, go, objective_function_z, objective_function_z_r1):
+    fig_3d = go.Figure()
+
+    fig_3d.add_trace(go.Surface(z=objective_function_z, x=X, y=Y, name="Surface 1"))
+    fig_3d.add_trace(go.Surface(z=objective_function_z_r1, x=X, y=Y, name="Surface 2"))
+
+    fig_3d.update_scenes(
+        xaxis_title_text="alpha",
+        yaxis_title_text="beta",
+        zaxis_title_text="penalty"
+    )
+    fig_3d.show()
     return
 
 
@@ -110,13 +240,98 @@ def _(mo):
     mo.md(r"""
     After the above loop is finished,
 
-    1. The sample size is set to an integer.
-    2. The minimum objective function value, $f_{\texttt{min}}$, is recalculated with this integer sample size.
+    1. The sample size changed to an integer using `floor()`.
+    2. The minimum objective function value, $f_{\texttt{min}}$, is recalculated with this new integer sample size.
     3. $n_{\texttt{generate}}$ is reset to 0.
     4. $n_{\texttt{restarts}}$ is reduced by 4.
 
-    The loop restarts
+    The loop restarts with the sample size fixed exactly as above except that in step 6:
+    6. Every 10th run, reset $D$ to $D_{\texttt{min}}$ and reset $f$ to $f_{\texttt{min}}$
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # The path to the minimum
+    """)
+    return
+
+
+@app.cell
+def _(pd):
+    designs = pd.read_csv(filepath_or_buffer="/tf/2026-03-t14/designs.txt", sep=" ",
+                          index_col=False,
+                          names=["sample_size", "lower1", "upper1", "lower2", "upper2", "lower3", "upper3"])
+    return (designs,)
+
+
+@app.cell
+def _(designs):
+    designs
+    return
+
+
+@app.cell
+def _(pd):
+    objective_function_vals = pd.read_csv(filepath_or_buffer="/tf/2026-03-t14/objective_function_vals.txt", sep=" ",
+                                          index_col=False, names = ["obj_func_val"])
+    return (objective_function_vals,)
+
+
+@app.cell
+def _(pd):
+    temperature = pd.read_csv(filepath_or_buffer="/tf/2026-03-t14/temperature.txt", sep=" ",
+                                          index_col=False, names = ["temp"])
+    return (temperature,)
+
+
+@app.cell
+def _(mo):
+    slider = mo.ui.slider(start=1, stop=3500, label="Slider", value=3)
+    return (slider,)
+
+
+@app.cell
+def _(slider):
+    slider
+    return
+
+
+@app.cell
+def _(designs, np, objective_function_vals, plt, slider, temperature):
+    _fig, _ax = plt.subplots()
+
+    _ax.plot([1,2,3], [2.11957748, 1.87345951, 1.83560794], lw=3, color="red")
+    _ax.plot([1,2,3], [6.28553399e-16, 1.12407571e+00, 1.83560794e+00], lw=3, color="red")
+
+    _ax.plot([1,2,3], designs.iloc[slider.value, [1, 3, 5]])
+    _ax.plot([1,2,3], designs.iloc[slider.value, [2, 4, 6]])
+    _ax.text(2.3, -2, str("temp = ")+str(np.array(temperature.iloc[slider.value])))
+    _ax.text(2.3, -1.5, str("obj func = ")+str(np.array(objective_function_vals.iloc[slider.value])))
+    _ax.set_ylim([-4, 4])
+
+    _fig
+    return
+
+
+@app.cell
+def _(objective_function_vals, plt, slider, temperature):
+    _fig, _ax = plt.subplots(figsize=(15,6))
+
+    _ax.plot(objective_function_vals)
+    _ax2 = _ax.twinx()
+    _ax2.plot(temperature, color = "orange", lw=3)
+    _ax2.scatter(x = slider.value, y = temperature.iloc[slider.value], marker="o", color = "purple", s=100,
+                 zorder = 3)
+
+    _fig
+    return
+
+
+@app.cell
+def _():
     return
 
 
