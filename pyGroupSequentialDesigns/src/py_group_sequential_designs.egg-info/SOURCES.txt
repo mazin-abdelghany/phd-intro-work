@@ -2,10 +2,10 @@ LICENSE
 README.md
 pyproject.toml
 src/py_group_sequential_designs/__init__.py
-src/py_group_sequential_designs/boundaries.py
+src/py_group_sequential_designs/boundary_manipulations.py
 src/py_group_sequential_designs/feasibility_penalty.py
-src/py_group_sequential_designs/format_boundaries_after_ask.py
 src/py_group_sequential_designs/function_to_minimize.py
+src/py_group_sequential_designs/generate_boundaries.py
 src/py_group_sequential_designs/generate_gpr_input.py
 src/py_group_sequential_designs/sample_size.py
 src/py_group_sequential_designs/simulate.py
