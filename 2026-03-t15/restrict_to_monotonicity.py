@@ -1,14 +1,23 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "marimo>=0.20.2",
+#     "pyzmq>=27.1.0",
+# ]
+# ///
+
 import marimo
 
-__generated_with = "0.19.11"
-app = marimo.App(width="medium")
+__generated_with = "0.20.4"
+app = marimo.App(width="medium", auto_download=["html", "ipynb"])
 
 
 @app.cell
 def _():
     import marimo as mo
 
-    return
+    return (mo,)
+
 
 @app.cell(hide_code=True)
 def _(mo):
@@ -25,6 +34,7 @@ def _():
     import pandas as pd
     from scipy import stats
     from scipy import optimize
+    import matplotlib.pyplot as plt
 
     # imports for GP regression (Step 3)
     import gpflow
@@ -36,7 +46,7 @@ def _():
     import tensorflow as tf
     from trieste.experimental.plotting import plot_regret
 
-    return Box, GaussianProcessRegression, gpflow, np, tf, trieste
+    return Box, GaussianProcessRegression, gpflow, np, plt, stats, tf, trieste
 
 
 @app.cell
@@ -55,7 +65,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # Bayes opt defaults - two stage design
+    # Bayes opt defaults - three stage design
     """)
     return
 
@@ -63,7 +73,7 @@ def _(mo):
 @app.cell
 def _(ss):
     # some set defaults
-    num_analyses = 2
+    num_analyses = 3
     target_alpha = 0.05
     target_power = 0.9
     important_diff_delta = 1
@@ -342,6 +352,19 @@ def _(np, x1, x2, x3):
     return (design_matrix,)
 
 
+@app.cell
+def _(design_matrix, np, plt):
+    _fig, _ax = plt.subplots()
+    colors=["red","orange","purple", "green"]
+
+    for _i, _row in enumerate(design_matrix):
+        _ax.plot([1,2,3], _row[0:3], color = colors[_i])
+        _ax.plot([1,2,3], np.append(_row[3:5], _row[2]), color = colors[_i])
+
+    _fig
+    return (colors,)
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -395,7 +418,7 @@ def _(GaussianProcessRegression, gpflow):
 def _(gpflow):
     kernel = gpflow.kernels.Matern52()
     #kernel.variance = gpflow.Parameter(value = 100, trainable = True)
-    kernel.lengthscales = gpflow.Parameter(value = [1, 1, 1, 1], trainable = True)
+    kernel.lengthscales = gpflow.Parameter(value = [1, 1, 1, 1, 1, 1], trainable = True)
 
     likelihood = gpflow.likelihoods.Gaussian()
     #likelihood.variance = gpflow.Parameter(value = 10, trainable = False)
@@ -429,11 +452,96 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ```
+    [
+     [ 1.99218512e+00, 1.99218512e+00, 1.99218512e+00, -1.99218512e+00, -1.99218512e+00, 1.99629112e+01],
+     [ 2.96112971e+00, 2.09383490e+00, 1.70960903e+00, -2.96112971e+00, -2.09383490e+00, 1.75540990e+01],
+     [ 2.11957748e+00, 1.87345951e+00, 1.83560794e+00, 6.28553399e-16, 1.12407571e+00, 2.13211873e+01]
+    ]
+    ```
+    """)
+    return
+
+
+@app.cell
+def _(np, stats):
+    _bounds = [2.11957748e+00,  1.87345951e+00,  1.83560794e+00, 6.28553399e-16,  1.12407571e+00]
+    lower = np.empty(6)
+    upper = np.empty(6)
+
+    for _i, _bound in enumerate(_bounds):
+        lower[_i] = stats.norm.ppf(q=[0.3,0.7], loc=_bound, scale=0.5)[0]
+        upper[_i] = stats.norm.ppf(q=[0.3,0.7], loc=_bound, scale=0.5)[1]
+
+    # add a single nan so it works with the plotting loops below
+    lower[5] = np.nan
+    upper[5] = np.nan
+
+    print(lower)
+    print(upper)
+    return lower, upper
+
+
+@app.cell
+def _(lower, np, plt, stats, upper):
+    _fig, _axes = plt.subplots(nrows=3, ncols=3, figsize=(12,8))
+    xx = np.linspace(start=-4, stop=4, num=200)
+
+    pocock_bounds = [ 1.99218512e+00, 1.99218512e+00, 1.99218512e+00, -1.99218512e+00, -1.99218512e+00, 1.99218512e+00]
+    of_bounds = [ 2.96112971e+00, 2.09383490e+00, 1.70960903e+00, -2.96112971e+00, -2.09383490e+00, 1.70960903e+00]
+    tri_bounds = [ 2.11957748e+00, 1.87345951e+00, 1.83560794e+00, 6.28553399e-16, 1.12407571e+00, 1.83560794e+00]
+    row_labels = ["Analysis 1", "Analysis 2", "Analysis 3"]
+    col_labels = ["Pocock", "O'Brien-Fleming", "Triangular"]
+
+    for _i in range(3):
+        for _j in range(3):
+            _axes[_i][_j].plot(xx, stats.norm.pdf(x=xx))
+
+    # plot the pocock bounds
+    for _i in range(3):
+        _axes[_i,0].axvline(x=pocock_bounds[_i], color = "green")
+        _axes[_i,0].axvline(x=pocock_bounds[_i+3], color = "green")
+
+    # plot the obrien-fleming bounds
+    for _i in range(3):
+        _axes[_i,1].axvline(x=of_bounds[_i], color = "green")
+        _axes[_i,1].axvline(x=of_bounds[_i+3], color = "green")
+
+    # plot the triangular bounds
+    for _i in range(3):
+        _axes[_i,2].axvline(x=tri_bounds[_i], color = "green")
+        _axes[_i,2].axvline(x=tri_bounds[_i+3], color = "green")
+
+    # plot possible boundaries
+    for _j in range(3):
+        for _k in range(3):
+            _axes[_k,_j].axvline(x=lower[_k], color = "orange")
+            _axes[_k,_j].axvline(x=upper[_k], color = "orange")
+            _axes[_k,_j].axvline(x=lower[_k+3], color = "purple")
+            _axes[_k,_j].axvline(x=upper[_k+3], color = "purple")
+
+    # plot the titles
+    for _ax, _col in zip(_axes[0], col_labels):
+        _ax.set_title(_col)
+    for _ax, _row in zip(_axes[:,0], row_labels):
+        _ax.set_ylabel(_row)
+
+    _fig.tight_layout()
+    _fig
+    return
+
+
 @app.cell
 def _(Box):
+    # the search space is defined assuming a normal distribution with mean at triangular bound value
+    # and standard deviation of 0.5 (essentially a prior) and the bounds contain approximate
+    # probability density of 0.4
     search_space = Box(
-        lower = [-6, -6, -6, 2], 
-        upper = [6, 6, 6, 40]
+        lower = [1.85737722,  1.61125925,  1.57340768, -0.26220026,  0.86187545, 10], 
+        upper = [2.38177774, 2.13565977, 2.0978082,  0.26220026, 1.38627597, 30]
     )
     return (search_space,)
 
@@ -484,8 +592,8 @@ def _(
     target_power,
     trieste,
 ):
-    num_repeats = 500
-    when_to_print = 50
+    num_repeats = 100
+    when_to_print = 10
 
     for _i in range(num_repeats):
         x_results = ask_tell.ask()
@@ -530,34 +638,107 @@ def _(
 
 
 @app.cell
-def _(ask_tell):
-    ask_tell.to_result()
-    return
-
-
-@app.cell
 def _(ask_tell, tf):
-    min_idx = tf.squeeze(tf.argmin(
-        ask_tell.to_result().try_get_final_dataset().observations.numpy()[3:]
-    ))
-    return (min_idx,)
+    lt_3 = tf.squeeze(ask_tell.to_result().try_get_final_dataset().observations < 0.3)
+    return (lt_3,)
 
 
 @app.cell
-def _(min_idx):
-    min_idx
+def _(lt_3, np):
+    np.where(lt_3)[0]
     return
 
 
 @app.cell
-def _(ask_tell, min_idx):
-    ask_tell.to_result().try_get_final_dataset().observations[3:][min_idx]
+def _(fmt_bd, np):
+    fmt_bd.format_boundaries_after_ask(n_analyses=3, result=np.array([[ 2.11957748e+00,  1.87345951e+00,  1.83560794e+00,
+             6.28553399e-16,  1.12407571e+00,  2.13211873e+01]]))
     return
 
 
 @app.cell
-def _(ask_tell, min_idx):
-    ask_tell.to_result().try_get_final_dataset().query_points[3:][min_idx].numpy()
+def _(fmt_bd, np):
+    # create a function that checks the monotonicity of bounds
+    def check_monotonicity(n_analyses, bounds):
+
+        # first format the boundaries from the ask_tell interface
+        # this takes bounds such as [upper1, upper2, upper3, lower1, lower2, n]
+        # and outputs a list of lists [[upper1, upper2, upper3], [lower1, lower2, lower3], n]
+        fmt_bounds = fmt_bd.format_boundaries_after_ask(
+            n_analyses=n_analyses, 
+            result=np.array([bounds])
+        )
+
+        # take the first two indices from the list, these are the upper and lower bounds
+        upper = fmt_bounds[0]
+        lower = fmt_bounds[1]
+
+        # loop through the bounds
+        for _i in range(len(upper)-1):
+
+            # if we are not at the last stage
+            if (_i != len(upper)-1):
+                # a design is invalid if the upper bounds are not monotonicly decreasing
+                if upper[_i] < upper[_i+1]: return False
+                # a design is invalid if the lower bounds are not monotonicly increasing
+                if lower[_i] > lower[_i+1]: return False
+                # a design is invalid if the upper bound is not greater than the lower bound
+                if upper[_i] <= lower[_i]: return False
+
+            # at the last stage, design is invalid if the upper bound is to the lower bound
+            # as this is a one-sided statistical test
+            else:
+                if upper[_i] != lower[_i]: return False
+
+
+        return True
+
+    return (check_monotonicity,)
+
+
+@app.cell
+def _(ask_tell, check_monotonicity):
+    monotonic = []
+    for _bounds in ask_tell.to_result().try_get_final_dataset().query_points:
+        monotonic.append(check_monotonicity(n_analyses=3, bounds=_bounds))
+    return (monotonic,)
+
+
+@app.cell
+def _(lt_3, monotonic, np):
+    idx = np.where(np.array(monotonic) & lt_3)
+    return (idx,)
+
+
+@app.cell
+def _(ask_tell, idx, np):
+    best_monotonic_bounds = np.array(ask_tell.to_result().try_get_final_dataset().query_points)[idx]
+    return (best_monotonic_bounds,)
+
+
+@app.cell
+def _(ask_tell, idx, np):
+    np.array(ask_tell.to_result().try_get_final_dataset().observations)[idx]
+    return
+
+
+@app.cell
+def _(best_monotonic_bounds, colors, np, plt):
+    _fig, _ax = plt.subplots()
+
+    for _i, _bounds in enumerate(best_monotonic_bounds[1:4]):
+        _ax.plot([1,2,3], _bounds[0:3], color = colors[_i])
+        _ax.plot([1,2,3], np.append(_bounds[3:5], _bounds[2]), color = colors[_i])
+
+    _ax.plot([1,2,3], best_monotonic_bounds[0][0:3], linewidth=3, color="blue")
+    _ax.plot([1,2,3], np.append(best_monotonic_bounds[0][3:5], best_monotonic_bounds[0][2]), linewidth=3, color="blue")
+
+    _fig
+    return
+
+
+@app.cell
+def _():
     return
 
 
@@ -573,15 +754,6 @@ def _(mo):
 def _(ask_tell, gpflow):
     gpflow.utilities.print_summary(ask_tell.model.model)
     return
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## A few example runs
-    """)
-    return
-
 
 
 if __name__ == "__main__":
