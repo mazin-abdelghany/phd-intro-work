@@ -98,8 +98,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 # gpflow print_summary utility error
 RUN uv pip install pandas numpy matplotlib \
   jupyter jupyter_http_over_ws \
-  tensorflow gpflow setuptools==80.10.2 \
-  ipython==8.38.0 \
+  # we have to specify each of these rather than `tensorflow` only
+  # because gpflow is relying on older tfp that causes the import
+  # error in this github issue: https://github.com/tensorflow/probability/issues/1774
+  tfp-nightly tf-nightly tf-keras-nightly \
+  gpflow setuptools==80.10.2 ipython==8.38.0 \
   trieste trieste[plotting] marimo \
   rpy2 plotly
 
