@@ -592,7 +592,7 @@ def _(
     target_power,
     trieste,
 ):
-    num_repeats = 100
+    num_repeats = 200
     when_to_print = 10
 
     for _i in range(num_repeats):
@@ -708,6 +708,12 @@ def _(ask_tell, check_monotonicity):
 def _(lt_3, monotonic, np):
     idx = np.where(np.array(monotonic) & lt_3)
     return (idx,)
+
+
+@app.cell
+def _(idx):
+    idx
+    return
 
 
 @app.cell
