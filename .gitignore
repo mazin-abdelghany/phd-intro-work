@@ -15,3 +15,6 @@
 
 # ignore all Jupyter notebook checkpoints
 **/.ipynb_checkpoints
+
+# ignore the build directory of the python library
+/pyGroupSequentialDesigns/build/*
