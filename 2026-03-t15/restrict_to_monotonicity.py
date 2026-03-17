@@ -46,14 +46,24 @@ def _():
     import tensorflow as tf
     from trieste.experimental.plotting import plot_regret
 
-    return Box, GaussianProcessRegression, gpflow, np, plt, stats, tf, trieste
+    return (
+        Box,
+        GaussianProcessRegression,
+        gpflow,
+        np,
+        pd,
+        plt,
+        stats,
+        tf,
+        trieste,
+    )
 
 
 @app.cell
 def _():
-    from py_group_sequential_designs import boundaries as bd
+    from py_group_sequential_designs import generate_boundaries as bd
     from py_group_sequential_designs import feasibility_penalty as fp
-    from py_group_sequential_designs import format_boundaries_after_ask as fmt_bd
+    from py_group_sequential_designs import boundary_manipulations as fmt_bd
     from py_group_sequential_designs import function_to_minimize as fn_min
     from py_group_sequential_designs import generate_gpr_input as gen_input
     from py_group_sequential_designs import simulate as sim
@@ -149,6 +159,53 @@ def _(fn_min, fp, gen_input, np, ss):
         return (np.array([x]), np.array([[y]]))
 
     return (generate_x_y,)
+
+
+@app.cell
+def _(fmt_bd, fn_min, fp, gen_input, np, num_analyses, ss):
+    def generate_x_y_new(
+            mu,
+            upper_bounds,
+            lower_bounds,
+            n_analyses,
+            target_power,
+            target_alpha,
+            alpha_prime,
+            beta_prime,
+            n_power09):
+
+        # 2. Generate the GPR input values
+        # note that the input includes the sample size at power 0.9
+        x = gen_input.generate_gpr_input(
+            n_analyses = n_analyses,
+            upper_bounds=upper_bounds,
+            lower_bounds=lower_bounds,
+            n_patients=n_power09)
+
+        # 3. Generate maximum expected sample size and feasibility penalty
+        max_ess_new = ss.max_ess(
+            n_analyses=n_analyses,
+            upper_bounds=upper_bounds,
+            lower_bounds=lower_bounds,
+            n_patients=n_power09)
+
+        penalty = fp.smooth_penalty(
+            mu = mu,
+            power=target_power,
+            alpha=target_alpha,
+            beta_prime=beta_prime,
+            alpha_prime=alpha_prime
+        )
+
+        # 4. Calculate the function value (GPR output)
+        if fmt_bd.check_monotonicity(n_analyses=num_analyses, bounds=x) == False:
+            y = 25
+        else: 
+            y = fn_min.function_to_minimize(max_ess_val=max_ess_new/mu, penalty=penalty)
+
+        return (np.array([x]), np.array([[y]]))
+
+    return (generate_x_y_new,)
 
 
 @app.cell(hide_code=True)
@@ -353,16 +410,22 @@ def _(np, x1, x2, x3):
 
 
 @app.cell
-def _(design_matrix, np, plt):
+def _(plt):
+    # get 10 colors to use
+    colors = plt.cm.tab20.colors
+    return (colors,)
+
+
+@app.cell
+def _(colors, design_matrix, np, plt):
     _fig, _ax = plt.subplots()
-    colors=["red","orange","purple", "green"]
 
     for _i, _row in enumerate(design_matrix):
         _ax.plot([1,2,3], _row[0:3], color = colors[_i])
         _ax.plot([1,2,3], np.append(_row[3:5], _row[2]), color = colors[_i])
 
     _fig
-    return (colors,)
+    return
 
 
 @app.cell(hide_code=True)
@@ -573,7 +636,7 @@ def _(bayes_opt_model, initial_data, search_space, trieste):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Bayes opt loop
+    ## Bayes opt loop - without monotonicity penalty
     """)
     return
 
@@ -592,8 +655,8 @@ def _(
     target_power,
     trieste,
 ):
-    num_repeats = 200
-    when_to_print = 10
+    num_repeats = 700
+    when_to_print = 50
 
     for _i in range(num_repeats):
         x_results = ask_tell.ask()
@@ -634,6 +697,12 @@ def _(
 
         if (_i+1) % when_to_print == 0:
             print(f"Loop {_i+1} completed.")
+    return num_repeats, when_to_print
+
+
+@app.cell
+def _(ask_tell, plt):
+    plt.hist(ask_tell.to_result().try_get_final_dataset().observations, bins=50)
     return
 
 
@@ -657,50 +726,10 @@ def _(fmt_bd, np):
 
 
 @app.cell
-def _(fmt_bd, np):
-    # create a function that checks the monotonicity of bounds
-    def check_monotonicity(n_analyses, bounds):
-
-        # first format the boundaries from the ask_tell interface
-        # this takes bounds such as [upper1, upper2, upper3, lower1, lower2, n]
-        # and outputs a list of lists [[upper1, upper2, upper3], [lower1, lower2, lower3], n]
-        fmt_bounds = fmt_bd.format_boundaries_after_ask(
-            n_analyses=n_analyses, 
-            result=np.array([bounds])
-        )
-
-        # take the first two indices from the list, these are the upper and lower bounds
-        upper = fmt_bounds[0]
-        lower = fmt_bounds[1]
-
-        # loop through the bounds
-        for _i in range(len(upper)-1):
-
-            # if we are not at the last stage
-            if (_i != len(upper)-1):
-                # a design is invalid if the upper bounds are not monotonicly decreasing
-                if upper[_i] < upper[_i+1]: return False
-                # a design is invalid if the lower bounds are not monotonicly increasing
-                if lower[_i] > lower[_i+1]: return False
-                # a design is invalid if the upper bound is not greater than the lower bound
-                if upper[_i] <= lower[_i]: return False
-
-            # at the last stage, design is invalid if the upper bound is to the lower bound
-            # as this is a one-sided statistical test
-            else:
-                if upper[_i] != lower[_i]: return False
-
-
-        return True
-
-    return (check_monotonicity,)
-
-
-@app.cell
-def _(ask_tell, check_monotonicity):
+def _(ask_tell, fmt_bd):
     monotonic = []
     for _bounds in ask_tell.to_result().try_get_final_dataset().query_points:
-        monotonic.append(check_monotonicity(n_analyses=3, bounds=_bounds))
+        monotonic.append(fmt_bd.check_monotonicity(n_analyses=3, bounds=_bounds))
     return (monotonic,)
 
 
@@ -732,19 +761,48 @@ def _(ask_tell, idx, np):
 def _(best_monotonic_bounds, colors, np, plt):
     _fig, _ax = plt.subplots()
 
-    for _i, _bounds in enumerate(best_monotonic_bounds[1:4]):
+    for _i, _bounds in enumerate(best_monotonic_bounds[1:len(best_monotonic_bounds)]):
         _ax.plot([1,2,3], _bounds[0:3], color = colors[_i])
         _ax.plot([1,2,3], np.append(_bounds[3:5], _bounds[2]), color = colors[_i])
 
     _ax.plot([1,2,3], best_monotonic_bounds[0][0:3], linewidth=3, color="blue")
     _ax.plot([1,2,3], np.append(best_monotonic_bounds[0][3:5], best_monotonic_bounds[0][2]), linewidth=3, color="blue")
 
+    # plot the constraints
+    _ax.scatter([1,1,1,1], [1.85737722,2.38177774,-0.26220026,0.26220026], marker="_", color="black", s=50, zorder=3)
+    _ax.scatter([2,2,2,2], [1.61125925,2.13565977,0.86187545,1.38627597], marker="_", color="black", s=50, zorder=3)
+    _ax.scatter([3,3], [1.57340768,2.0978082], marker="_", color="black", s=50, zorder=3)
+
     _fig
     return
 
 
 @app.cell
-def _():
+def _(best_monotonic_bounds, mo):
+    slider = mo.ui.slider(start=1, stop=len(best_monotonic_bounds)-1, step=1)
+    return (slider,)
+
+
+@app.cell
+def _(slider):
+    slider
+    return
+
+
+@app.cell
+def _(best_monotonic_bounds, np, plt, slider):
+    _fig, _ax = plt.subplots()
+
+    _bounds = best_monotonic_bounds[slider.value]
+    _ax.plot([1,2,3], _bounds[0:3], color = "orange")
+    _ax.plot([1,2,3], np.append(_bounds[3:5], _bounds[2]), color = "orange")
+
+    _ax.plot([1,2,3], best_monotonic_bounds[0][0:3], linewidth=3, color="blue")
+    _ax.plot([1,2,3], np.append(best_monotonic_bounds[0][3:5], best_monotonic_bounds[0][2]), linewidth=3, color="blue")
+
+    _ax.set_ylim(-0.3,2.5)
+
+    _fig
     return
 
 
@@ -759,6 +817,313 @@ def _(mo):
 @app.cell
 def _(ask_tell, gpflow):
     gpflow.utilities.print_summary(ask_tell.model.model)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Bayes opt loop - with monotonicity penalty
+    """)
+    return
+
+
+@app.cell
+def _(bayes_opt_model, initial_data, search_space, trieste):
+    ask_tell1 = trieste.ask_tell_optimization.AskTellOptimizer(
+        search_space = search_space,
+        datasets = initial_data,
+        models = bayes_opt_model,
+        acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
+            optimizer = 
+              trieste.acquisition.optimizer.generate_continuous_optimizer(
+                num_optimization_runs = 5000
+            )
+        )
+    )
+    return (ask_tell1,)
+
+
+@app.cell
+def _(
+    ask_tell1,
+    assumed_variance,
+    fmt_bd,
+    generate_x_y_new,
+    important_diff_delta,
+    mu,
+    num_analyses,
+    num_repeats,
+    sim,
+    target_alpha,
+    target_power,
+    trieste,
+    when_to_print,
+):
+    for _i in range(num_repeats):
+        x_results1 = ask_tell1.ask()
+
+        new_inputs1 = fmt_bd.format_boundaries_after_ask(
+            n_analyses = num_analyses,
+            result = x_results1
+        )
+
+        new_sim_trial1 = sim.group_sequential_designs(
+            n_analyses = num_analyses,
+            upper_bounds = new_inputs1[0],
+            lower_bounds = new_inputs1[1],
+            n_patients = new_inputs1[2],
+            null_hypothesis = 0,
+            alt_hypothesis = important_diff_delta,
+            variance = assumed_variance
+        )
+
+        new_x1, new_y1 = generate_x_y_new(
+            mu = mu,
+            upper_bounds = new_inputs1[0],
+            lower_bounds= new_inputs1[1],
+            n_analyses = num_analyses,
+            target_power = target_power,
+            target_alpha = target_alpha,
+            alpha_prime = new_sim_trial1[1],
+            beta_prime = 1-new_sim_trial1[2],
+            n_power09 = new_inputs1[2]
+        )
+
+        new_data1 = trieste.data.Dataset(
+            query_points = new_x1, 
+            observations = new_y1
+        )
+
+        ask_tell1.tell(new_data=new_data1)
+
+        if (_i+1) % when_to_print == 0:
+            print(f"Loop {_i+1} completed.")
+    return
+
+
+@app.cell
+def _(ask_tell1, plt):
+    plt.hist(ask_tell1.to_result().try_get_final_dataset().observations, bins=50)
+    return
+
+
+@app.cell
+def _(ask_tell1, plt):
+    plt.figure(figsize=(12, 5))
+    plt.plot(ask_tell1.to_result().try_get_final_dataset().observations)
+    return
+
+
+@app.cell
+def _(ask_tell1, not_50, plt):
+    plt.figure(figsize=(12, 5))
+    plt.plot(ask_tell1.to_result().try_get_final_dataset().observations[not_50])
+    return
+
+
+@app.cell
+def _(ask_tell1):
+    not_50 = ask_tell1.to_result().try_get_final_dataset().observations != 25
+    return (not_50,)
+
+
+@app.cell
+def _(ask_tell1, not_50, plt):
+    plt.hist(ask_tell1.to_result().try_get_final_dataset().observations[not_50], bins=50)
+    return
+
+
+@app.cell
+def _(ask_tell1, tf):
+    lt_03 = tf.squeeze(ask_tell1.to_result().try_get_final_dataset().observations < 0.3)
+    return (lt_03,)
+
+
+@app.cell
+def _(lt_03, np):
+    np.where(lt_03)[0]
+    return
+
+
+@app.cell
+def _(ask_tell1, fmt_bd):
+    monotonic1 = []
+    for _bounds in ask_tell1.to_result().try_get_final_dataset().query_points:
+        monotonic1.append(fmt_bd.check_monotonicity(n_analyses=3, bounds=_bounds))
+    return (monotonic1,)
+
+
+@app.cell
+def _(lt_03, monotonic1, np):
+    idx1 = np.where(np.array(monotonic1) & lt_03)
+    return (idx1,)
+
+
+@app.cell
+def _(idx1):
+    idx1
+    return
+
+
+@app.cell
+def _(ask_tell1, idx1, np):
+    best_monotonic_bounds1 = np.array(ask_tell1.to_result().try_get_final_dataset().query_points)[idx1]
+    return (best_monotonic_bounds1,)
+
+
+@app.cell
+def _(ask_tell1, idx1, np):
+    np.array(ask_tell1.to_result().try_get_final_dataset().observations)[idx1]
+    return
+
+
+@app.cell
+def _(best_monotonic_bounds1, colors, np, plt):
+    _fig, _ax = plt.subplots()
+
+    # plot all the bounds that were monotonic and near the triangular cost
+    for _i, _bounds in enumerate(best_monotonic_bounds1[1:len(best_monotonic_bounds1)]):
+        _ax.plot([1,2,3], _bounds[0:3], color = colors[_i])
+        _ax.plot([1,2,3], np.append(_bounds[3:5], _bounds[2]), color = colors[_i])
+
+    # plot the triangular bounds for reference
+    _ax.plot([1,2,3], best_monotonic_bounds1[0][0:3], linewidth=3, color="blue")
+    _ax.plot([1,2,3], np.append(best_monotonic_bounds1[0][3:5], best_monotonic_bounds1[0][2]), linewidth=3, color="blue")
+
+    # plot the constraints
+    _ax.scatter([1,1,1,1], [1.85737722,2.38177774,-0.26220026,0.26220026], marker="_", color="black", s=50, zorder=3)
+    _ax.scatter([2,2,2,2], [1.61125925,2.13565977,0.86187545,1.38627597], marker="_", color="black", s=50, zorder=3)
+    _ax.scatter([3,3], [1.57340768,2.0978082], marker="_", color="black", s=50, zorder=3)
+
+    _fig
+    return
+
+
+@app.cell
+def _(best_monotonic_bounds1, mo):
+    slider1 = mo.ui.slider(start=1, stop=len(best_monotonic_bounds1)-1, step=1)
+    return (slider1,)
+
+
+@app.cell
+def _(slider1):
+    slider1
+    return
+
+
+@app.cell
+def _(best_monotonic_bounds1, np, plt, slider1):
+    _fig, _ax = plt.subplots()
+
+    _bounds = best_monotonic_bounds1[slider1.value]
+    _ax.plot([1,2,3], _bounds[0:3], color = "orange")
+    _ax.plot([1,2,3], np.append(_bounds[3:5], _bounds[2]), color = "orange")
+
+    _ax.plot([1,2,3], best_monotonic_bounds1[0][0:3], linewidth=3, color="blue")
+    _ax.plot([1,2,3], np.append(best_monotonic_bounds1[0][3:5], best_monotonic_bounds1[0][2]), linewidth=3, color="blue")
+
+    _ax.set_ylim(-0.3,2.5)
+
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## GP model assessment
+    """)
+    return
+
+
+@app.cell
+def _(ask_tell1, gpflow):
+    gpflow.utilities.print_summary(ask_tell1.model.model)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Save the model runs
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Without monotonicity constrait
+    """)
+    return
+
+
+@app.cell
+def _(ask_tell, pd):
+    bounds_no_monotonicity = pd.DataFrame(
+        data=ask_tell.to_result().try_get_final_dataset().query_points,
+        columns=["upper1","upper2","upper3","lower1","lower2","n"]
+    )
+    return (bounds_no_monotonicity,)
+
+
+@app.cell
+def _(ask_tell, pd):
+    penalty_no_monotonicity = pd.DataFrame(
+        data=ask_tell.to_result().try_get_final_dataset().observations,
+        columns=["penalty"]
+    )
+    return (penalty_no_monotonicity,)
+
+
+@app.cell
+def _(bounds_no_monotonicity, pd, penalty_no_monotonicity):
+    no_monotonicity = pd.concat([bounds_no_monotonicity, penalty_no_monotonicity], axis=1)
+    return (no_monotonicity,)
+
+
+@app.cell
+def _(no_monotonicity):
+    no_monotonicity.to_csv(path_or_buf="/tf/2026-03-t15/no_monotonicity.csv", index=False)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## With monotonicity constraint
+    """)
+    return
+
+
+@app.cell
+def _(ask_tell1, pd):
+    bounds_monotonicity = pd.DataFrame(
+        data=ask_tell1.to_result().try_get_final_dataset().query_points,
+        columns=["upper1","upper2","upper3","lower1","lower2","n"]
+    )
+    return (bounds_monotonicity,)
+
+
+@app.cell
+def _(ask_tell1, pd):
+    penalty_monotonicity = pd.DataFrame(
+        data=ask_tell1.to_result().try_get_final_dataset().observations,
+        columns=["penalty"]
+    )
+    return (penalty_monotonicity,)
+
+
+@app.cell
+def _(bounds_monotonicity, pd, penalty_monotonicity):
+    monotonicity = pd.concat([bounds_monotonicity, penalty_monotonicity], axis=1)
+    return (monotonicity,)
+
+
+@app.cell
+def _(monotonicity):
+    monotonicity.to_csv(path_or_buf="/tf/2026-03-t15/monotonicity.csv", index=False)
     return
 
 
