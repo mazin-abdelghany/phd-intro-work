@@ -40,7 +40,7 @@ def check_monotonicity(n_analyses, bounds):
     lower = fmt_bounds[1]
 
     # loop through the bounds
-    for _i in range(len(upper)-1):
+    for _i in range(len(upper)):
 
         # if we are not at the last stage
         if (_i != len(upper)-1):
