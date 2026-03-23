@@ -101,9 +101,11 @@ RUN uv pip install pandas numpy matplotlib \
   # we have to specify each of these rather than `tensorflow` only
   # because gpflow is relying on older tfp that causes the import
   # error in this github issue: https://github.com/tensorflow/probability/issues/1774
-  tfp-nightly tf-nightly tf-keras-nightly \
+  # tfp-nightly tf-nightly tf-keras-nightly \
+  tensorflow \
   gpflow setuptools==80.10.2 ipython==8.38.0 \
-  trieste trieste[plotting] marimo \
+  # must pin trieste to latest version or else `uv pip install` will install 0.13.2
+  trieste==4.5.1 trieste[plotting] marimo \
   rpy2 plotly
 
 # setup jupyter as server
