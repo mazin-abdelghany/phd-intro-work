@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.21.1"
-app = marimo.App(width="medium")
+app = marimo.App(width="medium", auto_download=["html", "ipynb"])
 
 
 @app.cell
@@ -241,7 +241,7 @@ def _(fmt_bd, fn_min, fp, gen_input, np, num_analyses, ss, tf):
         # all the below calculations
         if fmt_bd.check_monotonicity(n_analyses=num_analyses, bounds=x) == False:
             y = np.nan
-        
+
             return {
                 "failure" : {
                     "x" : np.array([x]),
@@ -256,7 +256,7 @@ def _(fmt_bd, fn_min, fp, gen_input, np, num_analyses, ss, tf):
                 upper_bounds=upper_bounds,
                 lower_bounds=lower_bounds,
                 n_patients=n_power09)
-    
+
             penalty = fp.smooth_penalty(
                 mu = mu,
                 power=target_power,
@@ -755,9 +755,9 @@ def _(
 ):
     # combine the models
     models: dict[Tag, TrainableProbabilisticModel] = {
-    
+
         "objective": GaussianProcessRegression(model = gpr_model),
-    
+
         "failure"  : VariationalGaussianProcess(
             model = vgp_model,
             optimizer = BatchOptimizer(
@@ -765,7 +765,7 @@ def _(
             ),
             use_natgrads = True
         )
-    
+
     }
     return (models,)
 
@@ -860,11 +860,11 @@ def _(
     tf,
     trieste,
 ):
-    num_repeats = 10
-    when_to_print = 5
+    num_repeats = 700
+    when_to_print = 50
 
     for _i in range(num_repeats):
-    
+
         # get the next set of query points
         x_results = ask_tell.ask()
 
@@ -893,10 +893,10 @@ def _(
                 query_points=np.reshape(np.array([]), newshape=(0, x_results.shape[1])), 
                 observations=np.reshape(np.array([]), newshape=(0, 1))
             )
-        
+
 
         else:
-    
+
             new_sim_trial = sim.group_sequential_designs(
                 n_analyses = num_analyses,
                 upper_bounds = new_inputs[0],
