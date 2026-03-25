@@ -100,7 +100,7 @@ def _():
     from scipy import optimize
     import matplotlib.pyplot as plt
 
-    return (np,)
+    return np, pd, plt
 
 
 @app.cell
@@ -860,7 +860,7 @@ def _(
     tf,
     trieste,
 ):
-    num_repeats = 700
+    num_repeats = 1000
     when_to_print = 50
 
     for _i in range(num_repeats):
@@ -966,6 +966,95 @@ def _(ask_tell, gpflow):
     for tag, trieste_model in ask_tell.models.items():
         print(f"Summary for {tag}:")
         gpflow.utilities.print_summary(trieste_model.model)
+    return
+
+
+@app.cell
+def _(assumed_variance, important_diff_delta, num_analyses, sim):
+    sim.group_sequential_designs(
+        n_analyses = num_analyses,
+        upper_bounds = [2.35549280e+00, 2.31096413e+00, 1.73898293e+00],
+        lower_bounds = [4.36699442e-01, 9.86854050e-01, 1.73898293e+00],
+        n_patients = 2.24292937e+01,
+        null_hypothesis = 0,
+        alt_hypothesis = important_diff_delta,
+        variance = assumed_variance
+    )
+    return
+
+
+@app.cell
+def _(point3):
+    point3["objective"]["x"]
+    return
+
+
+@app.cell
+def _(plt):
+    plt.plot([1, 2, 3], [2.35549280e+00, 2.31096413e+00, 1.73898293e+00])
+    plt.plot([1,2,3], [4.36699442e-01, 9.86854050e-01, 1.73898293e+00])
+    plt.plot([1,2,3], [2.11957748e+00, 1.87345951e+00, 1.83560794e+00])
+    plt.plot([1,2,3], [6.28553399e-16, 1.12407571e+00, 1.83560794e+00])
+    return
+
+
+@app.cell
+def _(ask_tell, pd):
+    failure_region_successes = pd.DataFrame(
+        data=ask_tell.to_result().try_get_final_datasets()["objective"].query_points,
+        columns=["upper1","upper2","upper3","lower1","lower2","n"]
+    )
+    return (failure_region_successes,)
+
+
+@app.cell
+def _(ask_tell, pd):
+    failure_region_successes_penalty = pd.DataFrame(
+        data=ask_tell.to_result().try_get_final_datasets()["objective"].observations,
+        columns=["penalty"]
+    )
+    return (failure_region_successes_penalty,)
+
+
+@app.cell
+def _(failure_region_successes, failure_region_successes_penalty, pd):
+    failure_region_bounds = pd.concat([failure_region_successes, failure_region_successes_penalty], axis=1)
+    return (failure_region_bounds,)
+
+
+@app.cell
+def _(failure_region_bounds):
+    failure_region_bounds.to_csv(path_or_buf="/tf/2026-03-t16/failure_region_bounds.csv", index=False)
+    return
+
+
+@app.cell
+def _(ask_tell, pd):
+    failures = pd.DataFrame(
+        data=ask_tell.to_result().try_get_final_datasets()["failure"].query_points,
+        columns=["upper1","upper2","upper3","lower1","lower2","n"]
+    )
+    return (failures,)
+
+
+@app.cell
+def _(ask_tell, pd):
+    failures_output = pd.DataFrame(
+        data=ask_tell.to_result().try_get_final_datasets()["failure"].observations,
+        columns=["output"]
+    )
+    return (failures_output,)
+
+
+@app.cell
+def _(failures, failures_output, pd):
+    failure_bounds = pd.concat([failures, failures_output], axis=1)
+    return (failure_bounds,)
+
+
+@app.cell
+def _(failure_bounds):
+    failure_bounds.to_csv(path_or_buf="/tf/2026-03-t16/failure_bounds.csv", index=False)
     return
 
 
