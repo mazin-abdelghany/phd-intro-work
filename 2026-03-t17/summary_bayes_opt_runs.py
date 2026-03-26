@@ -117,7 +117,7 @@ def _():
     from py_group_sequential_designs import simulate as sim
     from py_group_sequential_designs import sample_size as ss
 
-    return (fmt_bd,)
+    return fmt_bd, sim
 
 
 @app.cell
@@ -246,6 +246,14 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(f"""
+    ### {np.round(12/1000*100, decimals=2)}%
+    """)
+    return
+
+
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     # Big box
@@ -355,6 +363,14 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(11/1000*100, decimals=2)}%
+    """)
+    return
+
+
 @app.cell
 def _(big_box_feb_remove_known):
     big_box_feb_best = big_box_feb_remove_known[
@@ -399,6 +415,7 @@ def _(big_box_feb_best, plt, slider1):
     plt.plot([1,2,3], [2.11957748, 1.87345951, 1.83560794], lw=3, color="red")
     plt.plot([1,2,3], [6.28553399e-16, 1.12407571e+00, 1.83560794e+00], lw=3, color="red")
 
+    plt.text(2.3, -2, str("obj func = ")+str(big_box_feb_best.loc[slider1.value, "obj_f"].round(3)))
     plt.ylim(-6, 6)
 
     plt.show()
@@ -508,6 +525,14 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(f"""
+    ### {np.round(11/1790*100, decimals=2)}%
+    """)
+    return
+
+
 @app.cell
 def _(big_box_march_remove_known):
     big_box_march_best = big_box_march_remove_known[
@@ -530,6 +555,8 @@ def _(big_box_march_best, colors, plt):
         _ax.plot([1,2,3], big_box_march_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
         _ax.plot([1,2,3], big_box_march_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
 
+    _ax.text(2.3, -2, str("obj func = ")+str(big_box_march_best.loc[0, "obj_f"].round(3)), color = colors[0])
+    _ax.text(2, 0.2, str("obj func = ")+str(big_box_march_best.loc[1, "obj_f"].round(3)), color = colors[1])
     _ax.plot([1,2,3], [2.11957748, 1.87345951, 1.83560794], lw=3, color="red")
     _ax.plot([1,2,3], [6.28553399e-16, 1.12407571e+00, 1.83560794e+00], lw=3, color="red")
 
@@ -632,6 +659,14 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(61/700*100, decimals=2)}%
+    """)
+    return
+
+
 @app.cell
 def _(pocock_mono_remove_known):
     pocock_mono_best = pocock_mono_remove_known[
@@ -675,6 +710,9 @@ def _(plt, pocock_mono_best, slider2):
 
     plt.plot([1,2,3], [1.99218601, 1.99218601, 1.99218601], lw=3, color="red")
     plt.plot([1,2,3], [-1.99218601, -1.99218601, 1.99218601], lw=3, color="red")
+    plt.text(1.9, 0, str("obj func = ")+str(0.372), color = "red")
+
+    plt.text(2.3, -2, str("obj func = ")+str(pocock_mono_best.loc[slider2.value, "obj_f"].round(3)))
 
     plt.ylim(-2.5, 2.5)
 
@@ -709,11 +747,6 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    return
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -723,13 +756,13 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
+def _(pd):
+    pocock_no_mono = pd.read_csv(
+        filepath_or_buffer="/tf/2026-03-t15/data/pocock_no_monotonicity.csv",
+        header=0,
+        names=["upper1","upper2","upper3","lower1","lower2","n", "obj_f"]
+    )
+    return (pocock_no_mono,)
 
 
 @app.cell(hide_code=True)
@@ -741,7 +774,15 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(fmt_bd, np, pocock_no_mono):
+    _monotonic = []
+
+    for _i in range(pocock_no_mono.shape[0]):
+        _bounds = pocock_no_mono.loc[_i, ["upper1","upper2","upper3","lower1","lower2","n"]]
+        _bounds_arr = np.array(_bounds)
+        _monotonic.append(fmt_bd.check_monotonicity(n_analyses = 3, bounds = _bounds_arr))
+
+    pocock_no_mono["monotonic"] = _monotonic
     return
 
 
@@ -754,12 +795,30 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
+def _(pocock_no_mono):
+    pocock_no_mono_remove_known = pocock_no_mono.iloc[3:]
+    return (pocock_no_mono_remove_known,)
 
 
 @app.cell
-def _():
+def _(pocock_no_mono_remove_known):
+    pocock_no_mono_remove_known[pocock_no_mono_remove_known["monotonic"] == True]["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 700 runs, 52 monotonic, minimum penalty 1.26 - 14.1
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(52/700*100, decimals=2)}%
+    """)
     return
 
 
@@ -779,13 +838,14 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    - GPR kernel was Matern52
+    - Lower bound of search space was `[ 0, 0, 0, -3, -3, 10]`
+    - Upper bound of search space was `[ 3, 3, 3,  0,  0, 30]`
+    - `acquisition_rule = EfficientGlobalOptimization`
+    """)
     return
 
 
@@ -798,25 +858,33 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
+def _(pd):
+    separate_upper_lower = pd.read_csv(
+        filepath_or_buffer="/tf/2026-03-t15/data/separate_upper_lower_box_monotonic.csv",
+        header=0,
+        names=["upper1","upper2","upper3","lower1","lower2","n", "obj_f"]
+    )
+    return (separate_upper_lower,)
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Check for monotonic bounds
+    ## Check for monotonicity
     """)
     return
 
 
 @app.cell
-def _():
+def _(fmt_bd, np, separate_upper_lower):
+    _monotonic = []
+
+    for _i in range(separate_upper_lower.shape[0]):
+        _bounds = separate_upper_lower.loc[_i, ["upper1","upper2","upper3","lower1","lower2","n"]]
+        _bounds_arr = np.array(_bounds)
+        _monotonic.append(fmt_bd.check_monotonicity(n_analyses = 3, bounds = _bounds_arr))
+
+    separate_upper_lower["monotonic"] = _monotonic
     return
 
 
@@ -829,12 +897,83 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(separate_upper_lower):
+    separate_upper_lower_remove_known = separate_upper_lower.iloc[3:]
+    return (separate_upper_lower_remove_known,)
+
+
+@app.cell
+def _(separate_upper_lower_remove_known):
+    separate_upper_lower_remove_known[separate_upper_lower_remove_known["monotonic"] == True]["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 1500 runs, 121 monotonic, minimum penalty 0.351 - 41.9
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(f"""
+    ### {np.round(121/1500*100, decimals=2)}%
+    """)
     return
 
 
 @app.cell
-def _():
+def _(separate_upper_lower_remove_known):
+    separate_upper_lower_best = separate_upper_lower_remove_known[
+        (separate_upper_lower_remove_known["monotonic"] == True) & (separate_upper_lower_remove_known["obj_f"] < 0.9)
+    ].reset_index()
+    return (separate_upper_lower_best,)
+
+
+@app.cell
+def _(separate_upper_lower_best):
+    separate_upper_lower_best.shape
+    return
+
+
+@app.cell
+def _(colors, plt, separate_upper_lower_best):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(separate_upper_lower_best.shape[0]):
+        _ax.plot([1,2,3], separate_upper_lower_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], separate_upper_lower_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [1.99218601, 1.99218601, 1.99218601], lw=3, color="red")
+    _ax.plot([1,2,3], [-1.99218601, -1.99218601, 1.99218601], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(mo, separate_upper_lower_best):
+    slider3 = mo.ui.slider(start=0, stop=separate_upper_lower_best.shape[0]-1, step=1)
+    slider3
+    return (slider3,)
+
+
+@app.cell
+def _(plt, separate_upper_lower_best, slider3):
+    plt.plot([1,2,3], separate_upper_lower_best.loc[slider3.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], separate_upper_lower_best.loc[slider3.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [1.99218601, 1.99218601, 1.99218601], lw=3, color="red")
+    plt.plot([1,2,3], [-1.99218601, -1.99218601, 1.99218601], lw=3, color="red")
+    plt.text(1.9, 0, str("obj func = ")+str(0.372), color = "red")
+
+    plt.text(2.3, -2, str("obj func = ")+str(separate_upper_lower_best.loc[slider3.value, "obj_f"].round(3)))
+
+    plt.ylim(-3.2, 3.2)
+
+    plt.show()
     return
 
 
@@ -854,13 +993,15 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    - Penalty modified to include $\mathcal{L}=25$ if not monotonic, else same as above.
+    - GPR kernel was Matern52
+    - Lower bound of search space was `[1.85737722,  1.61125925,  1.57340768, -0.26220026,  0.86187545, 10]`
+    - Upper bound of search space was `[2.38177774, 2.13565977, 2.0978082,  0.26220026, 1.38627597, 30]`
+    - `acquisition_rule = EfficientGlobalOptimization`
+    """)
     return
 
 
@@ -873,23 +1014,13 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
+def _(pd):
+    triang_mono = pd.read_csv(
+        filepath_or_buffer="/tf/2026-03-t15/data/triang_monotonicity.csv",
+        header=0,
+        names=["upper1","upper2","upper3","lower1","lower2","n", "obj_f"]
+    )
+    return (triang_mono,)
 
 
 @app.cell(hide_code=True)
@@ -901,12 +1032,15 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
+def _(fmt_bd, np, triang_mono):
+    _monotonic = []
 
+    for _i in range(triang_mono.shape[0]):
+        _bounds = triang_mono.loc[_i, ["upper1","upper2","upper3","lower1","lower2","n"]]
+        _bounds_arr = np.array(_bounds)
+        _monotonic.append(fmt_bd.check_monotonicity(n_analyses = 3, bounds = _bounds_arr))
 
-@app.cell
-def _():
+    triang_mono["monotonic"] = _monotonic
     return
 
 
@@ -919,12 +1053,103 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(triang_mono):
+    triang_mono_remove_known = triang_mono.iloc[3:]
+    return (triang_mono_remove_known,)
+
+
+@app.cell
+def _(triang_mono_remove_known):
+    triang_mono_remove_known[triang_mono_remove_known["monotonic"] == True]["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 700 runs, 327 monotonic, minimum penalty 0.2696 - 13.1
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(f"""
+    ### {np.round(327/700*100, decimals=2)}%
+    """)
     return
 
 
 @app.cell
-def _():
+def _(triang_mono_remove_known):
+    triang_mono_best = triang_mono_remove_known[
+        (triang_mono_remove_known["monotonic"] == True) & (triang_mono_remove_known["obj_f"] < 0.28)
+    ].reset_index()
+    return (triang_mono_best,)
+
+
+@app.cell
+def _(triang_mono_best):
+    triang_mono_best.shape
+    return
+
+
+@app.cell
+def _(colors, plt, triang_mono_best):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(triang_mono_best.shape[0]):
+        _ax.plot([1,2,3], triang_mono_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], triang_mono_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    _ax.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(mo, triang_mono_best):
+    slider4 = mo.ui.slider(start=0, stop=triang_mono_best.shape[0]-1, step=1)
+    slider4
+    return (slider4,)
+
+
+@app.cell
+def _(plt, slider4, triang_mono_best):
+    plt.plot([1,2,3], triang_mono_best.loc[slider4.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], triang_mono_best.loc[slider4.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    plt.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+    plt.text(1, 1, str("obj func = 0.271"), color = "red")
+
+    plt.text(2, 0.5, str("obj func = ")+str(triang_mono_best.loc[slider4.value, "obj_f"].round(4)))
+
+    plt.ylim(-1, 2.5)
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(triang_mono_best):
+    triang_mono_best[triang_mono_best["obj_f"] < 0.27]
+    return
+
+
+@app.cell
+def _(sim):
+    sim.group_sequential_designs(
+        n_analyses=3,
+        upper_bounds=[1.9329135443805887, 1.9161426991408697, 1.7774332060004143],
+        lower_bounds=[0.0357340284762993, 1.2805394579620093, 1.7774332060004143],
+        n_patients=21.92628776504483,
+        null_hypothesis=0,
+        alt_hypothesis=1,
+        variance=3
+    )
     return
 
 
@@ -944,8 +1169,14 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    - GPR kernel was Matern52
+    - Lower bound of search space was `[1.85737722,  1.61125925,  1.57340768, -0.26220026,  0.86187545, 10]`
+    - Upper bound of search space was `[2.38177774, 2.13565977, 2.0978082,  0.26220026, 1.38627597, 30]`
+    - `acquisition_rule = EfficientGlobalOptimization`
+    """)
     return
 
 
@@ -958,13 +1189,13 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
+def _(pd):
+    triang_no_mono = pd.read_csv(
+        filepath_or_buffer="/tf/2026-03-t15/data/triang_no_monotonicity.csv",
+        header=0,
+        names=["upper1","upper2","upper3","lower1","lower2","n", "obj_f"]
+    )
+    return (triang_no_mono,)
 
 
 @app.cell(hide_code=True)
@@ -976,12 +1207,15 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
+def _(fmt_bd, np, triang_no_mono):
+    _monotonic = []
 
+    for _i in range(triang_no_mono.shape[0]):
+        _bounds = triang_no_mono.loc[_i, ["upper1","upper2","upper3","lower1","lower2","n"]]
+        _bounds_arr = np.array(_bounds)
+        _monotonic.append(fmt_bd.check_monotonicity(n_analyses = 3, bounds = _bounds_arr))
 
-@app.cell
-def _():
+    triang_no_mono["monotonic"] = _monotonic
     return
 
 
@@ -994,17 +1228,103 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(triang_no_mono):
+    triang_no_mono_remove_known = triang_no_mono.iloc[3:]
+    return (triang_no_mono_remove_known,)
+
+
+@app.cell
+def _(triang_no_mono_remove_known):
+    triang_no_mono_remove_known[triang_no_mono_remove_known["monotonic"] == True]["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 700 runs, 300 monotonic, minimum penalty 0.2786 - 13.5
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(300/700*100, decimals=2)}%
+    """)
     return
 
 
 @app.cell
-def _():
+def _(triang_no_mono_remove_known):
+    triang_no_mono_best = triang_no_mono_remove_known[
+        (triang_no_mono_remove_known["monotonic"] == True) & (triang_no_mono_remove_known["obj_f"] < 0.29)
+    ].reset_index()
+    return (triang_no_mono_best,)
+
+
+@app.cell
+def _(triang_no_mono_best):
+    triang_no_mono_best.shape
     return
 
 
 @app.cell
-def _():
+def _(colors, plt, triang_no_mono_best):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(triang_no_mono_best.shape[0]):
+        _ax.plot([1,2,3], triang_no_mono_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], triang_no_mono_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    _ax.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(mo, triang_no_mono_best):
+    slider5 = mo.ui.slider(start=0, stop=triang_no_mono_best.shape[0]-1, step=1)
+    slider5
+    return (slider5,)
+
+
+@app.cell
+def _(plt, slider5, triang_no_mono_best):
+    plt.plot([1,2,3], triang_no_mono_best.loc[slider5.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], triang_no_mono_best.loc[slider5.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    plt.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+    plt.text(1, 1, str("obj func = 0.271"), color = "red")
+
+    plt.text(2, 0.5, str("obj func = ")+str(triang_no_mono_best.loc[slider5.value, "obj_f"].round(4)))
+
+    plt.ylim(-1, 2.5)
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(triang_no_mono_best):
+    triang_no_mono_best[triang_no_mono_best["obj_f"] < 0.2789]
+    return
+
+
+@app.cell
+def _(sim):
+    sim.group_sequential_designs(
+        n_analyses=3,
+        upper_bounds=[2.1008885495311067, 1.9397417082003627, 1.9139348081940968],
+        lower_bounds=[-0.0466871706036343, 0.8802672621794874, 1.9139348081940968],
+        n_patients=20.43138529096545,
+        null_hypothesis=0,
+        alt_hypothesis=1,
+        variance=3
+    )
     return
 
 
@@ -1061,18 +1381,106 @@ def _(np, run1):
 @app.cell
 def _(pd):
     bounds_run1 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run1.csv")
+    bounds_run1.rename(columns={"penalty" : "obj_f"}, inplace=True)
     return (bounds_run1,)
 
 
 @app.cell
 def _(bounds_run1):
-    bounds_run1.shape
+    bounds_run1_remove_known = bounds_run1.iloc[3:]
+    return (bounds_run1_remove_known,)
+
+
+@app.cell
+def _(bounds_run1_remove_known):
+    bounds_run1_remove_known["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 437 runs, 17 monotonic, minimum penalty 0.3268 - 12.67
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(17/437*100, decimals=2)}%
+    """)
     return
 
 
 @app.cell
-def _(bounds_run1):
-    bounds_run1[bounds_run1["penalty"]<1]
+def _(bounds_run1_remove_known):
+    bounds_run1_best = bounds_run1_remove_known[bounds_run1_remove_known["obj_f"] < 1].reset_index()
+    return (bounds_run1_best,)
+
+
+@app.cell
+def _(bounds_run1_best):
+    bounds_run1_best.shape
+    return
+
+
+@app.cell
+def _(bounds_run1_best, colors, plt):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(bounds_run1_best.shape[0]):
+        _ax.plot([1,2,3], bounds_run1_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], bounds_run1_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    _ax.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(bounds_run1_best, mo):
+    slider6 = mo.ui.slider(start=0, stop=bounds_run1_best.shape[0]-1, step=1)
+    slider6
+    return (slider6,)
+
+
+@app.cell
+def _(bounds_run1_best, plt, slider6):
+    plt.plot([1,2,3], bounds_run1_best.loc[slider6.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], bounds_run1_best.loc[slider6.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    plt.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+    plt.text(1, 1, str("obj func = 0.271"), color = "red")
+
+    plt.text(2, 0.5, str("obj func = ")+str(bounds_run1_best.loc[slider6.value, "obj_f"].round(4)))
+
+    plt.ylim(-3.5, 3.5)
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(bounds_run1_best):
+    bounds_run1_best[bounds_run1_best["obj_f"] < 0.33]
+    return
+
+
+@app.cell
+def _(sim):
+    sim.group_sequential_designs(
+        n_analyses=3,
+        upper_bounds=[2.3554927962124155, 2.3109641255039715, 1.7389829321995605],
+        lower_bounds=[0.4366994415579622, 0.9868540504380786, 1.7389829321995605],
+        n_patients=22.429293680672345,
+        null_hypothesis=0,
+        alt_hypothesis=1,
+        variance=3
+    )
     return
 
 
@@ -1100,22 +1508,87 @@ def _(np, run2):
 @app.cell
 def _(pd):
     bounds_run2 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run2.csv")
+    bounds_run2.rename(columns={"penalty" : "obj_f"}, inplace=True)
     return (bounds_run2,)
 
 
 @app.cell
 def _(bounds_run2):
-    bounds_run2[bounds_run2["penalty"]<1]
+    bounds_run2_remove_known = bounds_run2.iloc[3:]
+    return (bounds_run2_remove_known,)
+
+
+@app.cell
+def _(bounds_run2_remove_known):
+    bounds_run2_remove_known["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 460 runs, 15 monotonic, minimum penalty 0.379 - 12.11
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(15/460*100, decimals=2)}%
+    """)
     return
 
 
 @app.cell
-def _():
+def _(bounds_run2_remove_known):
+    bounds_run2_best = bounds_run2_remove_known[bounds_run2_remove_known["obj_f"] < 1].reset_index()
+    return (bounds_run2_best,)
+
+
+@app.cell
+def _(bounds_run2_best):
+    bounds_run2_best.shape
     return
 
 
 @app.cell
-def _():
+def _(bounds_run2_best, colors, plt):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(bounds_run2_best.shape[0]):
+        _ax.plot([1,2,3], bounds_run2_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], bounds_run2_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    _ax.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+
+    _fig
+
+    return
+
+
+@app.cell
+def _(bounds_run2_best, mo):
+    slider7 = mo.ui.slider(start=0, stop=bounds_run2_best.shape[0]-1, step=1)
+    slider7
+    return (slider7,)
+
+
+@app.cell
+def _(bounds_run2_best, plt, slider7):
+    plt.plot([1,2,3], bounds_run2_best.loc[slider7.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], bounds_run2_best.loc[slider7.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    plt.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+    plt.text(1, 1, str("obj func = 0.271"), color = "red")
+
+    plt.text(2.3, 0.5, str("obj func = ")+str(bounds_run2_best.loc[slider7.value, "obj_f"].round(4)))
+
+    plt.ylim(-3.5, 3.5)
+
+    plt.show()
     return
 
 
@@ -1143,17 +1616,233 @@ def _(np, run3):
 @app.cell
 def _(pd):
     bounds_run3 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run3.csv")
+    bounds_run3.rename(columns={"penalty" : "obj_f"}, inplace=True)
     return (bounds_run3,)
 
 
 @app.cell
 def _(bounds_run3):
-    bounds_run3[bounds_run3["penalty"]<0.5]
+    bounds_run3_remove_known = bounds_run3.iloc[3:]
+    return (bounds_run3_remove_known,)
+
+
+@app.cell
+def _(bounds_run3_remove_known):
+    bounds_run3_remove_known["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 889 runs, 58 monotonic, minimum penalty 0.379 - 19.6
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(58/889*100, decimals=2)}%
+    """)
     return
 
 
 @app.cell
-def _():
+def _(bounds_run3_remove_known):
+    bounds_run3_best = bounds_run3_remove_known[bounds_run3_remove_known["obj_f"] < 0.5].reset_index()
+    return (bounds_run3_best,)
+
+
+@app.cell
+def _(bounds_run3_best):
+    bounds_run3_best.shape
+    return
+
+
+@app.cell
+def _(bounds_run3_best, colors, plt):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(bounds_run3_best.shape[0]):
+        _ax.plot([1,2,3], bounds_run3_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], bounds_run3_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    _ax.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(bounds_run3_best, mo):
+    slider8 = mo.ui.slider(start=0, stop=bounds_run3_best.shape[0]-1, step=1)
+    slider8
+    return (slider8,)
+
+
+@app.cell
+def _(bounds_run3_best, plt, slider8):
+    plt.plot([1,2,3], bounds_run3_best.loc[slider8.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], bounds_run3_best.loc[slider8.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    plt.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+    plt.text(1, 1, str("obj func = 0.271"), color = "red")
+
+    plt.text(2, 0.5, str("obj func = ")+str(bounds_run3_best.loc[slider8.value, "obj_f"].round(4)))
+
+    plt.ylim(-3.5, 3.5)
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(bounds_run3_best):
+    bounds_run3_best[bounds_run3_best["obj_f"] < 0.38]
+    return
+
+
+@app.cell
+def _(sim):
+    sim.group_sequential_designs(
+        n_analyses=3,
+        upper_bounds=[2.998723335517382, 2.1488318121985803, 1.510853347122929],
+        lower_bounds=[-1.7016254961452677, 1.5038827710854257, 1.510853347122929],
+        n_patients=24.45699074598109,
+        null_hypothesis=0,
+        alt_hypothesis=1,
+        variance=3
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Run 4
+    """)
+    return
+
+
+@app.cell
+def _(pd):
+    run4 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_bounds_run4.csv")
+    run4.shape
+    return (run4,)
+
+
+@app.cell
+def _(np, run4):
+    np.sum(run4["output"])
+    return
+
+
+@app.cell
+def _(pd):
+    bounds_run4 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run4.csv")
+    bounds_run4.rename(columns={"penalty" : "obj_f"}, inplace=True)
+    return (bounds_run4,)
+
+
+@app.cell
+def _(bounds_run4):
+    bounds_run4_remove_known = bounds_run4.iloc[3:]
+    return (bounds_run4_remove_known,)
+
+
+@app.cell
+def _(bounds_run4_remove_known):
+    bounds_run4_remove_known["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 448 runs, 10 monotonic, minimum penalty 0.351 - 7.31
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo, np):
+    mo.md(rf"""
+    ### {np.round(10/448*100, decimals=2)}%
+    """)
+    return
+
+
+@app.cell
+def _(bounds_run4_remove_known):
+    bounds_run4_best = bounds_run4_remove_known[bounds_run4_remove_known["obj_f"] < 0.5].reset_index()
+    return (bounds_run4_best,)
+
+
+@app.cell
+def _(bounds_run4_best):
+    bounds_run4_best.shape
+    return
+
+
+@app.cell
+def _(bounds_run4_best, colors, plt):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(bounds_run4_best.shape[0]):
+        _ax.plot([1,2,3], bounds_run4_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], bounds_run4_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    _ax.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(bounds_run4_best, mo):
+    slider9 = mo.ui.slider(start=0, stop=bounds_run4_best.shape[0]-1, step=1)
+    slider9
+    return (slider9,)
+
+
+@app.cell
+def _(bounds_run4_best, plt, slider9):
+    plt.plot([1,2,3], bounds_run4_best.loc[slider9.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], bounds_run4_best.loc[slider9.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [2.119577478632703, 1.873459510489336, 1.8356079417852893], lw=3, color="red")
+    plt.plot([1,2,3], [0.0000000000000006285533994301576, 1.1240757062936024, 1.8356079417852893], lw=3, color="red")
+    plt.text(1, 1, str("obj func = 0.271"), color = "red")
+
+    plt.text(2, -1, str("obj func = ")+str(bounds_run4_best.loc[slider9.value, "obj_f"].round(4)))
+
+    plt.ylim(-3.5, 3.5)
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(bounds_run4_best):
+    bounds_run4_best[bounds_run4_best["obj_f"] < 0.38]
+    return
+
+
+@app.cell
+def _(sim):
+    sim.group_sequential_designs(
+        n_analyses=3,
+        upper_bounds=[3, 3, 1.6921505221165922],
+        lower_bounds=[-3, 0.0645980370336625, 1.6921505221165922],
+        n_patients=18.333373537493003,
+        null_hypothesis=0,
+        alt_hypothesis=1,
+        variance=3
+    )
     return
 
 
