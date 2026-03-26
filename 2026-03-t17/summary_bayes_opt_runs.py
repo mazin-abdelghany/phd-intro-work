@@ -565,11 +565,6 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    return
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -579,18 +574,13 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
+def _(pd):
+    pocock_mono = pd.read_csv(
+        filepath_or_buffer="/tf/2026-03-t15/data/pocock_monotonicity.csv",
+        header=0,
+        names=["upper1","upper2","upper3","lower1","lower2","n", "obj_f"]
+    )
+    return (pocock_mono,)
 
 
 @app.cell(hide_code=True)
@@ -602,12 +592,15 @@ def _(mo):
 
 
 @app.cell
-def _():
-    return
+def _(fmt_bd, np, pocock_mono):
+    _monotonic = []
 
+    for _i in range(pocock_mono.shape[0]):
+        _bounds = pocock_mono.loc[_i, ["upper1","upper2","upper3","lower1","lower2","n"]]
+        _bounds_arr = np.array(_bounds)
+        _monotonic.append(fmt_bd.check_monotonicity(n_analyses = 3, bounds = _bounds_arr))
 
-@app.cell
-def _():
+    pocock_mono["monotonic"] = _monotonic
     return
 
 
@@ -620,7 +613,72 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(pocock_mono):
+    pocock_mono_remove_known = pocock_mono.iloc[3:]
+    return (pocock_mono_remove_known,)
+
+
+@app.cell
+def _(pocock_mono_remove_known):
+    pocock_mono_remove_known[pocock_mono_remove_known["monotonic"] == True]["obj_f"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Of 700 runs, 61 monotonic, minimum penalty 0.372 - 11.9
+    """)
+    return
+
+
+@app.cell
+def _(pocock_mono_remove_known):
+    pocock_mono_best = pocock_mono_remove_known[
+        (pocock_mono_remove_known["monotonic"] == True) & (pocock_mono_remove_known["obj_f"] < 0.5)
+    ].reset_index()
+    return (pocock_mono_best,)
+
+
+@app.cell
+def _(pocock_mono_best):
+    pocock_mono_best.shape
+    return
+
+
+@app.cell
+def _(colors, plt, pocock_mono_best):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(pocock_mono_best.shape[0]):
+        _ax.plot([1,2,3], pocock_mono_best.loc[_i, ["upper1", "upper2", "upper3"]], color = colors[_i])
+        _ax.plot([1,2,3], pocock_mono_best.loc[_i, ["lower1", "lower2","upper3"]], color = colors[_i])
+
+    _ax.plot([1,2,3], [1.99218601, 1.99218601, 1.99218601], lw=3, color="red")
+    _ax.plot([1,2,3], [-1.99218601, -1.99218601, 1.99218601], lw=3, color="red")
+
+    _fig
+    return
+
+
+@app.cell
+def _(mo, pocock_mono_best):
+    slider2 = mo.ui.slider(start=0, stop=pocock_mono_best.shape[0]-1, step=1)
+    slider2
+    return (slider2,)
+
+
+@app.cell
+def _(plt, pocock_mono_best, slider2):
+    plt.plot([1,2,3], pocock_mono_best.loc[slider2.value, ["upper1", "upper2", "upper3"]])
+    plt.plot([1,2,3], pocock_mono_best.loc[slider2.value, ["lower1", "lower2","upper3"]])
+
+    plt.plot([1,2,3], [1.99218601, 1.99218601, 1.99218601], lw=3, color="red")
+    plt.plot([1,2,3], [-1.99218601, -1.99218601, 1.99218601], lw=3, color="red")
+
+    plt.ylim(-2.5, 2.5)
+
+    plt.show()
     return
 
 
@@ -961,23 +1019,60 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Bayesian optimization settings
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    - GPR kernel was Matern52, Gaussian likelihood
+    - VGP kernel was squared exponential, Bernoulli likelihood
+    - Aquisition function was a product of expected improvement for GPR and probability of validity for the VGP
+    - `acquisition_rule = EfficientGlobalOptimization`
+    - Lower bound of search space `[-3,-3,-3,-3,-3, 10]`
+    - Upper bound of search space `[ 3, 3, 3, 3, 3, 30]`
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Run 1
     """)
     return
 
 
 @app.cell
-def _():
+def _(pd):
+    run1 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_bounds_run1.csv")
+    run1.shape
+    return (run1,)
+
+
+@app.cell
+def _(np, run1):
+    np.sum(run1["output"])
     return
 
 
 @app.cell
-def _():
+def _(pd):
+    bounds_run1 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run1.csv")
+    return (bounds_run1,)
+
+
+@app.cell
+def _(bounds_run1):
+    bounds_run1.shape
     return
 
 
 @app.cell
-def _():
+def _(bounds_run1):
+    bounds_run1[bounds_run1["penalty"]<1]
     return
 
 
@@ -990,7 +1085,27 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(pd):
+    run2 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_bounds_run2.csv")
+    run2.shape
+    return (run2,)
+
+
+@app.cell
+def _(np, run2):
+    np.sum(run2["output"])
+    return
+
+
+@app.cell
+def _(pd):
+    bounds_run2 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run2.csv")
+    return (bounds_run2,)
+
+
+@app.cell
+def _(bounds_run2):
+    bounds_run2[bounds_run2["penalty"]<1]
     return
 
 
@@ -1013,12 +1128,27 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(pd):
+    run3 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_bounds_run3.csv")
+    run3.shape
+    return (run3,)
+
+
+@app.cell
+def _(np, run3):
+    np.sum(run3["output"])
     return
 
 
 @app.cell
-def _():
+def _(pd):
+    bounds_run3 = pd.read_csv(filepath_or_buffer="/tf/2026-03-t16/failure_region_bounds_run3.csv")
+    return (bounds_run3,)
+
+
+@app.cell
+def _(bounds_run3):
+    bounds_run3[bounds_run3["penalty"]<0.5]
     return
 
 
