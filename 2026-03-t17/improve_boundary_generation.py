@@ -118,7 +118,7 @@ def _(np, plt, stats):
 
     _fig.tight_layout()
     _fig
-    return (xx,)
+    return of_bounds, pocock_bounds, tri_bounds, xx
 
 
 @app.cell(hide_code=True)
@@ -607,11 +607,11 @@ def _(lower_bounds_first, plt):
 
 
 @app.cell
-def _(lower_bounds_first, stats):
+def _(lower_bounds_first, np, stats):
     fit_lower_first = stats.fit(
-        data=lower_bounds_first, 
-        dist=stats.gennorm, 
-        bounds=[(-10,10), (-10, 10), (-10, 10)]
+        data=np.concatenate((np.zeros(10), np.ones(10), (0.5*np.ones(10)), -np.array(lower_bounds_first))), 
+        dist=stats.truncnorm, 
+        bounds=[(-10,10), (-10, 10), (-10, 10), (-10, 10)]
     )
     return (fit_lower_first,)
 
@@ -662,14 +662,24 @@ def _(fmt_bd, np, stats):
         lower_bounds = np.zeros(n_analyses)
         upper_bounds = np.zeros(n_analyses)
 
-        while not fmt_bd.check_monotonicity(
-            bounds = np.concatenate((upper_bounds, lower_bounds)),
-            n_analyses = n_analyses
+        while not (
+            # monotonic
+            fmt_bd.check_monotonicity(
+                bounds = np.concatenate((upper_bounds, lower_bounds)),
+                n_analyses = n_analyses) and
+
+            # first bounds between -8 and 8
+            (lower_bounds[0] > -8) and
+            (upper_bounds[0] < 8)
         ):
 
-            lower_bounds[0] = stats.gennorm.rvs(size=1, beta=0.388, loc=-2.37, scale=0.084)[0]
-            upper_bounds[0] = stats.lognorm.rvs(size=1, s=1.12, loc=1.79, scale=1.31)[0]
-    
+            # first set of bounds
+            # lower_bounds[0] = stats.gennorm.rvs(size=1, beta=0.388, loc=-2.37, scale=0.084)[0]
+            # lower_bounds[0] = -1*stats.lognorm.rvs(size=1, s=0.5175, loc=-1.765, scale=3.98)[0]
+            # lower_bounds[0] = -1*stats.lognorm.rvs(size=1, s=0.6189, loc=-1.185, scale=3.04)[0]
+            lower_bounds[0] = -1*stats.truncnorm.rvs(size=1, a=-0.20909, b=2.544, loc=0.063, scale=3.364)[0]
+            upper_bounds[0] = stats.lognorm.rvs(size=1, s=1.12, loc=1.6, scale=1.31)[0]
+
             for _i in range(n_analyses-1):
                 lower_bounds[_i+1] = lower_bounds[_i] + stats.expon.rvs(size=1, loc=0.0488, scale=0.693)[0]
                 upper_bounds[_i+1] = upper_bounds[_i] - stats.expon.rvs(size=1, loc=0.000502, scale=0.27)[0]
@@ -685,6 +695,86 @@ def _(fmt_bd, np, stats):
 @app.cell
 def _(boundary_generator):
     boundary_generator(n_analyses=3)
+    return
+
+
+@app.cell
+def _(boundary_generator):
+    boundary_list = []
+    for _i in range(5000):
+        boundary_list.append(boundary_generator(n_analyses=3))
+    return (boundary_list,)
+
+
+@app.cell
+def _(boundary_list, np, of_bounds, plt, pocock_bounds, tri_bounds):
+    _fig, _ax = plt.subplots(figsize=(12,8))
+
+    for _bounds in boundary_list:
+        _ax.plot([1,2,3], _bounds[0], color = "purple", alpha=0.05)
+        _ax.plot([1,2,3], np.concatenate((_bounds[1][0:2], [_bounds[0][2]])), 
+                 color = "purple", alpha=0.05)
+
+    _ax.plot([1,2,3], tri_bounds[0:3], color = "red")
+    _ax.plot([1,2,3], tri_bounds[3:7], color = "red")
+
+    _ax.plot([1,2,3], pocock_bounds[0:3], color = "green")
+    _ax.plot([1,2,3], pocock_bounds[3:7], color = "green")
+
+    _ax.plot([1,2,3], of_bounds[0:3], color = "blue")
+    _ax.plot([1,2,3], of_bounds[3:7], color = "blue")
+
+    _fig
+    return
+
+
+@app.cell
+def _(boundary_list):
+    index_0 = []
+    for _bounds in boundary_list:
+        index_0.append(
+            (_bounds[1][0]>=-0.4) & (_bounds[0][0] <= 2) & (_bounds[0][2] >= 1.7)
+        )
+    return (index_0,)
+
+
+@app.cell
+def _(boundary_list, index_0, np):
+    lower_0 = np.array(boundary_list)[np.array(index_0)]
+    return (lower_0,)
+
+
+@app.cell
+def _(lower_0):
+    lower_0.shape
+    return
+
+
+@app.cell
+def _():
+    160/3000
+    return
+
+
+@app.cell
+def _(lower_0, np, of_bounds, plt, pocock_bounds, tri_bounds):
+    _fig, _ax = plt.subplots(figsize=(12,8))
+
+    for _bounds in lower_0:
+        _ax.plot([1,2,3], _bounds[0], color = "purple", alpha=0.05)
+        _ax.plot([1,2,3], np.concatenate((_bounds[1][0:2], [_bounds[0][2]])), 
+                 color = "purple", alpha=0.05)
+
+    _ax.plot([1,2,3], tri_bounds[0:3], color = "red")
+    _ax.plot([1,2,3], tri_bounds[3:7], color = "red")
+
+    _ax.plot([1,2,3], pocock_bounds[0:3], color = "green")
+    _ax.plot([1,2,3], pocock_bounds[3:7], color = "green")
+
+    _ax.plot([1,2,3], of_bounds[0:3], color = "blue")
+    _ax.plot([1,2,3], of_bounds[3:7], color = "blue")
+
+    _fig
     return
 
 
