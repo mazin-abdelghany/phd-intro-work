@@ -656,6 +656,14 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Simple exponential difference generator
+    """)
+    return
+
+
 @app.cell
 def _(fmt_bd, np, stats):
     def boundary_generator(n_analyses):
@@ -775,6 +783,417 @@ def _(lower_0, np, of_bounds, plt, pocock_bounds, tri_bounds):
     _ax.plot([1,2,3], of_bounds[3:7], color = "blue")
 
     _fig
+    return
+
+
+@app.cell
+def _(boundary_generator, np):
+    boundaries = []
+    for _i in np.arange(start=1, stop=50):
+        for _j in np.arange(start=1, stop=21):
+            boundaries.append(boundary_generator(n_analyses=_j))
+    return (boundaries,)
+
+
+@app.cell
+def _(np):
+    xx1 = np.linspace(start=-8, stop=8, num=1000)
+    return (xx1,)
+
+
+@app.cell
+def _(
+    boundaries,
+    lower_bounds_collapsed,
+    np,
+    plt,
+    stats,
+    upper_bounds_collapsed,
+    xx1,
+):
+    plt.hist(np.concatenate([np.concatenate(_bound) for _bound in boundaries]), bins=50, density=True, alpha=0.3)
+    plt.hist(np.concatenate((upper_bounds_collapsed, lower_bounds_collapsed)), bins=50, density=True, alpha=0.3)
+    plt.plot(xx1, stats.lognorm.pdf(x=xx1, s=1.12, loc=1.6, scale=1.31))
+    plt.plot(-xx1, stats.truncnorm.pdf(x=xx1, a=-0.20909, b=2.544, loc=0.063, scale=3.364))
+    #plt.hist(np.concatenate([np.concatenate(_bound) for _bound in boundary_list]), bins=50, density=True, alpha=0.3)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## More complex generator from boundary distribution
+    """)
+    return
+
+
+@app.cell
+def _(fmt_bd, np, stats):
+    def boundary_generator2(n_analyses):
+        lower_bounds = np.repeat(np.nan, repeats=n_analyses)
+        upper_bounds = np.repeat(np.nan, repeats=n_analyses)
+
+        # upper bound distribution
+        d1 = stats.lognorm(s=0.7034079900167564, loc=1.6499732459827996, scale=0.6620695872701784)
+
+        # lower bound distribution mixture
+        d2 = stats.weibull_max(c=1.4223189831377416, loc=2.4206529325505444, scale=1.6074642047246706)
+        d3 = stats.lognorm(s=0.8489881767032773, loc=1.8152781479347766, scale=0.5959923139028731)
+
+        weights = [0.4, 0.6]
+
+        while not fmt_bd.check_monotonicity(
+            bounds=np.concatenate((upper_bounds, lower_bounds)),
+            n_analyses=n_analyses
+        ):
+
+            _i=0
+            _j=0
+
+            while _i < n_analyses:
+                if _i == 0:
+                    upper_bounds[_i] = d1.rvs(size=1)[0]
+                    _i += 1
+                    continue
+    
+                temp = d1.rvs(size=1)[0]
+            
+                if temp > upper_bounds[_i-1]:
+                    continue
+                else:
+                    upper_bounds[_i] = temp
+                    _i += 1
+    
+            while _j < n_analyses:
+                choices = np.random.choice([0, 1], size=1, p=weights)
+            
+                if _j == 0:
+                    lower_bounds[_j] = np.select(
+                        [choices == 0, choices == 1],
+                        [d2.rvs(size=1), d3.rvs(size=1)*-1]
+                    )[0]
+                    _j += 1
+                    continue
+            
+                temp = np.select(
+                    [choices == 0, choices == 1],
+                    [d2.rvs(size=1), d3.rvs(size=1)*-1]
+                )[0]
+            
+                if temp < lower_bounds[_j-1]:
+                    continue
+                else:
+                    lower_bounds[_j] = temp
+                    _j += 1
+
+        return [
+            upper_bounds,
+            lower_bounds
+        ]
+
+    return (boundary_generator2,)
+
+
+@app.cell
+def _(boundary_generator2):
+    boundary_generator2(6)
+    return
+
+
+@app.cell
+def _(boundary_generator2):
+    boundary_list2 = []
+    for _i in range(5000):
+        boundary_list2.append(boundary_generator2(n_analyses=3))
+    return (boundary_list2,)
+
+
+@app.cell
+def _(boundary_list2, np, of_bounds, plt, pocock_bounds, tri_bounds):
+    _fig, _ax = plt.subplots(figsize=(12,8))
+
+    for _bounds in boundary_list2:
+        _ax.plot([1,2,3], _bounds[0], color = "purple", alpha=0.05)
+        _ax.plot([1,2,3], np.concatenate((_bounds[1][0:2], [_bounds[0][2]])), 
+                 color = "purple", alpha=0.05)
+
+    _ax.plot([1,2,3], tri_bounds[0:3], color = "red")
+    _ax.plot([1,2,3], tri_bounds[3:7], color = "red")
+
+    _ax.plot([1,2,3], pocock_bounds[0:3], color = "green")
+    _ax.plot([1,2,3], pocock_bounds[3:7], color = "green")
+
+    _ax.plot([1,2,3], of_bounds[0:3], color = "blue")
+    _ax.plot([1,2,3], of_bounds[3:7], color = "blue")
+
+    _fig
+    return
+
+
+@app.cell
+def _(d2, d3, np):
+    n1 = 10000
+
+    weights1 = [0.4, 0.6]
+    choices1 = np.random.choice([0, 1], size=n1, p=weights1)
+
+    samples1 = np.select(
+        [choices1 == 0, choices1 == 1],
+        [d2.rvs(size=n1), d3.rvs(size=n1)*-1]
+    )
+    return (samples1,)
+
+
+@app.cell
+def _(lower_bounds_collapsed, np, plt, samples1, stats):
+    _xx = np.linspace(lower_bounds_collapsed.min(), lower_bounds_collapsed.max(), 500)
+
+    _kde = stats.gaussian_kde(samples1, bw_method=0.1)
+
+    plt.hist(lower_bounds_collapsed, bins=75, density=True)
+    plt.plot(_xx, _kde(_xx))
+    return
+
+
+@app.cell
+def _(boundary_generator2, np):
+    boundaries2 = []
+    for _i in np.arange(start=1, stop=50):
+        for _j in np.arange(start=1, stop=7):
+            boundaries2.append(boundary_generator2(n_analyses=_j))
+    return (boundaries2,)
+
+
+@app.cell
+def _(boundaries2):
+    boundaries2
+    return
+
+
+@app.cell
+def _(boundaries2, lower_bounds_collapsed, np, plt, upper_bounds_collapsed):
+    plt.hist(np.concatenate([np.concatenate(_bound) for _bound in boundaries2]), bins=50, density=True, alpha=0.3, color="red")
+    plt.hist(np.concatenate((upper_bounds_collapsed, lower_bounds_collapsed)), bins=50, density=True, alpha=0.3)
+    #plt.hist(np.concatenate([np.concatenate(_bound) for _bound in boundary_list]), bins=50, density=True, alpha=0.3)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Boundary generator using sampling
+    """)
+    return
+
+
+@app.cell
+def _(d1, d3, np, stats):
+    # generate the boundary distribution samples
+
+    # d1 = stats.lognorm(s=0.7034079900167564, loc=1.6499732459827996, scale=0.6620695872701784)
+    # d2 = stats.weibull_max(c=1.4223189831377416, loc=2.4206529325505444, scale=1.6074642047246706)
+    d2_1 = stats.weibull_max(c=1.4223189831377416, loc=2.4206529325505444, scale=2.5)
+    # d3 = stats.lognorm(s=0.8489881767032773, loc=1.8152781479347766, scale=0.5959923139028731)
+
+    num_samples = 250000
+
+    weights_lower = [0.6, 0.4]
+    large_choices_lower = np.random.choice([0, 1], size=num_samples, p=weights_lower)
+
+    large_samples_lower = np.select(
+        [large_choices_lower == 0, large_choices_lower == 1],
+        [d2_1.rvs(size=num_samples), d3.rvs(size=num_samples)*-1]
+    )
+
+    large_samples_upper = d1.rvs(size=250000)
+    return large_samples_lower, large_samples_upper
+
+
+@app.cell
+def _(
+    large_samples_lower,
+    large_samples_upper,
+    lower_bounds_collapsed,
+    np,
+    plt,
+    upper_bounds_collapsed,
+):
+    plt.hist(
+        np.concatenate((large_samples_lower[large_samples_lower>-9], large_samples_upper[large_samples_upper<9])), 
+        density=True, 
+        bins=100
+    )
+
+    plt.hist(np.concatenate((upper_bounds_collapsed, lower_bounds_collapsed)), bins=50, density=True, alpha=0.3)
+    return
+
+
+@app.cell
+def _(np):
+    rng = np.random.default_rng()
+    return (rng,)
+
+
+@app.cell
+def _(large_samples_lower, large_samples_upper):
+    upper_bounds_allowed = large_samples_upper[(large_samples_upper > 1.5) & (large_samples_upper < 9)]
+    lower_bounds_allowed = large_samples_lower[(large_samples_lower > -9)  & (large_samples_lower < 2.5)]
+    return lower_bounds_allowed, upper_bounds_allowed
+
+
+@app.cell
+def _(fmt_bd, lower_bounds_allowed, np, rng, upper_bounds_allowed):
+    def boundary_generator3(n_analyses):
+        lower_bounds = np.zeros(n_analyses)
+        upper_bounds = np.zeros(n_analyses)
+
+        while not fmt_bd.check_monotonicity(
+            bounds=np.concatenate((upper_bounds, lower_bounds)),
+            n_analyses=n_analyses
+        ):
+            # upper bounds generation
+            for _i in range(n_analyses):
+                if _i == 0: 
+                    upper_bounds[_i] = rng.choice(upper_bounds_allowed)
+                else:
+                    filter = upper_bounds_allowed <= upper_bounds[_i-1]
+                    upper_bounds[_i] = rng.choice(upper_bounds_allowed[filter])
+
+            # lower bounds generation
+            for _j in range(n_analyses):
+                if _j == 0: 
+                    lower_bounds[_j] = rng.choice(lower_bounds_allowed)
+                else:
+                    filter = lower_bounds_allowed >= lower_bounds[_j-1]
+                    lower_bounds[_j] = rng.choice(lower_bounds_allowed[filter])
+
+        return [
+            upper_bounds,
+            lower_bounds
+        ]
+
+    return (boundary_generator3,)
+
+
+@app.cell
+def _(boundary_generator3):
+    boundary_generator3(3)
+    return
+
+
+@app.cell
+def _(boundary_generator3):
+    boundary_list3 = []
+    for _i in range(5000):
+        boundary_list3.append(boundary_generator3(n_analyses=3))
+    return (boundary_list3,)
+
+
+@app.cell
+def _(boundary_list3, np, of_bounds, plt, pocock_bounds, tri_bounds):
+    _fig, _ax = plt.subplots(figsize=(12,8))
+
+    for _bounds in boundary_list3:
+        _ax.plot([1,2,3], _bounds[0], color = "purple", alpha=0.05)
+        _ax.plot([1,2,3], np.concatenate((_bounds[1][0:2], [_bounds[0][2]])), 
+                 color = "purple", alpha=0.05)
+
+    _ax.plot([1,2,3], tri_bounds[0:3], color = "red")
+    _ax.plot([1,2,3], tri_bounds[3:7], color = "red")
+
+    _ax.plot([1,2,3], pocock_bounds[0:3], color = "green")
+    _ax.plot([1,2,3], pocock_bounds[3:7], color = "green")
+
+    _ax.plot([1,2,3], of_bounds[0:3], color = "blue")
+    _ax.plot([1,2,3], of_bounds[3:7], color = "blue")
+
+    _fig
+    return
+
+
+@app.cell
+def _(boundary_list3, np):
+    index_0_new = []
+    for _bounds in boundary_list3:
+        index_0_new.append(
+            (_bounds[1][0] >= -0.4) & (_bounds[1][0] <= 0.4) & (_bounds[0][0] <= 2.4) & (_bounds[0][2] >= 1.8)
+        )
+
+    lower_0_new = np.array(boundary_list3)[np.array(index_0_new)]
+
+    lower_0_new.shape
+    return (lower_0_new,)
+
+
+@app.cell
+def _(lower_0_new, np, of_bounds, plt, pocock_bounds, tri_bounds):
+    _fig, _ax = plt.subplots(figsize=(12,8))
+
+    for _bounds in lower_0_new:
+        _ax.plot([1,2,3], _bounds[0], color = "purple", alpha=0.05)
+        _ax.plot([1,2,3], np.concatenate((_bounds[1][0:2], [_bounds[0][2]])), 
+                 color = "purple", alpha=0.05)
+
+    _ax.plot([1,2,3], tri_bounds[0:3], color = "red")
+    _ax.plot([1,2,3], tri_bounds[3:7], color = "red")
+
+    _ax.plot([1,2,3], pocock_bounds[0:3], color = "green")
+    _ax.plot([1,2,3], pocock_bounds[3:7], color = "green")
+
+    _ax.plot([1,2,3], of_bounds[0:3], color = "blue")
+    _ax.plot([1,2,3], of_bounds[3:7], color = "blue")
+
+    _fig
+    return
+
+
+@app.cell
+def _(d2):
+    d2
+    return
+
+
+@app.cell
+def _():
+    # d1 = stats.lognorm(s=0.7034079900167564, loc=1.6499732459827996, scale=0.6620695872701784)
+    # d2 = stats.weibull_max(c=1.4223189831377416, loc=2.4206529325505444, scale=1.6074642047246706)
+    # d3 = stats.lognorm(s=0.8489881767032773, loc=1.8152781479347766, scale=0.5959923139028731)
+    return
+
+
+@app.cell
+def _(stats):
+    stats.weibull_max.cdf(x=0, c=1.4223189831377416, loc=2.4206529325505444, scale=2.5) -stats.weibull_max.cdf(x=-2, c=1.4223189831377416, loc=2.4206529325505444, scale=2.5)
+    return
+
+
+@app.cell
+def _(plt, stats, xx1):
+    plt.plot(xx1, stats.weibull_max.pdf(x=xx1, c=1.2, loc=2.4206529325505444, scale=2.5))
+    return
+
+
+@app.cell
+def _(np, upper_bounds):
+    upper_bound_save = np.array(upper_bounds, dtype=object)
+    return (upper_bound_save,)
+
+
+@app.cell
+def _(np, upper_bound_save):
+    np.save("/tf/2026-03-t17/upper_bounds.npy", upper_bound_save, allow_pickle=True)
+    return
+
+
+@app.cell
+def _(lower_bounds, np):
+    lower_bound_save = np.array(lower_bounds, dtype=object)
+    return (lower_bound_save,)
+
+
+@app.cell
+def _(lower_bound_save, np):
+    np.save("/tf/2026-03-t17/lower_bounds.npy", lower_bound_save, allow_pickle=True)
     return
 
 
