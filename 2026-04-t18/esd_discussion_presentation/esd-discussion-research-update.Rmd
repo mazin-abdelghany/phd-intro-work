@@ -2031,27 +2031,57 @@ plot_bounds(boundaries, 0.327, label_x = 1.5, label_y = -0.6)
 
 - Monotonicity has been challenging to ensure while modeling the bounds directly.
 
-## Future directions
-
-- Monotonicity has been challenging to ensure while modeling the bounds directly.
-- Next step will be to model the bounds as the differences between them:
-
-$$
-\mathbf{u} = \{u_1, \Delta u_1= u_2-u_1,\dots, \Delta u_n= u_{n+1}-u_{n}\}\\
-\boldsymbol{\ell} = \{\ell_1, \Delta \ell_1= \ell_2-\ell_1,\dots, \Delta \ell_n= \ell_{n+1}-\ell_{n} \}
-$$
 
 ## Future directions
 
 - Monotonicity has been challenging to ensure while modeling the bounds directly.
-- Next step will be to model the bounds as the differences between them:
+- Next step will be to reparameterise the space in terms of the final boundary meeting point.
 
 $$
-\mathbf{u} = \{u_1, \Delta u_1= u_2-u_1,\dots, \Delta u_n= u_{n+1}-u_{n}\}\\
-\boldsymbol{\ell} = \{\ell_1, \Delta \ell_1= \ell_2-\ell_1,\dots, \Delta \ell_n= \ell_{n+1}-\ell_{n} \}
+c = u_K = \ell_K
 $$
 
-By forcing all $\Delta$ boundary values to be 0 or greater, we can enforce monotonicity and hope to obtain consistent monotonic bounds and a significant improvement in model performance and output.
+## Future directions
+
+- Monotonicity has been challenging to ensure while modeling the bounds directly.
+- Next step will be to reparameterise the space in terms of the final boundary meeting point.
+
+$$
+c = u_K = \ell_K
+$$
+
+We then model **non-negative boundary increments**, $\Delta u_k$ and $\Delta \ell_k$. For $K$ stages,
+
+$$
+u_k = c + \sum^K_{j=k+1} \Delta u_j, \quad \ell_k = c - \sum^K_{j=k+1} \Delta \ell_j
+$$
+
+## Future directions
+
+- Monotonicity has been challenging to ensure while modeling the bounds directly.
+- Next step will be to reparameterise the space in terms of the final boundary meeting point.
+
+$$
+c = u_K = \ell_K
+$$
+
+We then model **non-negative boundary increments**, $\Delta u_k$ and $\Delta \ell_k$. For $K$ stages,
+
+$$
+u_k = c + \sum^K_{j=k+1} \Delta u_j, \quad \ell_k = c - \sum^K_{j=k+1} \Delta \ell_j
+$$
+
+Thus, the Bayes opt parameter vector then becomes $D=\{n, c, \Delta u_2, \Delta \ell_2, \dots, \Delta u_K, \Delta \ell_K\}$.
+
+## Acknowledgements
+
+- Primary advisor: David Robertson
+- Secondary advisor: Paul Kirk
+- MRC BSU for its support and kindness!
+- The Cambridge Trust
+
+
+<div class="centered blue"><b>Thank you!</b></div>
 
 ## Credit
   
