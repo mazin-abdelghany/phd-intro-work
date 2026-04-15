@@ -94,46 +94,6 @@ Plots saved to: `plots/checkpoint_NNNN.png`
 
 ---
 
-## HPC scripts (CSD3, icelake, SLURM)
-
-These scripts are for running systematic experiments on CSD3. See accompanying
-email for setup instructions.
-
-### `run_experiment1.py`
-
-Standalone script taking `--seed` and `--penalty_scale` as arguments. Runs one
-complete BO + random search comparison and saves two CSVs per run:
-- `summary_seedNNNN_penaltyX.XX.csv` — one row: best objectives, feasibility rates, timing
-- `trajectory_seedNNNN_penaltyX.XX.csv` — full running minimum trajectories
-
-```bash
-python run_experiment1.py --seed 42 --penalty_scale 1.0 --output_dir ./results
-```
-
-### `submit_experiment1.sh`
-
-SLURM array job script. 20 seeds, penalty_scale=1.0, 1.5h per job, 4GB RAM.
-
-```bash
-mkdir -p logs results
-sbatch submit_experiment1.sh
-```
-
-### `aggregate_results.py`
-
-Loads all result CSVs once jobs complete and produces:
-- Box plot: best feasible objective — BO vs random search
-- Median running minimum trajectories with IQR bands
-- Distribution of BO improvement over random
-- Feasibility rate comparison
-- Wilcoxon signed-rank test (H1: BO better than random)
-
-```bash
-python aggregate_results.py --results_dir ./results --output_dir ./plots
-```
-
----
-
 ## Results
 
 ### `simple_local_bo_results.csv`
