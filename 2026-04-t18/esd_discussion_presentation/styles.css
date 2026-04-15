@@ -1,0 +1,165 @@
+/* --- GOOGLE FONTS --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Open+Sans:wght@400;600&display=swap');
+
+/* --- GLOBAL STYLES --- */
+slides > slide {
+    background: white;
+    color: #222;
+    border-radius: 0px;
+    font-family: 'Open Sans', sans-serif;
+}
+
+/* --- TRANSITION OVERRIDES --- */
+/* Target the title slide and section headers (segue) */
+slides > slide.title-slide, 
+slides > slide.segue,
+slides > slide.title-slide *, 
+slides > slide.segue * {
+    -webkit-transition: none !important;
+    transition: none !important;
+    -webkit-transform: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Specifically kill the 'fade-in' or 'slide-in' for these classes */
+.entering.title-slide, .entering.segue {
+    -webkit-transition: none !important;
+    transition: none !important;
+}
+
+/* --- TITLE SLIDE AUTHOR & DATE --- */
+/* Target paragraphs (author, date, venue) on the first slide */
+slides > slide.title-slide p {
+    color: #ffffff;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 26px;      /* Increased from default ~18px */
+    line-height: 1.4;
+    margin-top: 10px;
+    opacity: 1;           /* Ensures no transparency is muting the white */
+}
+
+/* Specifically target the author if you want it even bolder */
+slides > slide.title-slide hgroup + p {
+    font-weight: 600;
+    margin-top: 20px;
+}
+
+/* --- HEADERS --- */
+/* Slide Titles (h2) - Full Width Background */
+slides > slide hgroup {
+    background: #2c3e50; /* Adjust color as needed */
+    margin-left: -60px;  /* Offsets the default slide padding */
+    margin-right: -60px; 
+    margin-top: -40px;
+    padding-left: 60px;
+    padding-top: 20px;
+    padding-bottom: 10px;
+}
+
+slides > slide hgroup h2 {
+    color: #ffffff; /* Changed to white for readability against dark background */
+    font-family: 'Montserrat', sans-serif;
+    font-size: 36px;
+    font-weight: bold;
+}
+
+/* Specifically target the subtitle within the hgroup */
+slides > slide hgroup h3 {
+  color: #ffffff !important;
+}
+
+/* --- SECTION DIVIDERS (#) --- */
+slides > slide.segue {
+    background: #2c3e50 !important;
+    padding: 60px !important; /* Resets the internal container padding */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: none !important;
+}
+
+/* Ensure the font matches the Title Slide exactly */
+slides > slide.segue hgroup h1 {
+    color: #ffffff;
+    font-family: 'Montserrat', sans-serif; /* Using the same font as your title */
+    font-size: 60px;
+    line-height: 1.2;
+    margin-left: 0; /* Ensures it doesn't inherit the 'negative margin' from h2 */
+}
+
+/* Fix for the 'hangover' - ensures the background doesn't bleed weirdly */
+slides > slide.segue.backdrop {
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    margin: 0;
+}
+
+/* --- TABLES AND CODE --- */
+table.rmdtable th {
+    color: white;
+    font-size: 18px;
+    background: #2c3e50;
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Use 'slides > slide' to outrank the default template styles */
+slides > slide table {
+    width: auto !important; /* Prevents the table from stretching to 100% width */
+    table-layout: fixed !important;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Specifically target the first column */
+slides > slide table th:nth-child(1), 
+slides > slide table td:nth-child(1) {
+    width: 300px !important; /* Force a small width */
+    word-break: break-all;   /* Force wrap if content is too long */
+}
+
+pre {
+    margin-left: 60px !important; /* Adjust this value to align with your text */
+    padding: 10px !important;    /* Keeps the internal spacing of the box */
+    width: calc(100% - 100px) !important;
+    background-color: #f8f9fa;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+}
+
+/* --- LOGO STYLES --- */
+slides > slide:not(.nobackground):not(.title-slide):after {
+    content: '';
+    position: absolute;
+    bottom: 20px;       /* Distance from bottom */
+    right:  20px;       /* Distance from right */
+    width:  200px;      /* Adjust width as needed */
+    height: 100px;      /* Adjust height as needed */
+    background-image: url("logos/secondary-logo-stacked.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: right bottom;
+    opacity: 0.8;      /* Optional: makes the logo slightly transparent */
+}
+
+/* Optional: If you want a different logo or position for the Title Slide */
+slides > slide.title-slide:after {
+    content: '';
+    position: absolute;
+    bottom: 20px;
+    right: 40px;
+    width: 350px;
+    height: 100px;
+    
+    background-color: #ffffff;
+    background-image: url("logos/university-cambridge-full-colour-preferred-logo-transparency-2362x491.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-origin: content-box; 
+    background-size: contain;
+    padding-left: 15px;
+    padding-right: 15px; 
+    border-radius: 5px;
+}
