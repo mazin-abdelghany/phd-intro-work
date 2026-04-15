@@ -1,0 +1,342 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.22.0",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "ace6a5cb760136634dbcf57f0b185229",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"delta-minimax-group-sequential-design-no-penalty-bo\">Delta-Minimax Group Sequential Design \u2014 No Penalty BO</h1>\n<h2 id=\"reverse-parameterisation-integer-n-local-search-no-penalty\">Reverse Parameterisation + Integer <marimo-tex class=\"arithmatex\">||(n||)</marimo-tex> + Local Search + No Penalty</h2>\n<span class=\"paragraph\">Identical to the simple local BO except the objective is evaluated\nas the raw <marimo-tex class=\"arithmatex\">||(\\max_\\delta E[N \\mid \\delta] / \\mu||)</marimo-tex> with <strong>no penalty</strong> for\n<marimo-tex class=\"arithmatex\">||(\\alpha'||)</marimo-tex> violations. This allows us to understand the true shape of the\nobjective surface without penalty distortion.</span>\n<span class=\"paragraph\">Risk: infeasible designs with liberal boundaries may have lower ESS than\nfeasible ones, potentially misleading the GPR. The assessment cell at the\nend reports what fraction of the best designs found are actually feasible.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "0c50dd7c9e1447f1d89b7cff2d80f239",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"imports\">Imports</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "0df5d83230f4ca710973261d1e7cf2e0",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "419ecf7edb9fbdf3895e7fed8419dd61",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "d1f8330243818f98d103d3aa83677da9",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "94397f6461ee328a59d94f6f9e9463fa",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"trial-design-settings\">Trial Design Settings</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "a65e1533867a2e4b1851cd5a35a74441",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "72b03a641435dd67232d6305ee888fa4",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"reverse-parameterisation\">Reverse Parameterisation</h1>\n<span class=\"paragraph\">BO vector: <marimo-tex class=\"arithmatex\">||((c, \\Delta u_3, \\Delta l_3, \\Delta u_2, \\Delta l_2)||)</marimo-tex></span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "000ea739f2af2530aec047427176a251",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "0b45b334e953618df07c9655c9341b60",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"integer-n-by-bisection\">Integer <marimo-tex class=\"arithmatex\">||(n||)</marimo-tex> by Bisection</h1>\n<span class=\"paragraph\">Finds smallest integer <marimo-tex class=\"arithmatex\">||(n||)</marimo-tex> per arm per stage achieving target power.\nReturns <code>None</code> if no <marimo-tex class=\"arithmatex\">||(n \\leq 200||)</marimo-tex> suffices.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "2e846434e370b422e85144acb4bd4f1d",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "75fd49f86437d93594e69d0557ae5d1a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"objective-function\">Objective Function</h1>\n<span class=\"paragraph\">$$f(\\tilde{\\theta}) = \\frac{\\max_\\delta E[N \\mid \\delta]}{\\mu}</span>\n<ul>\n<li>\\mu \\cdot \\left(\\frac{\\alpha' - \\alpha<sup>*}{\\alpha</sup><em>}\\right)^2\n\\cdot \\mathbf{1}{\\alpha' &gt; \\alpha^</em>}$$</li>\n</ul>\n<span class=\"paragraph\"><marimo-tex class=\"arithmatex\">||(\\beta' \\leq \\beta^*||)</marimo-tex> is guaranteed by the integer bisection.\nOnly <marimo-tex class=\"arithmatex\">||(\\alpha'||)</marimo-tex> requires a penalty term.</span>\n<span class=\"paragraph\">If no feasible <marimo-tex class=\"arithmatex\">||(n||)</marimo-tex> exists, returns a large fixed value (2.0) so the\nGPR learns to avoid such boundary combinations.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "c7bee14095907c2801c1d8cf2c042f99",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "c516893f18dd744f1bac4d0386ad5a55",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "4382af78ed3857ac05449205e6847cd3",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ROlb",
+      "code_hash": "bcea4d09aa44361e0f097cc345dc4f64",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"search-space\">Search Space</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "qnkX",
+      "code_hash": "137aaf02cadbc3aeffd72eecad30da26",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "TqIu",
+      "code_hash": "66fc80610d813286afcfeb0e9a163fdd",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Vxnm",
+      "code_hash": "c80450c5a99c14fcf6b760e0c22071aa",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"initialisation\">Initialisation</h1>\n<ul>\n<li>Local: 15 perturbations around triangular design only</li>\n<li>Global: 5 perturbations around each of Pocock, O'Brien-Fleming, triangular</li>\n<li>Plus up to 15 feasible random points from pool within search space</li>\n</ul></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "DnEU",
+      "code_hash": "0b2f005d3e15ed272712106c8cf64ceb",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ulZA",
+      "code_hash": "bf1635485fcdac412ddd4f8adc4cfe0c",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ecfG",
+      "code_hash": "a7116252e6d38d5f1c76967ee0382ed5",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"gp-model\">GP Model</h1>\n<span class=\"paragraph\">Single GPR with Matern52 ARD kernel trained on all evaluations.\nNo VGP, no failure region.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Pvdt",
+      "code_hash": "bd9e8fdbfb868fc32a8e5e74f9e4af36",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ZBYS",
+      "code_hash": "673c456a2e32e514c4839ee4d6eb23c8",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "aLJB",
+      "code_hash": "b9f9e5ee4213c4b166763beb5c25c5ab",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"bayesian-optimisation-loop\">Bayesian Optimisation Loop</h1>\n<span class=\"paragraph\">Standard ask-tell loop. Every evaluation feeds the GPR \u2014 feasible designs\ncontribute clean objective values, infeasible designs contribute penalised\nvalues that guide the GPR away from the infeasible region.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nHfw",
+      "code_hash": "3d1b4005787873327dee7016e0c5ed54",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "xXTn",
+      "code_hash": "a879a5abadfce8affcb620fec31d93f2",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"results\">Results</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "AjVT",
+      "code_hash": "85f0a30a04a121485dc1de9e5354c4db",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "pHFh",
+      "code_hash": "8cd29289135f2a61f2e6c8ae948aa36f",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "NCOB",
+      "code_hash": "160959e426e181d911d37e935623aa57",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"assessment\">Assessment</h2>\n<span class=\"paragraph\">Since there is no penalty, the GPR may have been guided towards infeasible\ndesigns with low ESS. This cell checks the full dataset for how many designs\nare truly feasible and what the best feasible objective is.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "aqbW",
+      "code_hash": "36601778267bcbaae3f8bde918eee80b",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "TRpd",
+      "code_hash": "c80a2d7b0dede52a8447a01a0d8949f3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"objective-function-history\">Objective function history</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TXez",
+      "code_hash": "879ad42d2a660b64fd2638a87a58e061",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "dNNg",
+      "code_hash": "5fb9a0a78210f37fea7e7d343933f157",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"best-design-vs-triangular-benchmark\">Best design vs triangular benchmark</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "yCnT",
+      "code_hash": "4f8c28adddfc7491c77f292674cf6c11",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "wlCL",
+      "code_hash": "e11d13fb42eed6df2609ffcaa133074b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"save-results\">Save Results</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "kqZH",
+      "code_hash": "d2791ad771f432bf11603006006a6fd8",
+      "outputs": [],
+      "console": []
+    }
+  ]
+}
