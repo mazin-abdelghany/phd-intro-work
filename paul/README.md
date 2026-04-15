@@ -23,8 +23,7 @@ Rather than optimising over the original parameter space
 where `c = l_K = u_K` is the meeting point and the Δs are non-negative
 increments. This guarantees monotonicity and the meeting-point constraint by
 construction — no rejection sampling, no monotonicity penalty, no failure region
-for structural constraints. See `handlingMonotonicityConstraints.tex` (in the
-main repo) for the full write-up.
+for structural constraints.
 
 ### 2. Integer n by bisection
 
