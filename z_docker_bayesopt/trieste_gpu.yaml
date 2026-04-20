@@ -1,0 +1,26 @@
+name: trieste-gpu
+services:
+  marimo-nb:
+    build:
+      context: .
+      dockerfile: new_trieste_gpu.Dockerfile 
+    ports:
+      - 8080:8080
+    volumes:
+      - type: bind
+        source: ..
+        target: /workspace
+    # We use a wrapper to ensure ldconfig runs every time the container starts
+    command: >
+      sh -c "ldconfig && marimo edit --host 0.0.0.0 --port 8080 --headless --no-token"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
