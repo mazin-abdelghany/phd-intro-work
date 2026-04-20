@@ -1830,6 +1830,12 @@ boundaries <- data.frame(
 plot_bounds(boundaries, 1.64, label_x = 1.5, label_y = -3)
 ```
 
+## "Big box" search space | Results
+
+- Selected sample size per stage: 40
+- Maximum expected sample size: 98
+- $\alpha$ = 0.0032 (target 0.05)
+- $1-\beta$ = 0.96 (target 0.90)
 
 ## Enforce monotonicity with search space | Settings
 
@@ -1894,6 +1900,13 @@ boundaries <- data.frame(
 
 plot_bounds(boundaries, 0.351, label_x = 1.5, label_y = -1.8)
 ```
+
+## Enforce monotonicity with search space | Results
+
+- Selected sample size per stage: 14
+- Maximum expected sample size: 36
+- $\alpha$ = 0.065 (target 0.05)
+- $1-\beta$ = 0.87 (target 0.90)
 
 ## Penalize non-monotonicity + triangular search space | Settings
 
@@ -1966,6 +1979,13 @@ boundaries <- data.frame(
 plot_bounds(boundaries, 0.2696, label_x = 1.5, label_y = -0.6)
 ```
 
+## Penalize non-monotonicity + triangular search space | Results
+
+- Selected sample size per stage: 22
+- Maximum expected sample size: 35
+- $\alpha$ = 0.056 (target 0.05)
+- $1-\beta$ = 0.899 (target 0.90)
+
 ## Bayes opt with failure region | Settings
 
 - The loss function = $\mathcal{L}(T_i, \lambda)$
@@ -2026,6 +2046,14 @@ boundaries <- data.frame(
 
 plot_bounds(boundaries, 0.327, label_x = 1.5, label_y = -0.6)
 ```
+
+## Bayes opt with failure region | Results
+
+- Selected sample size per stage: 22
+- Maximum expected sample size: 41
+- $\alpha$ = 0.039 (target 0.05)
+- $1-\beta$ = 0.89 (target 0.90)
+
 
 ## Future directions
 
