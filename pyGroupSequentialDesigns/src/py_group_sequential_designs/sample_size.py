@@ -85,44 +85,40 @@ def find_sample_size(
         alt_hypothesis=0.5,
         variance=1):
 
-    # precision to get to power
-    epsilon = 1e-8
-
     # initial sample sizes
-    n_patients_left=1
-    n_patients_right=1e6
+    n_patients_min = 2
+    n_patients_max = 5000
 
-    # calcuate first power
-    probs, sim_alpha, power, ess = sim.group_sequential_designs(
+    _, _, power_max, _ = sim.group_sequential_designs(
         n_analyses = n_analyses,
         upper_bounds = upper_bounds,
         lower_bounds = lower_bounds,
-        n_patients = n_patients_left,
+        n_patients = n_patients_max,
         null_hypothesis = null_hypothesis,
         alt_hypothesis = alt_hypothesis,
         variance = variance
     )
     
-    # interval bisection loop
-    while abs(power - power_target) > epsilon:
+    if power_max < power_target:
+        return None
 
-        # generate the midpoint
-        n_patients_mid = (n_patients_left + n_patients_right)/2
+    while n_patients_max - n_patients_min > 0.5:
 
-        # calcuate power
-        probs, sim_alpha, power, ess = sim.group_sequential_designs(
+        n_mid = (n_patients_min + n_patients_max) / 2
+
+        _, _, power_mid, _ = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = upper_bounds,
             lower_bounds = lower_bounds,
-            n_patients = n_patients_mid,
+            n_patients = n_mid,
             null_hypothesis = null_hypothesis,
             alt_hypothesis = alt_hypothesis,
             variance = variance
         )
 
-        if power > power_target:
-            n_patients_right = n_patients_mid
+        if power_mid >= power_target:
+            n_patients_max = n_mid
         else:
-            n_patients_left = n_patients_mid
+            n_patients_min = n_mid
 
-    return [n_patients_left, power]
+    return [n_patients_min, power_mid]
