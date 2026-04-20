@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.1"
 app = marimo.App(width="medium", auto_download=["html", "ipynb"])
 
 
@@ -973,9 +973,9 @@ def _(ask_tell, gpflow):
 def _(assumed_variance, important_diff_delta, num_analyses, sim):
     sim.group_sequential_designs(
         n_analyses = num_analyses,
-        upper_bounds = [2.35549280e+00, 2.31096413e+00, 1.73898293e+00],
-        lower_bounds = [4.36699442e-01, 9.86854050e-01, 1.73898293e+00],
-        n_patients = 2.24292937e+01,
+        upper_bounds = [ 2.42065196e+00,  1.97464463e+00,  1.92162758e+00],
+        lower_bounds = [-2.24402125e+00,  9.87346244e-02,  1.92162758e+00],
+        n_patients = 2.11819086e+01,
         null_hypothesis = 0,
         alt_hypothesis = important_diff_delta,
         variance = assumed_variance
@@ -991,10 +991,10 @@ def _(point3):
 
 @app.cell
 def _(plt):
-    plt.plot([1, 2, 3], [2.35549280e+00, 2.31096413e+00, 1.73898293e+00])
-    plt.plot([1,2,3], [4.36699442e-01, 9.86854050e-01, 1.73898293e+00])
-    plt.plot([1,2,3], [2.11957748e+00, 1.87345951e+00, 1.83560794e+00])
-    plt.plot([1,2,3], [6.28553399e-16, 1.12407571e+00, 1.83560794e+00])
+    plt.plot([1, 2, 3], [2.42065196e+00,  1.97464463e+00,  1.92162758e+00])
+    plt.plot([1,2,3], [-2.24402125e+00,  9.87346244e-02,  1.92162758e+00])
+    plt.plot([1,2,3], [2.11957748e+00, 1.87345951e+00, 1.83560794e+00],color="green")
+    plt.plot([1,2,3], [6.28553399e-16, 1.12407571e+00, 1.83560794e+00],color="green")
     return
 
 
@@ -1024,7 +1024,7 @@ def _(failure_region_successes, failure_region_successes_penalty, pd):
 
 @app.cell
 def _(failure_region_bounds):
-    failure_region_bounds.to_csv(path_or_buf="/tf/2026-03-t16/failure_region_bounds.csv", index=False)
+    failure_region_bounds.to_csv(path_or_buf="/workspace/2026-03-t16/failure_region_bounds.csv", index=False)
     return
 
 
@@ -1054,7 +1054,7 @@ def _(failures, failures_output, pd):
 
 @app.cell
 def _(failure_bounds):
-    failure_bounds.to_csv(path_or_buf="/tf/2026-03-t16/failure_bounds.csv", index=False)
+    failure_bounds.to_csv(path_or_buf="/workspace/2026-03-t16/failure_bounds.csv", index=False)
     return
 
 
