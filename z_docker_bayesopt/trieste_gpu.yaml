@@ -3,7 +3,7 @@ services:
   marimo-nb:
     build:
       context: .
-      dockerfile: new_trieste_gpu.Dockerfile 
+      dockerfile: trieste_gpu.Dockerfile 
     ports:
       - 8080:8080
     volumes:
