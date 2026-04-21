@@ -26,7 +26,7 @@ def _():
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    return np, plt, time
+    return np, pd, plt, time
 
 
 @app.cell
@@ -396,7 +396,7 @@ def _(
     obj_min_less_tri = obj_min < tri_obj
 
     # how many designs meet alpha 0.05 and power 0.9
-    design_goal_met = (alphas_np <= target_alpha) & (powers_np >= target_power)
+    design_goal_met = (alphas_np <= target_alpha) & (powers_np >= target_power - 0.05)
 
     # how many designs are within epsilon of alpha and power
     epsilon = 0.01
@@ -409,7 +409,7 @@ def _(
     print(f"Feasible:         {np.sum(design_goal_met)}/{n_baseline} ({100*np.mean(design_goal_met):.1f}%)")
     print(f"Feasible epsil:   {np.sum(within_epsilon)}/{n_baseline} ({100*np.mean(within_epsilon):.1f}%)")
     print(f"Better than tri?  {obj_min_less_tri}")
-    return alphas_np, obj_min_index, powers_np, sample_sizes_np
+    return alphas_np, epsilon, obj_min_index, powers_np, sample_sizes_np
 
 
 @app.cell(hide_code=True)
@@ -495,7 +495,7 @@ def _(
     n_experiments = 10
 
     # ensure that this matches the total # of Bayes opt evals
-    _n_baseline = 100
+    n_loops = 100
 
     # values that we are collecting
     seeds = []
@@ -522,7 +522,7 @@ def _(
         # initialize the rng with this new seed
         rng_in_loop = np.random.default_rng(seed=seed)
 
-        _bounds_to_test = rng_in_loop.uniform(lower, upper, size=(_n_baseline, len(lower)))
+        bounds_to_test_loop = rng_in_loop.uniform(lower, upper, size=(n_loops, len(lower)))
 
         ex_alphas = []
         ex_powers = []
@@ -533,7 +533,7 @@ def _(
         _start_time = time.time()
     
         _i = 1
-        for _bounds in _bounds_to_test:
+        for _bounds in bounds_to_test_loop:
     
             _actual_bounds = reverse_to_boundaries(_bounds, K = num_analyses)
     
@@ -571,23 +571,154 @@ def _(
             print("=============================")
         j = j + 1
     
-    return powers_list, seeds
+    return (
+        alphas_list,
+        baseline_objs_list,
+        bounds_to_test_loop,
+        execution_times,
+        n_loops,
+        powers_list,
+        sample_sizes_list,
+        seeds,
+    )
 
 
-@app.cell
-def _(seeds):
-    seeds
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Summarize the data
+    """)
     return
 
 
 @app.cell
-def _(powers_list):
-    print(powers_list[0])
+def _(
+    alphas_list,
+    execution_times,
+    np,
+    pd,
+    powers_list,
+    sample_sizes_list,
+    seeds,
+):
+    random_search_large_box = pd.DataFrame(
+        {
+            'alpha_mean' : np.mean(alphas_list, axis=1), 
+            'power_mean' : np.mean(powers_list, axis=1),
+            'sample_size_mean' : np.mean(sample_sizes_list, axis=1),
+            'execution_times_min' : np.array(execution_times)/60,
+            'seed' : seeds
+        }
+    )
+    return (random_search_large_box,)
+
+
+@app.cell
+def _(
+    alphas_list,
+    baseline_objs_list,
+    design_met,
+    epsilon,
+    execution_times,
+    n_loops,
+    np,
+    powers_list,
+    seeds,
+    target_alpha,
+    target_power,
+    tri_obj,
+    within_epi,
+):
+    alphas_list_np = np.array(alphas_list)
+    powers_list_np = np.array(powers_list)
+
+    best_obj = []
+    best_index = []
+    better_than_tri = []
+
+    for _i in range(len(seeds)):
+        # get values of interest noted above
+        _obj_min = np.min(baseline_objs_list[_i])
+        _obj_min_index = np.argmin(baseline_objs_list[_i])
+        _obj_min_less_tri = _obj_min < tri_obj
+    
+        # how many designs meet alpha 0.05 and power 0.9
+        _design_goal_met = (alphas_list_np[_i] <= target_alpha) & (powers_list_np >= (target_power - 0.05))
+    
+        # how many designs are within epsilon of alpha and power
+        _epsilon = 0.01
+        _within_epsilon = ( (alphas_list_np[_i] <= (target_alpha + epsilon)) & (alphas_list_np[_i] >= (target_alpha - epsilon)) )
+
+        print(f"Run {_i+1}:")
+        print(f"Random search:    {n_loops} evaluations")
+        print(f"Loop took:        {execution_times[_i]/60:.2f} min")
+        print(f"Best overall f:   {_obj_min:.4f}")
+        print(f"Best index:       {_obj_min_index}")
+        print(f"Feasible:         {np.sum(_design_goal_met[_i])}/{n_loops} ({100*np.mean(_design_goal_met[_i]):.1f}%)")
+        print(f"Feasible epsil:   {np.sum(_within_epsilon[_i])}/{n_loops} ({100*np.mean(_within_epsilon[_i]):.1f}%)")
+        print(f"Better than tri?  {_obj_min_less_tri}")
+        print("\n")
+
+        best_obj.append(_obj_min)
+        best_index.append(_obj_min_index)
+        better_than_tri.append(_obj_min_less_tri)
+        design_met.append(_design_goal_met[_i])
+        within_epi.append()
+    return best_index, best_obj, better_than_tri
+
+
+@app.cell
+def _(best_index, best_obj, better_than_tri, random_search_large_box):
+    random_search_large_box['best_obj_val'] = best_obj
+    random_search_large_box['best_obj_index'] = best_index
+    random_search_large_box['better_than_tri'] = better_than_tri
     return
 
 
 @app.cell
-def _():
+def _(random_search_large_box):
+    random_search_large_box
+    return
+
+
+@app.cell
+def _(best_obj, np):
+    np.mean(best_obj)
+    return
+
+
+@app.cell
+def _(best_index, np):
+    np.median(best_index)
+    return
+
+
+@app.cell
+def _(better_than_tri, np):
+    np.mean(better_than_tri)
+    return
+
+
+@app.cell
+def _(
+    alphas_np,
+    best_obj,
+    bounds_to_test_loop,
+    num_analyses,
+    powers_np,
+    random_search_large_box,
+    reverse_to_boundaries,
+    sample_sizes_np,
+    seeds,
+):
+    for _i in range(len(seeds)):
+        print(f"Run {_i+1}:")
+        print(f"The best boundary: {reverse_to_boundaries(bounds_to_test_loop[random_search_large_box['best_obj_index'][_i]], K = num_analyses)}")
+        print(f"Objective val:     {best_obj[_i]}")
+        print(f"Alpha:             {alphas_np[random_search_large_box['best_obj_index'][_i]]}")
+        print(f"Power:             {powers_np[random_search_large_box['best_obj_index'][_i]]}")
+        print(f"Sample size:       {sample_sizes_np[random_search_large_box['best_obj_index'][_i]]}")
+        print("\n")
     return
 
 
