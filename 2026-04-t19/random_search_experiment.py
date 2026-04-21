@@ -493,7 +493,7 @@ def _(
     n_experiments = 50
 
     # ensure that this matches the total # of Bayes opt evals
-    n_loops = 1002
+    n_loops = 1000
 
     # values that we are collecting
     seeds = []
@@ -502,6 +502,7 @@ def _(
     sample_sizes_list = []
     baseline_objs_list = []
     execution_times = []
+    all_bounds = []
 
     j = 1
     for _i in range(n_experiments):
@@ -521,6 +522,7 @@ def _(
         rng_in_loop = np.random.default_rng(seed = seed)
 
         bounds_to_test_loop = rng_in_loop.uniform(lower, upper, size = (n_loops, len(lower)))
+        all_bounds.append(bounds_to_test_loop)
 
         ex_alphas = []
         ex_powers = []
@@ -570,10 +572,11 @@ def _(
         j = j + 1
 
     return (
+        all_bounds,
         alphas_list,
         baseline_objs_list,
-        bounds_to_test_loop,
         execution_times,
+        n_experiments,
         n_loops,
         powers_list,
         sample_sizes_list,
@@ -705,30 +708,48 @@ def _(better_than_tri, np):
 
 @app.cell
 def _(
+    all_bounds,
     alphas_np,
     best_obj,
-    bounds_to_test_loop,
     num_analyses,
     powers_np,
     random_search_large_box,
     reverse_to_boundaries,
     sample_sizes_np,
     seeds,
+    sim,
 ):
     for _i in range(len(seeds)):
+    
+        best_bounds = reverse_to_boundaries(
+            all_bounds[_i][random_search_large_box['best_obj_index'][_i]],
+            K = num_analyses
+        )
+    
+        best_design_properties = sim.group_sequential_designs(
+            n_analyses = num_analyses,
+            upper_bounds = best_bounds[0],
+            lower_bounds = best_bounds[1],
+            n_patients = sample_sizes_np[random_search_large_box['best_obj_index'][_i]],
+            null_hypothesis=0,
+            alt_hypothesis=0.5,
+            variance=1
+        )
+    
         print(f"Run {_i+1}:")
-        print(f"The best boundary: {reverse_to_boundaries(bounds_to_test_loop[random_search_large_box['best_obj_index'][_i]], K = num_analyses)}")
+        print(f"The best boundary: {best_bounds}")
         print(f"Objective val:     {best_obj[_i]}")
         print(f"Alpha:             {alphas_np[random_search_large_box['best_obj_index'][_i]]}")
         print(f"Power:             {powers_np[random_search_large_box['best_obj_index'][_i]]}")
         print(f"Sample size:       {sample_sizes_np[random_search_large_box['best_obj_index'][_i]]}")
+        print(f"Expected ss:       {best_design_properties[3]}")
         print("\n")
     return
 
 
 @app.cell
 def _(
-    bounds_to_test_loop,
+    all_bounds,
     num_analyses,
     plt,
     random_search_large_box,
@@ -742,7 +763,10 @@ def _(
     _ax.plot([1,2,3], tri[1], color = "red", lw = 2)
 
     for _i in range(len(seeds)):
-        _bounds = reverse_to_boundaries(bounds_to_test_loop[random_search_large_box['best_obj_index'][_i]], K = num_analyses)
+        _bounds = reverse_to_boundaries(
+            all_bounds[_i][random_search_large_box['best_obj_index'][_i]],
+            K = num_analyses
+        )
 
         _ax.plot([i for i in range(1,num_analyses+1)], _bounds[0], color = "purple", alpha = 0.5)
         _ax.plot([i for i in range(1,num_analyses+1)], _bounds[1], color = "purple", alpha = 0.5)
@@ -752,15 +776,15 @@ def _(
 
 
 @app.cell
-def _(mo):
-    slider = mo.ui.slider(start=0, stop=49)
+def _(mo, n_experiments):
+    slider = mo.ui.slider(start=0, stop=n_experiments-1)
     slider
     return (slider,)
 
 
 @app.cell
 def _(
-    bounds_to_test_loop,
+    all_bounds,
     num_analyses,
     plt,
     random_search_large_box,
@@ -774,7 +798,7 @@ def _(
     _ax.plot([1,2,3], tri[1], color = "red", lw = 2)
 
     _bounds = reverse_to_boundaries(
-        bounds_to_test_loop[random_search_large_box['best_obj_index'][slider.value]], 
+        all_bounds[slider.value][random_search_large_box['best_obj_index'][slider.value]],
         K = num_analyses
     )
 
