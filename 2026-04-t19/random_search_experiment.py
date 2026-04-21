@@ -162,7 +162,6 @@ def _(mo):
 
 @app.cell
 def _(delta0, delta1, fn_min, fp, num_analyses, sigma2, sim, ss):
-    # this function contains a penalty for non-monotonicity
     def obj_f(
             mu,
             upper_bounds,
@@ -223,7 +222,7 @@ def _(delta0, delta1, fn_min, fp, num_analyses, sigma2, sim, ss):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # Objective function value
+    # Objective function value - triangular
     """)
     return
 
@@ -362,13 +361,13 @@ def _(
 
         if i % 100 == 0:
             print(f"Completed loop {i}.")
-    
+
         i = i + 1
 
     # end the timer
     end_time = time.time()
     execution_time = end_time - start_time
-    return alphas, baseline_objs, execution_time, i, powers, sample_sizes
+    return alphas, baseline_objs, execution_time, powers, sample_sizes
 
 
 @app.cell
@@ -478,7 +477,6 @@ def _(mo):
 
 @app.cell
 def _(
-    i,
     lower,
     mu,
     np,
@@ -492,10 +490,10 @@ def _(
     upper,
 ):
     # how many loops of n_baseline to run
-    n_experiments = 10
+    n_experiments = 50
 
     # ensure that this matches the total # of Bayes opt evals
-    n_loops = 100
+    n_loops = 1002
 
     # values that we are collecting
     seeds = []
@@ -520,23 +518,23 @@ def _(
         seeds.append(seed)
 
         # initialize the rng with this new seed
-        rng_in_loop = np.random.default_rng(seed=seed)
+        rng_in_loop = np.random.default_rng(seed = seed)
 
-        bounds_to_test_loop = rng_in_loop.uniform(lower, upper, size=(n_loops, len(lower)))
+        bounds_to_test_loop = rng_in_loop.uniform(lower, upper, size = (n_loops, len(lower)))
 
         ex_alphas = []
         ex_powers = []
         ex_sample_sizes = []
         ex_baseline_objs = []
-    
+
         # start a timer
         _start_time = time.time()
-    
+
         _i = 1
         for _bounds in bounds_to_test_loop:
-    
+
             _actual_bounds = reverse_to_boundaries(_bounds, K = num_analyses)
-    
+
             _alpha, _power, _sample_size, _y_val = obj_f(
                 mu = mu,
                 upper_bounds = _actual_bounds[0],
@@ -545,16 +543,16 @@ def _(
                 target_power = target_power,
                 target_alpha = target_alpha
             )
-    
+
             ex_alphas.append(_alpha)
             ex_powers.append(_power)
             ex_sample_sizes.append(_sample_size)
             ex_baseline_objs.append(_y_val)
-    
+
             if _i % 200 == 0:
-                print(f"Completed inside loop {i}.")
+                print(f"Completed inside loop {_i}.")
             _i = _i + 1
-    
+
         # end the timer
         _end_time = time.time()
 
@@ -570,7 +568,7 @@ def _(
             print(f"= Completed experiment {j}. =")
             print("=============================")
         j = j + 1
-    
+
     return (
         alphas_list,
         baseline_objs_list,
@@ -617,7 +615,6 @@ def _(
 def _(
     alphas_list,
     baseline_objs_list,
-    design_met,
     epsilon,
     execution_times,
     n_loops,
@@ -627,7 +624,6 @@ def _(
     target_alpha,
     target_power,
     tri_obj,
-    within_epi,
 ):
     alphas_list_np = np.array(alphas_list)
     powers_list_np = np.array(powers_list)
@@ -635,16 +631,18 @@ def _(
     best_obj = []
     best_index = []
     better_than_tri = []
+    design_met = []
+    within_epsi = []
 
     for _i in range(len(seeds)):
         # get values of interest noted above
         _obj_min = np.min(baseline_objs_list[_i])
         _obj_min_index = np.argmin(baseline_objs_list[_i])
         _obj_min_less_tri = _obj_min < tri_obj
-    
+
         # how many designs meet alpha 0.05 and power 0.9
         _design_goal_met = (alphas_list_np[_i] <= target_alpha) & (powers_list_np >= (target_power - 0.05))
-    
+
         # how many designs are within epsilon of alpha and power
         _epsilon = 0.01
         _within_epsilon = ( (alphas_list_np[_i] <= (target_alpha + epsilon)) & (alphas_list_np[_i] >= (target_alpha - epsilon)) )
@@ -663,8 +661,14 @@ def _(
         best_index.append(_obj_min_index)
         better_than_tri.append(_obj_min_less_tri)
         design_met.append(_design_goal_met[_i])
-        within_epi.append()
-    return best_index, best_obj, better_than_tri
+        within_epsi.append(_within_epsilon[_i])
+    return (
+        alphas_list_np,
+        best_index,
+        best_obj,
+        better_than_tri,
+        powers_list_np,
+    )
 
 
 @app.cell
@@ -719,6 +723,119 @@ def _(
         print(f"Power:             {powers_np[random_search_large_box['best_obj_index'][_i]]}")
         print(f"Sample size:       {sample_sizes_np[random_search_large_box['best_obj_index'][_i]]}")
         print("\n")
+    return
+
+
+@app.cell
+def _(
+    bounds_to_test_loop,
+    num_analyses,
+    plt,
+    random_search_large_box,
+    reverse_to_boundaries,
+    seeds,
+    tri,
+):
+    _fig, _ax = plt.subplots()
+
+    _ax.plot([1,2,3], tri[0], color = "red", lw = 2)
+    _ax.plot([1,2,3], tri[1], color = "red", lw = 2)
+
+    for _i in range(len(seeds)):
+        _bounds = reverse_to_boundaries(bounds_to_test_loop[random_search_large_box['best_obj_index'][_i]], K = num_analyses)
+
+        _ax.plot([i for i in range(1,num_analyses+1)], _bounds[0], color = "purple", alpha = 0.5)
+        _ax.plot([i for i in range(1,num_analyses+1)], _bounds[1], color = "purple", alpha = 0.5)
+
+    _fig
+    return
+
+
+@app.cell
+def _(mo):
+    slider = mo.ui.slider(start=0, stop=49)
+    slider
+    return (slider,)
+
+
+@app.cell
+def _(
+    bounds_to_test_loop,
+    num_analyses,
+    plt,
+    random_search_large_box,
+    reverse_to_boundaries,
+    slider,
+    tri,
+):
+    _fig, _ax = plt.subplots()
+
+    _ax.plot([1,2,3], tri[0], color = "red", lw = 2)
+    _ax.plot([1,2,3], tri[1], color = "red", lw = 2)
+
+    _bounds = reverse_to_boundaries(
+        bounds_to_test_loop[random_search_large_box['best_obj_index'][slider.value]], 
+        K = num_analyses
+    )
+
+    _ax.plot([i for i in range(1,num_analyses+1)], _bounds[0], color = "purple", alpha = 0.5)
+    _ax.plot([i for i in range(1,num_analyses+1)], _bounds[1], color = "purple", alpha = 0.5)
+
+    _ax.set_ylim(-7.5,12.5)
+
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Save some values
+    seeds = []
+    alphas_list = []
+    powers_list = []
+    sample_sizes_list = []
+    baseline_objs_list = []
+    execution_times = []
+    """)
+    return
+
+
+@app.cell
+def _(random_search_large_box):
+    random_search_large_box.to_csv("random_search_large_box_50.csv")
+    return
+
+
+@app.cell
+def _(alphas_list_np, pd):
+    random_search_large_box_alphas = pd.DataFrame(alphas_list_np)
+    random_search_large_box_alphas.index = [f'row_{i}' for i in range(1, 51)]
+    random_search_large_box_alphas.to_csv("2026-04-t19/random_search_large_box_alphas_50.csv")
+    return
+
+
+@app.cell
+def _(pd, powers_list_np):
+    random_search_large_box_powers = pd.DataFrame(powers_list_np)
+    random_search_large_box_powers.index = [f'row_{i}' for i in range(1, 51)]
+    random_search_large_box_powers.to_csv("2026-04-t19/random_search_large_box_powers_50.csv")
+    return
+
+
+@app.cell
+def _(pd, sample_sizes_list):
+    random_search_large_box_sample_size = pd.DataFrame(sample_sizes_list)
+    random_search_large_box_sample_size.index = [f'row_{i}' for i in range(1, 51)]
+    random_search_large_box_sample_size.to_csv("2026-04-t19/random_search_large_box_sample_size_50.csv")
+    return
+
+
+@app.cell
+def _(baseline_objs_list, pd):
+    random_search_large_box_baseline_obj = pd.DataFrame(baseline_objs_list)
+    random_search_large_box_baseline_obj.index = [f'row_{i}' for i in range(1, 51)]
+    random_search_large_box_baseline_obj.to_csv("2026-04-t19/random_search_large_box_baseline_obj_50.csv")
     return
 
 
