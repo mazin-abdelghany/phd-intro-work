@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.21.1"
-app = marimo.App(width="medium")
+app = marimo.App(width="medium", auto_download=["html", "ipynb"])
 
 
 @app.cell
@@ -415,8 +415,8 @@ def _(
     time,
     trieste,
 ):
-    num_repeats   = 50
-    when_to_print = 5
+    num_repeats   = 1000
+    when_to_print = 100
     n_design_goal_met = 0
     design_goal_met_list = []
 
@@ -490,12 +490,12 @@ def _(
     tri_obj,
     within_epsilon_list,
 ):
-    best_obj_f = np.min(ask_tell.to_result().try_get_final_dataset().observations)
+    best_obj_f = np.min(ask_tell.to_result().try_get_final_dataset().observations[2:])
 
-    best_idx = np.argmin(ask_tell.to_result().try_get_final_dataset().observations)
+    best_idx = np.argmin(ask_tell.to_result().try_get_final_dataset().observations[2:])
 
     best_bounds = reverse_to_boundaries(
-        ask_tell.to_result().try_get_final_dataset().query_points[best_idx], 
+        ask_tell.to_result().try_get_final_dataset().query_points[2:][best_idx], 
         K=num_analyses
     )
 
@@ -519,6 +519,12 @@ def _(
     return best_bounds, best_n09
 
 
+@app.cell
+def _(best_bounds):
+    best_bounds
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -538,6 +544,200 @@ def _(best_bounds, best_n09, delta0, delta1, num_analyses, sigma2, sim):
         alt_hypothesis = delta1,
         variance = sigma2
     )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Run Bayes opt 1000 times
+    """)
+    return
+
+
+@app.cell
+def _(
+    bayes_opt_model,
+    delta0,
+    delta1,
+    initial_data,
+    mu,
+    np,
+    num_analyses,
+    obj_f,
+    reverse_to_boundaries,
+    search_space,
+    sigma2,
+    ss,
+    target_alpha,
+    target_power,
+    time,
+    tri_obj,
+    trieste,
+):
+    # how many loops of n_baseline to run
+    n_experiments = 50
+    n_loops = 1000
+
+    # collect some important values
+    loop_observations = []
+    loop_query_points = []
+    loop_design_goal_met = []
+    loop_within_epsilon = []
+    loop_best_idx = []
+    loop_best_obj_f = []
+    loop_best_bounds = []
+    loop_execution_time = []
+    loop_best_n09 = []
+
+    for _j in range(n_experiments):
+
+        when_to_print_loop = 100
+        n_design_goal_met_loop = 0
+        design_goal_met_list_loop = []
+    
+        epsilon_loop = 0.015
+        n_within_epsilon_loop = 0
+        within_epsilon_list_loop = []
+    
+        # start a timer
+        start_time_loop = time.time()
+
+        # reset the ask_tell interface every experiment
+        loop_ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
+            search_space     = search_space,
+            datasets         = initial_data,
+            models           = bayes_opt_model,
+            acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
+                optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer(
+                    num_optimization_runs = 500
+                )
+            )
+        )
+    
+        for _i in range(n_loops):
+            x_new_loop = loop_ask_tell.ask()
+    
+            alpha_new_loop, power_new_loop, n_power_09_new_loop, max_ess_new_loop, y_new_loop = obj_f(
+                mu = mu, 
+                params = x_new_loop,
+                n_analyses = num_analyses,
+                target_power = target_power,
+                target_alpha = target_alpha
+            )
+    
+            # how many designs meet alpha 0.05 and power 0.9
+            design_goal_met_loop = (alpha_new_loop <= target_alpha) & (power_new_loop >= target_power - 0.05)
+            if design_goal_met_loop:
+                n_design_goal_met_loop += 1
+            design_goal_met_list_loop.append(design_goal_met_loop)
+    
+            # how many designs are within epsilon of alpha and power
+            alpha_target_low = alpha_new_loop <= (target_alpha + epsilon_loop)
+            alpha_target_high = alpha_new_loop >= (target_alpha - epsilon_loop)
+            within_epsilon_loop = ( alpha_target_low & alpha_target_high )
+            if within_epsilon_loop:
+                n_within_epsilon_loop += 1
+            within_epsilon_list_loop.append(within_epsilon_loop)
+    
+            loop_ask_tell.tell(trieste.data.Dataset(
+                query_points = x_new_loop,
+                observations = np.array([[y_new_loop]])
+            ))
+    
+            if (_i + 1) % when_to_print_loop == 0:
+                print(
+                    f"\nLoop {_i+1} completed. "
+                    f"Feasible: {n_design_goal_met_loop}/{_i+1} "
+                    f"({100*n_design_goal_met_loop/(_i+1):.0f}%).",
+                    end=""
+                 )
+            elif (_i > when_to_print_loop) and ((_i + 1) % 5 == 0):
+                print(".", end="")
+    
+        # end the timer
+        end_time_loop = time.time()
+        execution_time_loop = end_time_loop - start_time_loop
+
+        # save helpful items from loop
+        loop_observations.append(
+            np.array(loop_ask_tell.to_result().try_get_final_dataset().observations[2:]).flatten()
+        )
+
+        loop_query_points.append(
+            np.array(loop_ask_tell.to_result().try_get_final_dataset().query_points[2:])
+        )
+
+        loop_design_goal_met.append(design_goal_met_list_loop)
+        loop_within_epsilon.append(within_epsilon_list_loop)
+
+        print("=============================")
+        print(f"= Completed experiment {_j+1}. =")
+        print("=============================")
+
+        best_obj_f_loop = np.min(loop_ask_tell.to_result().try_get_final_dataset().observations[2:])
+
+        best_idx_loop = np.argmin(loop_ask_tell.to_result().try_get_final_dataset().observations[2:])
+    
+        best_bounds_loop = reverse_to_boundaries(
+            loop_ask_tell.to_result().try_get_final_dataset().query_points[2:][best_idx_loop], 
+            K=num_analyses
+        )
+    
+        best_n09_loop, _ = ss.find_sample_size(
+            power_target = target_power,
+            n_analyses = num_analyses,
+            upper_bounds = best_bounds_loop[0],
+            lower_bounds = best_bounds_loop[1],
+            null_hypothesis = delta0,
+            alt_hypothesis = delta1,
+            variance = sigma2
+        )
+
+        loop_best_obj_f.append(best_obj_f_loop)
+        loop_best_idx.append(best_idx_loop)
+        loop_best_bounds.append(best_bounds_loop)
+        loop_execution_time.append(execution_time_loop)
+        loop_best_n09.append(best_n09_loop)
+    
+        print(f"Bayesian optim:       {n_loops} evaluations")
+        print(f"Loop took:            {execution_time_loop/60:.1f} min")
+        print(f"Feasible BO:          {n_design_goal_met_loop}/{n_loops} ({100*np.mean(design_goal_met_loop):.1f}%)")
+        print(f"Feasible epsilon:     {n_within_epsilon_loop}/{n_loops} ({100*np.mean(within_epsilon_list_loop):.1f}%)")
+        print(f"Best objective val:   {best_obj_f_loop}")
+        print(f"Best objective idx:   {best_idx_loop}")
+        print(f"Best n w/power 0.9:   {best_n09_loop}")
+        print(f"Better than tri?      {best_obj_f_loop < tri_obj}\n")
+    return (loop_best_bounds,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Best bounds characteristics
+    """)
+    return
+
+
+@app.cell
+def _(best_n09, delta0, delta1, loop_best_bounds, num_analyses, sigma2, sim):
+    for (_i, _bound) in enumerate(loop_best_bounds):
+        _chars = sim.group_sequential_designs(
+            n_analyses = num_analyses,
+            upper_bounds = _bound[0],
+            lower_bounds = _bound[1],
+            n_patients = best_n09,
+            null_hypothesis = delta0,
+            alt_hypothesis = delta1,
+            variance = sigma2
+        )
+
+        print(f"Run: {_i+1}")
+        print(f"Upper: {_bound[0]}")
+        print(f"Lower: {_bound[1]}")
+        print(f"Alpha: {_chars[1]}")
+        print(f"Beta:  {_chars[2]}")
+        print(f"ESS:   {_chars[3]}\n")
     return
 
 
