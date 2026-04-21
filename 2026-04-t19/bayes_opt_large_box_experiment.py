@@ -26,7 +26,7 @@ def _():
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    return (np,)
+    return np, time
 
 
 @app.cell
@@ -260,7 +260,7 @@ def _(
     print(f"Original trriangular params: {np.round(np.concatenate((tri[0], tri[1])), 4)}")
     print(f"Reparameterized triangular params: {np.round(tri_params, 4)}")
     print(f"Meeting point c0 = {c0:.4f}")
-    return (c0,)
+    return c0, tri_obj
 
 
 @app.cell(hide_code=True)
@@ -404,44 +404,28 @@ def _(bayes_opt_model, initial_data, search_space, trieste):
 
 
 @app.cell
-def _(ask_tell, mu, num_analyses, obj_f, target_alpha, target_power):
-    obj_f(
-            mu = mu, 
-            params = ask_tell.ask(),
-            n_analyses = num_analyses,
-            target_power = target_power,
-            target_alpha = target_alpha
-        )
-    return
-
-
-@app.cell
-def _(alpha_prime, calc_power, f_val, max_ess, n_power09):
-    alpha_prime,
-    calc_power,
-    n_power09,
-    max_ess,
-    f_val
-    return
-
-
-@app.cell
 def _(
-    alphas_np,
     ask_tell,
     mu,
+    np,
     num_analyses,
     obj_f,
     target_alpha,
     target_power,
+    time,
     trieste,
 ):
     num_repeats   = 50
     when_to_print = 5
     n_design_goal_met = 0
+    design_goal_met_list = []
 
-    epsilon = 0.01
+    epsilon = 0.015
     n_within_epsilon = 0
+    within_epsilon_list = []
+
+    # start a timer
+    start_time = time.time()
 
     for _i in range(num_repeats):
         x_new = ask_tell.ask()
@@ -458,33 +442,102 @@ def _(
         design_goal_met = (alpha_new <= target_alpha) & (power_new >= target_power - 0.05)
         if design_goal_met:
             n_design_goal_met += 1
+        design_goal_met_list.append(design_goal_met)
 
         # how many designs are within epsilon of alpha and power
-        within_epsilon = ( (alphas_np <= (target_alpha + epsilon)) & (alphas_np >= (target_alpha - epsilon)) )
+        within_epsilon = ( (alpha_new <= (target_alpha + epsilon)) & (alpha_new >= (target_alpha - epsilon)) )
         if within_epsilon:
             n_within_epsilon += 1
+        within_epsilon_list.append(within_epsilon)
 
         ask_tell.tell(trieste.data.Dataset(
             query_points = x_new,
-            observations = y_new
+            observations = np.array([[y_new]])
         ))
 
         if (_i + 1) % when_to_print == 0:
             print(
                 f"\nLoop {_i+1} completed. "
                 f"Feasible: {n_design_goal_met}/{_i+1} "
-                f"({100*n_design_goal_met/(_i+1):.0f}%). "
-                f"Best obj: {_current_best:.4f}"
+                f"({100*n_design_goal_met/(_i+1):.0f}%).",
+                end=""
              )
         elif (_i > when_to_print) and ((_i + 1) % 5 == 0):
             print(".", end="")
 
+    # end the timer
+    end_time = time.time()
+    execution_time = end_time - start_time
+
     print(f"\nDone. Feasible BO proposals: {n_design_goal_met}/{num_repeats}")
+    return execution_time, n_within_epsilon, num_repeats, within_epsilon_list
+
+
+@app.cell
+def _(
+    ask_tell,
+    delta0,
+    delta1,
+    execution_time,
+    n_within_epsilon,
+    np,
+    num_analyses,
+    num_repeats,
+    reverse_to_boundaries,
+    sigma2,
+    ss,
+    target_power,
+    tri_obj,
+    within_epsilon_list,
+):
+    best_obj_f = np.min(ask_tell.to_result().try_get_final_dataset().observations)
+
+    best_idx = np.argmin(ask_tell.to_result().try_get_final_dataset().observations)
+
+    best_bounds = reverse_to_boundaries(
+        ask_tell.to_result().try_get_final_dataset().query_points[best_idx], 
+        K=num_analyses
+    )
+
+    best_n09, _ = ss.find_sample_size(
+        power_target = target_power,
+        n_analyses = num_analyses,
+        upper_bounds = best_bounds[0],
+        lower_bounds = best_bounds[1],
+        null_hypothesis = delta0,
+        alt_hypothesis = delta1,
+        variance = sigma2
+    )
+
+    print(f"Bayesian optim:       {num_repeats} evaluations")
+    print(f"Loop took:            {execution_time/60:.1f} min")
+    print(f"Best objective val:   {best_obj_f}")
+    print(f"Best objective idx:   {best_idx}")
+    print(f"Feasible epsilon:     {n_within_epsilon}/{num_repeats} ({100*np.mean(within_epsilon_list):.1f}%)")
+    print(f"Best n w/power 0.9:   {best_n09}")
+    print(f"Better than tri?      {best_obj_f < tri_obj}")
+    return best_bounds, best_n09
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Best trial design properties
+    """)
     return
 
 
 @app.cell
-def _():
+def _(best_bounds, best_n09, delta0, delta1, num_analyses, sigma2, sim):
+    sim.group_sequential_designs(
+        n_analyses = num_analyses,
+        upper_bounds = best_bounds[0],
+        lower_bounds = best_bounds[1],
+        n_patients = best_n09,
+        null_hypothesis = delta0,
+        alt_hypothesis = delta1,
+        variance = sigma2
+    )
     return
 
 
