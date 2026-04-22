@@ -6,6 +6,7 @@ app = marimo.App(width="medium", auto_download=["html", "ipynb"])
 
 @app.cell
 def _():
+
     import marimo as mo
 
     return (mo,)
@@ -408,7 +409,7 @@ def _(
     print(f"Feasible:         {np.sum(design_goal_met)}/{n_baseline} ({100*np.mean(design_goal_met):.1f}%)")
     print(f"Feasible epsil:   {np.sum(within_epsilon)}/{n_baseline} ({100*np.mean(within_epsilon):.1f}%)")
     print(f"Better than tri?  {obj_min_less_tri}")
-    return alphas_np, epsilon, obj_min_index, powers_np, sample_sizes_np
+    return alphas_np, obj_min_index, powers_np, sample_sizes_np
 
 
 @app.cell(hide_code=True)
@@ -570,7 +571,6 @@ def _(
             print(f"= Completed experiment {j}. =")
             print("=============================")
         j = j + 1
-
     return (
         all_bounds,
         alphas_list,
@@ -615,10 +615,20 @@ def _(
 
 
 @app.cell
+def _(alphas_list_np, alphas_np, target_alpha):
+    # how many designs are within epsilon of alpha and power
+    epsilon = 0.01
+    within_epsilon = ( (alphas_np <= (target_alpha + epsilon)) & (alphas_np >= (target_alpha - epsilon)) )
+
+    _epsilon = 0.01
+    _within_epsilon = ( (alphas_list_np[_i] <= (target_alpha + epsilon)) & (alphas_list_np[_i] >= (target_alpha - epsilon)) )
+    return
+
+
+@app.cell
 def _(
     alphas_list,
     baseline_objs_list,
-    epsilon,
     execution_times,
     n_loops,
     np,
@@ -644,19 +654,19 @@ def _(
         _obj_min_less_tri = _obj_min < tri_obj
 
         # how many designs meet alpha 0.05 and power 0.9
-        _design_goal_met = (alphas_list_np[_i] <= target_alpha) & (powers_list_np >= (target_power - 0.05))
+        _design_goal_met = (alphas_list_np[_i] <= target_alpha) & (powers_list_np[_i] >= (target_power - 0.02))
 
         # how many designs are within epsilon of alpha and power
         _epsilon = 0.01
-        _within_epsilon = ( (alphas_list_np[_i] <= (target_alpha + epsilon)) & (alphas_list_np[_i] >= (target_alpha - epsilon)) )
+        _within_epsilon = ( (alphas_list_np[_i] <= (target_alpha + _epsilon)) & (alphas_list_np[_i] >= (target_alpha - _epsilon)) )
 
         print(f"Run {_i+1}:")
         print(f"Random search:    {n_loops} evaluations")
         print(f"Loop took:        {execution_times[_i]/60:.2f} min")
         print(f"Best overall f:   {_obj_min:.4f}")
         print(f"Best index:       {_obj_min_index}")
-        print(f"Feasible:         {np.sum(_design_goal_met[_i])}/{n_loops} ({100*np.mean(_design_goal_met[_i]):.1f}%)")
-        print(f"Feasible epsil:   {np.sum(_within_epsilon[_i])}/{n_loops} ({100*np.mean(_within_epsilon[_i]):.1f}%)")
+        print(f"Feasible:         {np.sum(_design_goal_met)}/{n_loops} ({100*np.mean(_design_goal_met):.1f}%)")
+        print(f"Feasible epsil:   {np.sum(_within_epsilon)}/{n_loops} ({100*np.mean(_within_epsilon):.1f}%)")
         print(f"Better than tri?  {_obj_min_less_tri}")
         print("\n")
 
@@ -720,12 +730,12 @@ def _(
     sim,
 ):
     for _i in range(len(seeds)):
-    
+
         best_bounds = reverse_to_boundaries(
             all_bounds[_i][random_search_large_box['best_obj_index'][_i]],
             K = num_analyses
         )
-    
+
         best_design_properties = sim.group_sequential_designs(
             n_analyses = num_analyses,
             upper_bounds = best_bounds[0],
@@ -735,7 +745,7 @@ def _(
             alt_hypothesis=0.5,
             variance=1
         )
-    
+
         print(f"Run {_i+1}:")
         print(f"The best boundary: {best_bounds}")
         print(f"Objective val:     {best_obj[_i]}")
