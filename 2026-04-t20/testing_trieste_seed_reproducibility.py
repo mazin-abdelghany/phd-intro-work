@@ -13,12 +13,13 @@ def _():
 
 @app.cell
 def _():
+    import gc
     import numpy as np
     import pandas as pd
     import tensorflow as tf
     import matplotlib.pyplot as plt
 
-    return np, tf
+    return gc, np, tf
 
 
 @app.cell
@@ -303,6 +304,7 @@ def _(mo):
 def _(
     GaussianProcessRegression,
     design_matrix,
+    gc,
     gpflow,
     initial_data,
     mu,
@@ -325,24 +327,24 @@ def _(
     n_within_epsilon = 0
     within_epsilon_list = []
 
+    # outside for loop is number of experiments
     for _ in range(2):
 
         np.random.seed(1793)
         tf.random.set_seed(1793)
 
-        _kernel = gpflow.kernels.Matern52(
+        kernel = gpflow.kernels.Matern52(
             lengthscales=[1.0] * design_matrix.shape[1]
         )
-
-        _gpr = gpflow.models.GPR(
+    
+        gpr = gpflow.models.GPR(
             data      = (design_matrix, output_vals),
-            kernel    = _kernel,
+            kernel    = kernel,
             likelihood = gpflow.likelihoods.Gaussian()
         )
-
-        gpflow.utilities.print_summary(_gpr, fmt="notebook")
-        bayes_opt_model = GaussianProcessRegression(_gpr)
-
+    
+        bayes_opt_model = GaussianProcessRegression(gpr)
+    
         # reset the ask_tell interface
         ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
             search_space     = search_space,
@@ -355,6 +357,7 @@ def _(
             )
         )
 
+        # inside for loop is number of Bayes opt runs
         for _i in range(num_repeats):
             x_new = ask_tell.ask()
 
@@ -395,6 +398,12 @@ def _(
 
         print(f"\nDone. Feasible BO proposals: {n_within_epsilon}/{num_repeats}")
         print(ask_tell.to_result().try_get_final_dataset().observations)
+
+        del ask_tell
+        del bayes_opt_model
+        del gpr
+        del kernel
+        gc.collect()
     return
 
 
