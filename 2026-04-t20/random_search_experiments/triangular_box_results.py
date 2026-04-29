@@ -375,7 +375,7 @@ def _(best_indeces, n_loops, np, num_analyses, plt, tri, triang_box):
                  np.concatenate((triang_box.iloc[idx+add_to_index, 4:6], [triang_box.iloc[idx+add_to_index, 3]])),
                  color = "purple", alpha = 0.1)
 
-    _ax.set_title("50 best boundaries: Large box")
+    _ax.set_title("50 best boundaries: Triangular box")
     _fig
     return (analysis_labels,)
 
@@ -425,7 +425,7 @@ def _(
 
     _ax.text(2.75, -4, np.round(triang_box.iloc[_idx+_add_to_index]['obj_func'], decimals = 4))
 
-    _ax.set_title("50 best boundaries: Large box")
+    _ax.set_title("50 best boundaries: Triangular box")
     _ax.set_ylim(-6,9)
     _fig
     return
@@ -462,7 +462,7 @@ def _(absolute_best, analysis_labels, np, num_analyses, plt, tri, triang_box):
 
     _ax.text(2.75, -4, np.round(triang_box.iloc[absolute_best]['obj_func'], decimals = 4))
 
-    _ax.set_title("Absolute best boundaries: Large box")
+    _ax.set_title("Absolute best boundaries: Triangular box")
     _ax.set_ylim(-6,9)
     _fig
     return
