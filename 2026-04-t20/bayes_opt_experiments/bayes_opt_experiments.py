@@ -1,0 +1,772 @@
+import marimo
+
+__generated_with = "0.21.1"
+app = marimo.App(width="medium")
+
+
+@app.cell
+def _():
+    import marimo as mo
+
+    return (mo,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Imports
+    """)
+    return
+
+
+@app.cell
+def _():
+    import time
+    import gc
+    import scipy.stats as stats
+    import numpy as np
+    import pandas as pd
+    import tensorflow as tf
+
+    return gc, np, pd, tf, time
+
+
+@app.cell
+def _():
+    import gpflow
+    import trieste
+    from trieste.space import Box
+    from trieste.models.gpflow.models import GaussianProcessRegression
+
+    return Box, GaussianProcessRegression, gpflow, trieste
+
+
+@app.cell
+def _():
+    # group sequential design assessment imports
+    from py_group_sequential_designs import generate_boundaries as bd
+    from py_group_sequential_designs import feasibility_penalty as fp
+    from py_group_sequential_designs import boundary_manipulations as fmt_bd
+    from py_group_sequential_designs import function_to_minimize as fn_min
+    from py_group_sequential_designs import generate_gpr_input as gen_input
+    from py_group_sequential_designs import simulate as sim
+    from py_group_sequential_designs import sample_size as ss
+
+    return bd, fn_min, fp, sim, ss
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Trial Design Settings
+    """)
+    return
+
+
+@app.cell
+def _(ss):
+    num_analyses = 3
+    target_alpha = 0.05
+    target_power = 0.9
+    delta0 = 0.
+    delta1 = 1.
+    sigma2 = 3.
+
+    mu = ss.sample_size_means(
+        ratio=1,
+        variance=sigma2,
+        power=target_power,
+        alpha=target_alpha,
+        delta=delta1
+    )
+
+    print(f"We are running an experiment with a trial design with {num_analyses} stages, with:\na target alpha of {target_alpha},\na target power of {target_power},\na null hypothesis of {delta0},\nan alternative hypothesis of {delta1},\nand an assumed variance of {sigma2}\n")
+    print(f"Single-stage sample size mu = {mu:.2f}")
+    return delta0, delta1, mu, num_analyses, sigma2, target_alpha, target_power
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Reverse parameterisation
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    BO vector: $\{c, \Delta u_3, \Delta \ell_3, \Delta u_2, \Delta \ell_2\}$
+    """)
+    return
+
+
+@app.cell
+def _(np):
+    def reverse_to_boundaries(params, K):
+        params = np.asarray(params).flatten()
+        c = params[0]
+
+        delta_u = params[1::2][::-1]
+        delta_l = params[2::2][::-1]
+
+        upper_bounds = np.array([c + np.sum(delta_u[k:]) for k in range(K)])
+        lower_bounds = np.array([c - np.sum(delta_l[k:]) for k in range(K)])
+
+        return upper_bounds, lower_bounds
+
+    def boundaries_to_reverse(upper_bounds, lower_bounds):
+        upper_bounds = np.asarray(upper_bounds)
+        lower_bounds = np.asarray(lower_bounds)
+
+        K = len(upper_bounds)
+        c = upper_bounds[-1]
+
+        delta_u = np.diff(upper_bounds[::-1])
+        delta_l = np.diff(lower_bounds)[::-1]
+
+        increments = np.empty(2 * (K - 1))
+        increments[0::2] = delta_u
+        increments[1::2] = delta_l
+
+        return np.concatenate([[c], increments])
+
+    return boundaries_to_reverse, reverse_to_boundaries
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Objective function
+    """)
+    return
+
+
+@app.cell
+def _(fn_min, fp, sim, ss):
+    # this function contains a penalty for non-monotonicity
+    def obj_f(
+            mu,
+            upper_bounds,
+            lower_bounds,
+            n_patients,
+            n_analyses,
+            target_power,
+            target_alpha,
+            null_hypothesis,
+            alternative_hypothesis,
+            variance):
+
+        trial_sim = sim.group_sequential_designs(
+            n_analyses = n_analyses,
+            upper_bounds = upper_bounds,
+            lower_bounds = lower_bounds,
+            n_patients = n_patients, 
+            null_hypothesis = null_hypothesis,
+            alt_hypothesis = alternative_hypothesis,
+            variance = variance
+        )
+
+        alpha_prime = trial_sim[1]
+        beta_prime = 1-trial_sim[2]
+
+        max_ess = ss.max_ess(
+            n_analyses = n_analyses,
+            upper_bounds = upper_bounds,
+            lower_bounds = lower_bounds,
+            n_patients = n_patients,
+            null_hypothesis = null_hypothesis,
+            variance = variance
+        )
+
+        penalty = fp.smooth_penalty(
+            mu = mu,
+            power = target_power,
+            alpha = target_alpha,
+            beta_prime = beta_prime,
+            alpha_prime = alpha_prime
+        )
+
+        f_val = fn_min.function_to_minimize(max_ess_val = max_ess/mu, penalty = penalty)
+
+        return (
+            alpha_prime,
+            1-beta_prime,
+            max_ess,
+            f_val
+        )
+
+    return (obj_f,)
+
+
+@app.cell
+def _(
+    bd,
+    boundaries_to_reverse,
+    delta0,
+    delta1,
+    mu,
+    np,
+    num_analyses,
+    obj_f,
+    sigma2,
+    ss,
+    target_alpha,
+    target_power,
+):
+    tri = bd.calculate_triangular_boundaries(
+        n_analyses = num_analyses,
+        alpha = target_alpha,
+        delta = delta1,
+        n_patients = 20
+    )
+
+    tri_n_patients = ss.find_sample_size(
+        power_target = target_power,
+        n_analyses = num_analyses,
+        upper_bounds = tri[0],
+        lower_bounds = tri[1],
+        null_hypothesis = delta0,
+        alt_hypothesis = delta1,
+        variance = sigma2
+    )[0]
+
+    tri_alpha, tri_power, tri_max_ess, tri_obj = obj_f(
+        mu = mu,
+        upper_bounds = tri[0],
+        lower_bounds = tri[1],
+        n_analyses = num_analyses,
+        n_patients = tri_n_patients,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+
+    tri_params = boundaries_to_reverse(
+        upper_bounds = tri[0],
+        lower_bounds = tri[1]
+    )
+
+    c0 = tri_params[0]
+
+    print(f"Original trriangular params: {np.round(np.concatenate((tri[0], tri[1])), 4)}")
+    print(f"Reparameterized triangular params: {np.round(tri_params, 4)}")
+    print(f"Meeting point c0 = {c0:.4f}\n")
+    print(f"Triangular benchmark objective: {tri_obj:.4f}")
+    print(f"Triangular alpha: {tri_alpha:.4f}")
+    print(f"Triangular delta alpha: {abs(0.05-tri_alpha):.4f}")
+    print(f"Triangular power: {tri_power:.4f}")
+    print(f"Triangular delta beta: {abs(0.9-tri_power):.4f}")
+    print(f"Triangular sample size: {tri_n_patients:.1f}")
+    print(f"Triangular max ESS: {tri_max_ess:.1f}")
+    return (c0,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Quantities to follow
+
+    Our design goals are $\alpha=$ {target_alpha} and $\beta=$ {1-target_power}. We will assess:
+
+    - The boundary values and corresponding $\alpha'$, $\beta'$, $n$, and maximum expected sample size for the optimal design.
+    - Feasibility: proportion of designs where
+    \[
+        \alpha' \le \alpha + \epsilon_1 \qquad (1-\beta') \ge (1-\beta) - \epsilon_1
+    \]
+    - Strict feasibility: proportion of designs where
+    \[
+        \alpha-\epsilon_2 \le \alpha' \le \alpha + \epsilon_2 \qquad (1-\beta)-\epsilon_2 \le (1-\beta') \le (1-\beta) + \epsilon_2
+    \]
+    - Does the best overall design $D^\star$ have a maximum expected sample size that is smaller than the triangular design?
+    - Does the best overall design $D^\star$ have $\alpha'$ that is closer to the target than the triangular design?
+    - The best overall $\mathcal{L}(\cdot)$ value obtained and its associated index (i.e., loop number at which the optimum was reached).
+    - Is the best overall $\mathcal{L}(\cdot)$ better than the triangular design?
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Data structure
+
+    For each iteration, the following will be collected:
+    - Execution time
+    - Index of iteration
+    - The bounds (total 5 for $K=3$)
+    - $\alpha'$
+    - 1-$\beta'$
+    - Sample size per stage
+    - Maximum expected sample size
+    - Objective function value
+
+    Each experiment will be run for 500 loops. For the first experiment, the index will start at 1001 and end at 1500. The next experiment index will start at 2001 and end at 2500. Thus, the thousands place will correspond to the expirment number and the hundreds place and lower will correspond to the loop index.
+
+    Below is a table that indicates what the data structure will look like.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    | index | upper1 | upper2 | upper3 | lower1 | lower2 | alpha | power | sample_size | max_ess | obj_func | execute_time |
+    |-------|--------|--------|--------|--------|--------|-------|-------|-------------|---------|----------|--------------|
+    | 1001  |        |        |        |        |        |       |       |             |         |          |              |
+    | ...   |        |        |        |        |        |       |       |             |         |          |              |
+    | 1500  |        |        |        |        |        |       |       |             |         |          |              |
+    | 2001  |        |        |        |        |        |       |       |             |         |          |              |
+    | ...   |        |        |        |        |        |       |       |             |         |          |              |
+    | 2500  |        |        |        |        |        |       |       |             |         |          |              |
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Experimental setup
+
+    Because both $\alpha$ and $\beta$ are affected by the boundary selection and the per group sample size, $n$, the boundaries and the sample size will be included in the random search.
+
+    ## Pseudocode:
+    - Create a seed list of 50 unique seeds and save it.
+    - For the number of seeds in the list:
+        - Set the seed
+        - Generate the vector of 500 x 6: [bounds, n]
+        - For each item in the vector:
+              - Reverse the boundaries
+              - Calculate the values of interest (above)
+              - Add the values as a row of the data
+
+    Once the experiments are completed, summary statistics of each run and the for all of the runs can be calculated and presented.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Search space
+    """)
+    return
+
+
+@app.cell
+def _(c0, np):
+    #############
+    # large box #
+    #############
+    lower = np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2])
+    upper = np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100])
+
+    #############
+    # small box #
+    #############
+    # lower = np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2])
+    # upper = np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100])
+    return lower, upper
+
+
+@app.cell
+def _():
+    ###################
+    # near triangular #
+    ###################
+    # lower = []
+    # upper = []
+
+    # for param in tri_params:
+    #     lower.append(max(0, param - 0.4))
+    #     upper.append(param + 0.4)
+
+    # lower.append(2)
+    # lower.append(100)
+
+    # print(f"Lower: {np.round(lower, 3)}")
+    # print(f"Upper: {np.round(upper, 3)}")
+    return
+
+
+@app.cell
+def _(Box, lower, np, upper):
+    search_space = Box(lower=lower, upper=upper)
+    print(f"  lower: {np.round(search_space.lower.numpy(), 3)}")
+    print(f"  upper: {np.round(search_space.upper.numpy(), 3)}")
+    return (search_space,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Data collection setup
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Experiment initiation
+    """)
+    return
+
+
+@app.cell
+def _():
+    n_experiments = 2
+    n_loops = 10
+    return n_experiments, n_loops
+
+
+@app.cell
+def _(num_analyses):
+    # create the data container that will collect all the values of interest
+    # we will use an empty dictionary for memory efficiency and the convert
+
+    # dynamic labels for the bounds
+    upper_labels = [f"upper{i+1}" for i in range(num_analyses)]
+    lower_labels = [f"lower{i+1}" for i in range(num_analyses - 1)]
+
+    # labels will be used again in the experiment loop
+    labels = upper_labels + lower_labels
+
+    ordered_keys = ["index"] + labels + [
+        "alpha", "power", "sample_size", "max_ess", 
+        "obj_func", "execute_time", "seed"
+    ]
+
+    bayes_opt_results = {key: [] for key in ordered_keys}
+    return bayes_opt_results, labels
+
+
+@app.cell
+def _(np):
+    rng = np.random.default_rng(seed = 437591)
+    return (rng,)
+
+
+@app.cell
+def _(bayes_opt_results, n_experiments, n_loops, np, rng):
+    # create a list of seeds to use
+    seed_list = [] # for filling the dictionary
+    short_seed_list = [] # for using in the loop
+
+    for _ in range(n_experiments):
+        # get entropy for the random number generator seed
+        seed = int(np.round(rng.uniform(0, 2**32 - 1)))
+
+        # check that we are not repeating seeds
+        if seed in short_seed_list:
+            seed = int(np.round(rng.uniform(0, 2**32 - 1)))
+        
+        short_seed_list.append(seed)
+
+        # create a long seed set to collect into the data.frame
+        seeds = np.repeat(seed, n_loops)
+        seed_list += seeds.tolist()
+
+    bayes_opt_results["seed"] = seed_list
+    return (short_seed_list,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Stop!
+    If more than 1000 loops are to be run, the index labels in the following code block must be corrected.
+    """)
+    return
+
+
+@app.cell
+def _(bayes_opt_results, n_experiments, n_loops):
+    # generate the indices using the pattern described above
+    index_list = [
+        i 
+        for start in range(1000, (n_experiments+1)*1000, 1000) 
+        for i in range(start + 1, start + (n_loops+1))
+    ]
+
+    bayes_opt_results["index"] = index_list
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Initialisation
+    """)
+    return
+
+
+@app.cell
+def _(
+    bd,
+    boundaries_to_reverse,
+    delta0,
+    delta1,
+    np,
+    num_analyses,
+    sigma2,
+    ss,
+    target_power,
+):
+    poc = bd.calculate_pocock_boundaries(
+        n_analyses=num_analyses, alpha=0.05, n_patients=20
+    )
+
+    poc_n = ss.find_sample_size(
+        power_target = target_power,
+        n_analyses = num_analyses,
+        upper_bounds = poc[0],
+        lower_bounds = poc[1],
+        null_hypothesis = delta0,
+        alt_hypothesis = delta1,
+        variance = sigma2
+    )[0]
+
+    poc_rev_bounds = boundaries_to_reverse(poc[0], poc[1])
+
+    poc_params = np.concatenate((poc_rev_bounds, [poc_n]))
+    return poc, poc_n, poc_params
+
+
+@app.cell
+def _(
+    bd,
+    boundaries_to_reverse,
+    delta0,
+    delta1,
+    np,
+    num_analyses,
+    sigma2,
+    ss,
+    target_power,
+):
+    obf = bd.calculate_of_boundaries(
+        n_analyses=num_analyses, alpha=0.05, n_patients=20
+    )
+
+    obf_n = ss.find_sample_size(
+        power_target = target_power,
+        n_analyses = num_analyses,
+        upper_bounds = obf[0],
+        lower_bounds = obf[1],
+        null_hypothesis = delta0,
+        alt_hypothesis = delta1,
+        variance = sigma2
+    )[0]
+
+    obf_rev_bounds = boundaries_to_reverse(obf[0], obf[1])
+
+    obf_params = np.concatenate((obf_rev_bounds, [obf_n]))
+    return obf, obf_n, obf_params
+
+
+@app.cell
+def _(
+    delta0,
+    delta1,
+    mu,
+    num_analyses,
+    obf,
+    obf_n,
+    obj_f,
+    poc,
+    poc_n,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    _,_,_,poc_obj_f = obj_f(
+        mu = mu,
+        upper_bounds = poc[0],
+        lower_bounds = poc[1],
+        n_analyses = num_analyses,
+        n_patients = poc_n,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+
+    _,_,_,obf_obj_f = obj_f(
+        mu = mu,
+        upper_bounds = obf[0],
+        lower_bounds = obf[1],
+        n_analyses = num_analyses,
+        n_patients = obf_n,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+    return obf_obj_f, poc_obj_f
+
+
+@app.cell
+def _(np, obf_obj_f, obf_params, poc_obj_f, poc_params):
+    design_matrix = np.concatenate((np.atleast_2d(poc_params), np.atleast_2d(obf_params)))
+    output_vals = np.concatenate((np.atleast_2d(poc_obj_f), np.atleast_2d(obf_obj_f)))
+    return design_matrix, output_vals
+
+
+@app.cell
+def _(design_matrix, output_vals):
+    print(f"Initial dataset:\n{design_matrix}\n")
+    print(f"Initial f(x):\n{output_vals}")
+    return
+
+
+@app.cell
+def _(design_matrix, output_vals, trieste):
+    initial_data = trieste.data.Dataset(
+        query_points = design_matrix,
+        observations = output_vals
+    )
+    return (initial_data,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Bayesian optimisation loop
+    """)
+    return
+
+
+@app.cell
+def _(
+    GaussianProcessRegression,
+    bayes_opt_results,
+    delta0,
+    delta1,
+    design_matrix,
+    gc,
+    gpflow,
+    initial_data,
+    labels,
+    mu,
+    n_experiments,
+    n_loops,
+    np,
+    num_analyses,
+    obj_f,
+    output_vals,
+    reverse_to_boundaries,
+    search_space,
+    short_seed_list,
+    sigma2,
+    target_alpha,
+    target_power,
+    tf,
+    time,
+    trieste,
+):
+    for i in range(n_experiments):
+
+        np.random.seed(short_seed_list[i])
+        tf.random.set_seed(short_seed_list[i])
+
+        kernel = gpflow.kernels.Matern52(
+            lengthscales=[1.0] * design_matrix.shape[1]
+        )
+
+        gpr = gpflow.models.GPR(
+            data      = (design_matrix, output_vals),
+            kernel    = kernel,
+            likelihood = gpflow.likelihoods.Gaussian()
+        )
+
+        gpflow.utilities.print_summary(gpr, fmt="notebook")
+        bayes_opt_model = GaussianProcessRegression(gpr)
+
+        ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
+            search_space     = search_space,
+            datasets         = initial_data,
+            models           = bayes_opt_model,
+            acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
+                optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer(
+                    num_optimization_runs = 500
+                )
+            )
+        )
+
+        start_time = time.time()
+
+        # there are n_loops number of reverse_bounds to iterate through
+        for j in range(n_loops):
+            x_new = ask_tell.ask()
+
+            x_new_sample_size = x_new[0][5,]
+            x_new_bounds = x_new[0][:-1]
+
+            bounds = reverse_to_boundaries(params = x_new_bounds, K = num_analyses)
+            bounds_list = np.concatenate( (bounds[0], bounds[1][0:2]) )
+
+            alpha, power, max_ess, y_new = obj_f(
+                mu = mu,
+                upper_bounds = bounds[0],
+                lower_bounds = bounds[1],
+                n_analyses = num_analyses,
+                n_patients = x_new_sample_size.numpy(),
+                target_power = target_power,
+                target_alpha = target_alpha,
+                null_hypothesis = delta0,
+                alternative_hypothesis = delta1,
+                variance = sigma2
+            )
+
+            # collect the boundaries using the labels
+            for _i in range(len(bounds_list)):
+                bayes_opt_results[labels[_i]].extend([bounds_list[_i]])
+
+            # collect the rest of the value of interest
+            bayes_opt_results["alpha"].extend([alpha])
+            bayes_opt_results["power"].extend([power])
+            bayes_opt_results["sample_size"].extend([x_new_sample_size])
+            bayes_opt_results["max_ess"].extend([max_ess])
+            bayes_opt_results["obj_func"].extend([y_new])
+
+            ask_tell.tell(trieste.data.Dataset(
+                query_points = x_new,
+                observations = np.array([[y_new]])
+            ))
+
+            if j % 25 == 0:
+                print(".", end = "")
+
+        stop_time = time.time()
+        execute_time = stop_time - start_time
+
+        time_list = np.repeat(execute_time, n_loops)
+        time_list += time_list.tolist()
+        bayes_opt_results["execute_time"].extend(time_list)
+
+        if i % 10 == 0:
+            print("\n===========================")
+            print(f"= Completed experiment {i+1}. =")
+            print("===========================")
+
+        del ask_tell
+        del bayes_opt_model
+        del gpr
+        del kernel
+        gc.collect()
+    return
+
+
+@app.cell
+def _(bayes_opt_results, pd):
+    pd.DataFrame(bayes_opt_results).to_csv("/tf/2026-04-t20/bayes_opt_experiments/large_box_bo.csv")
+    return
+
+
+if __name__ == "__main__":
+    app.run()
