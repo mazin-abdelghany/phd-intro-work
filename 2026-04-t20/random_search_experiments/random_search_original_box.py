@@ -569,42 +569,5 @@ def _(pd, random_search_large_box):
     return
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    #  Results
-    """)
-    return
-
-
-@app.cell
-def _(pd):
-    large_box = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/random_search_experiments/large_box.csv")
-    small_box = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/random_search_experiments/small_box.csv")
-    triang_box = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/random_search_experiments/triagular_box.csv")
-    return
-
-
-@app.cell
-def _():
-    epsilon1 = 0.01
-    epsilon2 = 0.01
-    return
-
-
-app._unparsable_cell(
-    r"""
-    for k in range(50):
-    
-    """,
-    name="_"
-)
-
-
-@app.cell
-def _():
-    return
-
-
 if __name__ == "__main__":
     app.run()
