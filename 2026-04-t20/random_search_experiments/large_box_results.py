@@ -57,7 +57,6 @@ def _(ss):
         alpha=target_alpha,
         delta=delta1
     )
-
     return delta0, delta1, mu, num_analyses, sigma2, target_alpha, target_power
 
 
@@ -171,7 +170,7 @@ def _(
     print(f"Triangular delta power: {abs(0.9-tri_power):.4f}")
     print(f"Triangular sample size: {tri_n_patients:.1f}")
     print(f"Triangular max ESS: {tri_max_ess:.1f}")
-    return (tri,)
+    return tri, tri_alpha, tri_max_ess, tri_obj
 
 
 @app.cell(hide_code=True)
@@ -222,7 +221,7 @@ def _(pd):
     large_box = large_box.iloc[:, 1:]
     small_box = small_box.iloc[:, 1:]
     triang_box = triang_box.iloc[:, 1:]
-    return (large_box,)
+    return large_box, small_box
 
 
 @app.cell
@@ -304,8 +303,51 @@ def _(epsilon1, epsilon2, large_box, np, target_alpha, target_power):
 
     all_within_e2 = all_within_e2_alpha & all_within_e2_power
 
-    print(np.round(np.mean(all_within_e1)*100, decimals = 1))
-    print(np.round(np.mean(all_within_e2)*100, decimals = 1))
+    print(f"Overall feasibility: {np.round(np.mean(all_within_e1)*100, decimals = 1)}")
+    print(f"Overall strict feasibility: {np.round(np.mean(all_within_e2)*100, decimals = 1)}")
+    return
+
+
+@app.cell
+def _(best_indeces, n_loops, small_box, tri_alpha, tri_max_ess, tri_obj):
+    tri_diff = abs(0.05-tri_alpha)
+
+    diffs = 0
+    ess = 0
+    objf = 0
+
+    for _i in range(50):
+        _start_index = _i * n_loops
+        _stop_index = _start_index + n_loops
+
+        _analysis_set = small_box.iloc[_start_index:_stop_index, 6:11]
+
+        _alpha = _analysis_set.iloc[best_indeces[_i], :]['alpha']
+        _max_ess = _analysis_set.iloc[best_indeces[_i], :]['max_ess']
+        _obj_func = _analysis_set.iloc[best_indeces[_i], :]['obj_func']
+
+        _alpha_diff = abs(0.05 - _alpha)
+
+        diff_better_tri = _alpha_diff < tri_diff
+        if diff_better_tri: diffs += 1
+        
+        ess_better_tri = _max_ess < tri_max_ess
+        if ess_better_tri: ess += 1
+    
+        objf_better_tri = _obj_func < tri_obj
+        if objf_better_tri: objf += 1
+    
+        print("######")
+        print(f"Run {_i+1}:")
+        print("######")
+        print(f"Alpha closer than triangular? {diff_better_tri}")
+        print(f"Max ESS lower than triangular? {ess_better_tri}")
+        print(f"Objective f lower than triangular? {objf_better_tri}")
+        print("\n")
+
+    print(f"Total alpha closer: {diffs}")
+    print(f"Total ESS lower:  {ess}")
+    print(f"Total obj_f lower: {objf}")
     return
 
 
