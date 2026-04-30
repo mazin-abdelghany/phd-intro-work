@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.1"
 app = marimo.App(width="medium")
 
 
@@ -360,14 +360,14 @@ def _(c0, np):
     #############
     # large box #
     #############
-    lower = np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2])
-    upper = np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100])
+    # lower = np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2])
+    # upper = np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100])
 
     #############
     # small box #
     #############
-    # lower = np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2])
-    # upper = np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100])
+    lower = np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2])
+    upper = np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100])
     return lower, upper
 
 
@@ -417,8 +417,8 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 2
-    n_loops = 10
+    n_experiments = 50
+    n_loops = 500
     return n_experiments, n_loops
 
 
@@ -462,7 +462,7 @@ def _(bayes_opt_results, n_experiments, n_loops, np, rng):
         # check that we are not repeating seeds
         if seed in short_seed_list:
             seed = int(np.round(rng.uniform(0, 2**32 - 1)))
-        
+
         short_seed_list.append(seed)
 
         # create a long seed set to collect into the data.frame
@@ -684,7 +684,6 @@ def _(
             likelihood = gpflow.likelihoods.Gaussian()
         )
 
-        gpflow.utilities.print_summary(gpr, fmt="notebook")
         bayes_opt_model = GaussianProcessRegression(gpr)
 
         ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
@@ -730,7 +729,7 @@ def _(
             # collect the rest of the value of interest
             bayes_opt_results["alpha"].extend([alpha])
             bayes_opt_results["power"].extend([power])
-            bayes_opt_results["sample_size"].extend([x_new_sample_size])
+            bayes_opt_results["sample_size"].extend([x_new_sample_size.numpy()])
             bayes_opt_results["max_ess"].extend([max_ess])
             bayes_opt_results["obj_func"].extend([y_new])
 
@@ -758,13 +757,22 @@ def _(
         del bayes_opt_model
         del gpr
         del kernel
+
+        # see https://www.tensorflow.org/api_docs/python/tf/keras/backend/clear_session
+        tf.keras.backend.clear_session()
         gc.collect()
     return
 
 
 @app.cell
 def _(bayes_opt_results, pd):
-    pd.DataFrame(bayes_opt_results).to_csv("/tf/2026-04-t20/bayes_opt_experiments/large_box_bo.csv")
+    pd.DataFrame(bayes_opt_results)
+    return
+
+
+@app.cell
+def _(bayes_opt_results, pd):
+    pd.DataFrame(bayes_opt_results).to_csv("/workspace/2026-04-t20/bayes_opt_experiments/small_box_bo.csv")
     return
 
 
