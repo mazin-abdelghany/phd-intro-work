@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.1"
+__generated_with = "0.21.1"
 app = marimo.App(width="medium")
 
 
@@ -384,7 +384,7 @@ def _():
     #     upper.append(param + 0.4)
 
     # lower.append(2)
-    # lower.append(100)
+    # upper.append(100)
 
     # print(f"Lower: {np.round(lower, 3)}")
     # print(f"Upper: {np.round(upper, 3)}")
