@@ -458,51 +458,5 @@ def _(absolute_best, analysis_labels, np, num_analyses, plt, small_box, tri):
     return
 
 
-@app.cell
-def _(small_box):
-    small_box[small_box["index"] == 1001]["lower2"].item()
-    return
-
-
-@app.cell
-def _(small_box):
-    small_box[small_box["index"] == 1002]["lower2"].item()
-    return
-
-
-@app.cell
-def _(n_loops, small_box):
-    total_unique = 0
-    column_labels = ["upper1", "upper2", "upper3", "lower1", "lower2", "sample_size"]
-
-    for _i in range(50):
-    
-        index_counter = (_i+1) * 1000
-    
-        for _j in range(n_loops):
-            n_check = 0
-            row_to_check = index_counter + (_j + 1)
-        
-            print(row_to_check)
-        
-            above = small_box[small_box["index"] == row_to_check]
-            below = small_box[small_box["index"] == row_to_check+1]
-        
-            for column in column_labels:
-                print(above[column].item(), below[column].item())
-                if above[column].item() == below[column].item():
-                    n_check += 1
-                
-            if n_check == 0:
-                total_unique += 1
-    return
-
-
-@app.cell
-def _(small_box):
-    small_box
-    return
-
-
 if __name__ == "__main__":
     app.run()
