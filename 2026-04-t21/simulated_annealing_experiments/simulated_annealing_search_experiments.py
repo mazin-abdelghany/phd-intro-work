@@ -249,7 +249,7 @@ def _(
     print(f"Triangular delta beta: {abs(0.9-tri_power):.4f}")
     print(f"Triangular sample size: {tri_n_patients:.1f}")
     print(f"Triangular max ESS: {tri_max_ess:.1f}")
-    return c0, tri, tri_n_patients, tri_obj, tri_params
+    return c0, tri, tri_obj, tri_params
 
 
 @app.cell(hide_code=True)
@@ -748,6 +748,7 @@ def _(
     delta0,
     delta1,
     labels,
+    lower_dropdown,
     mu,
     n_experiments,
     n_loops,
@@ -761,20 +762,28 @@ def _(
     target_alpha,
     target_power,
     time,
-    tri_n_patients,
     tri_obj,
-    tri_params,
+    upper_dropdown,
 ):
     for i in range(n_experiments):
 
+        # initialize the rng
+        rng = np.random.default_rng(seed = short_seed_list[i])
+
         # initialise the simulated annealing
-        initial_params = np.concatenate((tri_params, [tri_n_patients]))
+        # _init_triang is the below line:
+        # initial_params = np.concatenate((tri_params, [tri_n_patients]))
+
+        # _init_rand is the below code chunk:
+        initial_params = rng.uniform(
+            lower_dropdown.value,
+            upper_dropdown.value,
+            size = len(lower_dropdown.value)
+        )
+
         f_value = tri_obj.copy()
 
         temperature_start = 100
-
-        # initialize the rng
-        rng = np.random.default_rng(seed = short_seed_list[i])
 
         f_min = f_value.copy()
         best_design = initial_params.copy()
@@ -821,7 +830,7 @@ def _(
 
             # save the boundaries for analysis
             bounds_list = np.concatenate( (candidate_bounds[0], candidate_bounds[1][0:2]) )
-        
+
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
                 box_values_collection[labels[_i]].extend([bounds_list[_i]])
@@ -888,13 +897,13 @@ def _(box_values_collection, pd):
 
 @app.cell
 def _(best_values_df):
-    best_values_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/triang_box_t100_neigh1_best_vals.csv")
+    best_values_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh1_init_rand_best_vals.csv")
     return
 
 
 @app.cell
 def _(box_collections_df):
-    box_collections_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/triagular_box_t100_neigh1_results.csv")
+    box_collections_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh1_init_rand_results.csv")
     return
 
 
