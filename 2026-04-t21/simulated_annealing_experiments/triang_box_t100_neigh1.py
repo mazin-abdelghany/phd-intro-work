@@ -229,7 +229,7 @@ def _(n_loops, np, small_box):
         stop_index = start_index + n_loops
 
         analysis_set = small_box.iloc[start_index:stop_index, 6:11]
-        execute = small_box.iloc[start_index:stop_index, 11]
+        execute = small_box.iloc[start_index:stop_index, 12]
         print("######")
         print(f"Run {k+1}:")
         print("######")
