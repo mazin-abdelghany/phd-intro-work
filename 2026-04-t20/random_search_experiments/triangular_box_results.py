@@ -338,13 +338,13 @@ def _(best_indeces, n_loops, tri_alpha, tri_max_ess, tri_obj, triang_box):
 
         diff_better_tri = _alpha_diff < tri_diff
         if diff_better_tri: diffs += 1
-        
+
         ess_better_tri = _max_ess < tri_max_ess
         if ess_better_tri: ess += 1
 
         objf_better_tri = _obj_func < tri_obj
         if objf_better_tri: objf += 1
-    
+
         print("######")
         print(f"Run {_i+1}:")
         print("######")
@@ -435,6 +435,12 @@ def _(
 def _(np, triang_box):
     absolute_best = np.argmin(triang_box['obj_func'])
     return (absolute_best,)
+
+
+@app.cell
+def _(absolute_best, triang_box):
+    triang_box.iloc[absolute_best, 0:6]
+    return
 
 
 @app.cell
