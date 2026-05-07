@@ -752,7 +752,7 @@ def _(
     mu,
     n_experiments,
     n_loops,
-    neighbour1,
+    neighbour2,
     np,
     num_analyses,
     obj_f,
@@ -795,7 +795,7 @@ def _(
         for j in range(n_loops):
 
             # generate a new design with neighbour
-            candidate_design = neighbour1(params = current_design, K = num_analyses, rng = rng)
+            candidate_design = neighbour2(params = current_design, K = num_analyses, rng = rng)
 
             # get its characteristics and calculate its penalty
             candidate_bounds = reverse_to_boundaries(params = candidate_design[0:5], K = num_analyses)
@@ -897,13 +897,13 @@ def _(box_values_collection, pd):
 
 @app.cell
 def _(best_values_df):
-    best_values_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh1_init_rand_best_vals.csv")
+    best_values_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_init_rand_best_vals.csv")
     return
 
 
 @app.cell
 def _(box_collections_df):
-    box_collections_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh1_init_rand_results.csv")
+    box_collections_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_init_rand_results.csv")
     return
 
 
