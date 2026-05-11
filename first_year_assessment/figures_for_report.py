@@ -8,7 +8,7 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
 
-    return
+    return (mo,)
 
 
 @app.cell
@@ -17,6 +17,14 @@ def _():
     import matplotlib.pyplot as plt
 
     return np, plt
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Loss function figures
+    """)
+    return
 
 
 @app.cell
@@ -93,8 +101,54 @@ def _(X, Y, loss_ab, plt):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Reverse parameterisation exploration
+    """)
+    return
+
+
+@app.cell
+def _(np):
+    def reverse_to_boundaries(params, K):
+        params = np.asarray(params).flatten()
+        c = params[0]
+
+        delta_u = params[1::2][::-1]
+        delta_l = params[2::2][::-1]
+
+        upper_bounds = np.array([c + np.sum(delta_u[k:]) for k in range(K)])
+        lower_bounds = np.array([c - np.sum(delta_l[k:]) for k in range(K)])
+
+        return upper_bounds, lower_bounds
+
+    return (reverse_to_boundaries,)
+
+
 @app.cell
 def _():
+    #         c  u_4  l_4  u_3  l_3  u_2  l_2  u_1  l_1
+    params = [3, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]
+
+    delta_u = params[1::2][::-1]
+    delta_l = params[2::2][::-1]
+
+    for k in range(5):
+        print("k=",k+1)
+        print("upper:")
+        print(delta_u[k:])
+        print(sum(delta_u[k:]))
+        print(3+sum(delta_u[k:]))
+        print("lower:")
+        print(delta_l[k:])
+        print("\n")
+    return
+
+
+@app.cell
+def _(reverse_to_boundaries):
+    reverse_to_boundaries(params=[3, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1], K=5)
     return
 
 
