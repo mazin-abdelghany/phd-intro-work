@@ -58,7 +58,7 @@ def _(alpha_range, loss_alpha, plt):
     ax.axvline(0.05, color = "purple", linewidth = 1, linestyle="--", label = "minimum")
     ax.legend()
 
-    fig.savefig("/tf/first_year_assessment/loss_alpha.png", dpi=300, bbox_inches="tight")
+    fig.savefig("/tf/first_year_assessment/figures/loss_alpha.png", dpi=300, bbox_inches="tight")
     plt.show()
     return
 
@@ -96,7 +96,7 @@ def _(X, Y, loss_ab, plt):
     _ax.set_xlabel("$\\alpha'$")
     _ax.set_ylabel("$\\beta'$")
 
-    _fig.savefig("/tf/first_year_assessment/loss_alpha_beta.png", dpi=300, bbox_inches="tight")
+    _fig.savefig("/tf/first_year_assessment/figures/loss_alpha_beta.png", dpi=300, bbox_inches="tight")
     plt.show()
     return
 
