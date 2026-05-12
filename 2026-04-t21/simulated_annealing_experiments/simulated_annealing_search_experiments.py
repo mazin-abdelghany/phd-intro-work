@@ -897,13 +897,15 @@ def _(box_values_collection, pd):
 
 @app.cell
 def _(best_values_df):
-    best_values_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_init_rand_best_vals.csv")
+    best_values_df.to_csv(
+        "/tf/2026-04-t21/simulated_annealing_experiments/triangular_box_t100_neigh2_init_rand_best_vals.csv")
     return
 
 
 @app.cell
 def _(box_collections_df):
-    box_collections_df.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_init_rand_results.csv")
+    box_collections_df.to_csv(
+        "/tf/2026-04-t21/simulated_annealing_experiments/triangular_box_t100_neigh2_init_rand_results.csv")
     return
 
 
