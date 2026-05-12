@@ -840,7 +840,7 @@ def _(
             box_values_collection["power"].extend([power])
             box_values_collection["sample_size"].extend([current_design[5]])
             box_values_collection["max_ess"].extend([max_ess])
-            box_values_collection["obj_func"].extend([f_value])
+            box_values_collection["obj_func"].extend([f_new])
             box_values_collection["temperature"].extend([temperature])
 
             # collect the best design and f_min
