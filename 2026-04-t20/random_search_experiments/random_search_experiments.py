@@ -27,7 +27,7 @@ def _():
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    return np, pd, stats, time
+    return np, pd, time
 
 
 @app.cell
@@ -250,7 +250,7 @@ def _(
     print(f"Triangular delta beta: {abs(0.9-tri_power):.4f}")
     print(f"Triangular sample size: {tri_n_patients:.1f}")
     print(f"Triangular max ESS: {tri_max_ess:.1f}")
-    return (tri_params,)
+    return c0, tri_params
 
 
 @app.cell(hide_code=True)
@@ -345,36 +345,49 @@ def _(mo):
 
 
 @app.cell
-def _():
-    #############
-    # large box #
-    #############
-    # lower = np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0])
-    # upper = np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0])
+def _(c0, mo, np, tri_params):
+    lower_dropdown = mo.ui.dropdown(
+        options={
+            'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
+            'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
+            'triang_box' : [max(0, param - 0.4) for param in tri_params] + [2]
+        },
+        value="triang_box",
+        label="Choose lower search space:"
+    )
 
-    #############
-    # small box #
-    #############
-    # lower = np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0])
-    # upper = np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0])
+    upper_dropdown = mo.ui.dropdown(
+        options={
+            'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
+            'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
+            'triang_box' : [param + 0.4 for param in tri_params] + [100]
+        }, 
+        value="triang_box",
+        label="Choose upper search space:"
+    )
+    return lower_dropdown, upper_dropdown
+
+
+@app.cell
+def _(lower_dropdown, mo, np):
+    mo.vstack(
+        [
+            lower_dropdown, 
+            mo.md(f"Has value: {np.round(lower_dropdown.value, decimals = 3)}")
+        ]
+    )
     return
 
 
 @app.cell
-def _(np, tri_params):
-    ###################
-    # near triangular #
-    ###################
-    lower = []
-    upper = []
-
-    for param in tri_params:
-        lower.append(max(0, param - 0.4))
-        upper.append(param + 0.4)
-
-    print(f"Lower: {np.round(lower, 3)}")
-    print(f"Upper: {np.round(upper, 3)}")
-    return lower, upper
+def _(mo, np, upper_dropdown):
+    mo.vstack(
+        [
+            upper_dropdown, 
+            mo.md(f"Has value: {np.round(upper_dropdown.value, decimals = 3)}")
+        ]
+    )
+    return
 
 
 @app.cell(hide_code=True)
@@ -461,26 +474,11 @@ def _(n_experiments, n_loops, np, random_search_large_box):
 
 
 @app.cell
-def _():
-    # generate a distribution from which to sample sample sizes
-    loc = 20
-    scale = 10
-
-    # calculate the bonuds of the truncated normal
-    a = (9 - loc) / scale
-    b = (50 - loc) / scale
-    return a, b, loc, scale
-
-
-@app.cell
 def _(
-    a,
-    b,
     delta0,
     delta1,
     labels,
-    loc,
-    lower,
+    lower_dropdown,
     mu,
     n_experiments,
     n_loops,
@@ -489,30 +487,23 @@ def _(
     obj_f,
     random_search_large_box,
     reverse_to_boundaries,
-    scale,
     short_seed_list,
     sigma2,
-    stats,
     target_alpha,
     target_power,
     time,
-    upper,
+    upper_dropdown,
 ):
     for i in range(n_experiments):
-    
+
         # initialize the rng
         rng = np.random.default_rng(seed = short_seed_list[i])
 
         # generate n_loops # of reverse bounds, array shape is (n_loops x 5)
-        reverse_bounds = rng.uniform(lower, upper, size = (n_loops, len(lower)))
+        parameters = rng.uniform(lower_dropdown.value, upper_dropdown.value, size = (n_loops, len(lower_dropdown.value)))
 
-        # generate n_loops sample sizes from the truncated normal
-        sample_size = stats.truncnorm.rvs(size = n_loops, 
-                                          a = a, 
-                                          b = b, 
-                                          loc = loc, 
-                                          scale = scale,
-                                          random_state = rng)
+        reverse_bounds = parameters[:, 0:5]
+        sample_size = parameters[:, 5]
 
         start_time = time.time()
 
@@ -534,11 +525,11 @@ def _(
                 alternative_hypothesis = delta1,
                 variance = sigma2
             )
-        
+
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
                 random_search_large_box[labels[_i]].extend([bounds_list[_i]])
-    
+
             # collect the rest of the value of interest
             random_search_large_box["alpha"].extend([alpha])
             random_search_large_box["power"].extend([power])
@@ -551,7 +542,7 @@ def _(
 
         stop_time = time.time()
         execute_time = stop_time - start_time
-    
+
         time_list = np.repeat(execute_time, n_loops)
         time_list += time_list.tolist()
         random_search_large_box["execute_time"].extend(time_list)
@@ -565,7 +556,7 @@ def _(
 
 @app.cell
 def _(pd, random_search_large_box):
-    pd.DataFrame(random_search_large_box).to_csv("/tf/2026-04-t20/random_search_experiments/triagular_box.csv")
+    pd.DataFrame(random_search_large_box).to_csv("/tf/2026-04-t20/random_search_experiments/small_box_ss_change.csv")
     return
 
 
