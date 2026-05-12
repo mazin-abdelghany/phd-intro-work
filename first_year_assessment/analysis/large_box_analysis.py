@@ -170,7 +170,7 @@ def _(
     print(f"Triangular delta power: {abs(0.9-tri_power):.4f}")
     print(f"Triangular sample size: {tri_n_patients:.1f}")
     print(f"Triangular max ESS: {tri_max_ess:.1f}")
-    return tri_alpha, tri_max_ess, tri_obj
+    return tri, tri_alpha, tri_max_ess, tri_obj
 
 
 @app.cell
@@ -189,9 +189,13 @@ def _(mo):
 
 @app.cell
 def _(pd):
-    large_box_rand = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/random_search_experiments/large_box.csv")
+    # import the sample size from uniform distribution
+    large_box_rand = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/random_search_experiments/large_box_ss_change.csv")
+
     large_box_bo = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/bayes_opt_experiments/large_box_bo.csv")
-    large_box_sim_ann = pd.read_csv(filepath_or_buffer="/tf/2026-04-t21/simulated_annealing_experiments/data/large_box_t100_neigh2_init_rand_results.csv")
+
+    # importing the corrected data
+    large_box_sim_ann = pd.read_csv(filepath_or_buffer="/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_corrected.csv")
 
     # remove the first column as it is not needed
     large_box_rand = large_box_rand.iloc[:, 1:]
@@ -201,12 +205,71 @@ def _(pd):
 
 
 @app.cell
+def _(large_box_sim_ann):
+    # reassign the objective function column to the correct values
+    large_box_sim_ann["obj_func"] = large_box_sim_ann["obj_func_corrected"]
+    return
+
+
+@app.cell
 def _(large_box_bo):
+    # remove the string from the bo run
     large_box_bo["sample_size"] = (
         large_box_bo["sample_size"]
         .str.extract(r'tf\.Tensor\(([-+]?\d*\.?\d+)')[0]
         .astype(float)
     )
+    return
+
+
+@app.cell
+def _(
+    delta0,
+    delta1,
+    mu,
+    num_analyses,
+    obj_f,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    # correct the objective function calculation in sim anneal
+    def correct_obj_func_error(data, index):
+        upper_bounds = data.iloc[index][["upper1", "upper2", "upper3"]].to_list()
+        lower_bounds = data.iloc[index][["lower1", "lower2", "upper3"]].to_list()
+        sample_size = data.iloc[index]["sample_size"]
+
+        _, _, _, obj = obj_f(
+            mu = mu,
+            upper_bounds = upper_bounds,
+            lower_bounds = lower_bounds,
+            n_analyses = num_analyses,
+            n_patients = sample_size,
+            target_power = target_power,
+            target_alpha = target_alpha,
+            null_hypothesis = delta0,
+            alternative_hypothesis = delta1,
+            variance = sigma2
+        )
+
+        return obj
+
+    return
+
+
+@app.cell
+def _():
+    # large_box_sim_ann["obj_func_corrected"] = [
+    #     correct_obj_func_error(large_box_sim_ann, idx)
+    #     for idx in large_box_sim_ann.index
+    # ]
+    return
+
+
+@app.cell
+def _():
+    # used to save the data for the objective function that was saved wrong
+    # large_box_sim_ann.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_corrected.csv")
     return
 
 
@@ -290,14 +353,8 @@ def _(large_box_rand, np):
 
 @app.cell
 def _(large_box_rand, np):
-    np.argmin(large_box_rand["obj_func"])
-    return
-
-
-@app.cell
-def _(large_box_rand, np):
     np.round(
-        large_box_rand[["alpha","power","sample_size","max_ess","obj_func"]].iloc[4799],
+        large_box_rand[["alpha","power","sample_size","max_ess","obj_func"]].iloc[np.argmin(large_box_rand["obj_func"])],
         decimals = 2
     )
     return
@@ -349,14 +406,8 @@ def _(large_box_sim_ann, np):
 
 @app.cell
 def _(large_box_sim_ann, np):
-    np.argmin(large_box_sim_ann["obj_func"])
-    return
-
-
-@app.cell
-def _(large_box_sim_ann, np):
     np.round(
-        large_box_sim_ann[["alpha","power","sample_size","max_ess","obj_func"]].iloc[1500],
+        large_box_sim_ann[["alpha","power","sample_size","max_ess","obj_func"]].iloc[np.argmin(large_box_sim_ann["obj_func"])],
         decimals = 2
     )
     return
@@ -443,7 +494,7 @@ def _(large_box_bo, large_box_rand, large_box_sim_ann, np, plt):
     ax[0,2].text(0.95, 0.06, np.round(np.median(large_box_bo["alpha"]), decimals=2))
 
     ax[1,0].violinplot(large_box_rand["power"], showextrema=False, showmedians=True)
-    ax[1,0].text(0.95, 0.8, np.round(np.median(large_box_rand["power"]), decimals=2))
+    ax[1,0].text(0.965, 0.89, np.round(np.median(large_box_rand["power"]), decimals=2))
 
     ax[1,1].violinplot(large_box_sim_ann["power"], showextrema=False, showmedians=True)
     ax[1,1].text(0.965, 0.89, np.round(np.median(large_box_sim_ann["power"]), decimals=2))
@@ -452,31 +503,31 @@ def _(large_box_bo, large_box_rand, large_box_sim_ann, np, plt):
     ax[1,2].text(0.965, 0.89, np.round(np.median(large_box_bo["power"]), decimals=2))
 
     ax[2,0].violinplot(large_box_rand["sample_size"], showextrema=False, showmedians=True)
-    ax[2,0].text(0.97, 25, np.round(np.median(large_box_rand["sample_size"]).astype(int), decimals=0))
+    ax[2,0].text(0.97, 56, np.round(np.median(large_box_rand["sample_size"]).astype(int), decimals=0))
 
     ax[2,1].violinplot(large_box_sim_ann["sample_size"], showextrema=False, showmedians=True)
-    ax[2,1].text(0.97, 45, np.round(np.median(large_box_sim_ann["sample_size"]).astype(int), decimals=0))
+    ax[2,1].text(0.97, 61, np.round(np.median(large_box_sim_ann["sample_size"]).astype(int), decimals=0))
 
     ax[2,2].violinplot(large_box_bo["sample_size"], showextrema=False, showmedians=True)
     ax[2,2].text(0.97, 56, np.round(np.median(large_box_bo["sample_size"]).astype(int), decimals=0))
 
     ax[3,0].violinplot(large_box_rand["max_ess"], showextrema=False, showmedians=True)
-    ax[3,0].text(0.97, 70, np.round(np.median(large_box_rand["max_ess"]).astype(int), decimals=0))
+    ax[3,0].text(0.97, 153, np.round(np.median(large_box_rand["max_ess"]).astype(int), decimals=0))
 
     ax[3,1].violinplot(large_box_sim_ann["max_ess"], showextrema=False, showmedians=True)
-    ax[3,1].text(0.96, 115, np.round(np.median(large_box_sim_ann["max_ess"])).astype(int))
+    ax[3,1].text(0.96, 165, np.round(np.median(large_box_sim_ann["max_ess"])).astype(int))
 
     ax[3,2].violinplot(large_box_bo["max_ess"], showextrema=False, showmedians=True)
-    ax[3,2].text(0.96, 100, np.round(np.median(large_box_bo["max_ess"])).astype(int))
+    ax[3,2].text(0.96, 153, np.round(np.median(large_box_bo["max_ess"])).astype(int))
 
     ax[4,0].violinplot(large_box_rand["obj_func"], showextrema=False, showmedians=True)
-    ax[4,0].text(0.97, 30, np.round(np.median(large_box_rand["obj_func"])).astype(int))
+    ax[4,0].text(0.985, 11, np.round(np.median(large_box_rand["obj_func"])).astype(int))
 
     ax[4,1].violinplot(large_box_sim_ann["obj_func"], showextrema=False, showmedians=True)
-    ax[4,1].text(0.985, 10, np.round(np.median(large_box_sim_ann["obj_func"])).astype(int))
+    ax[4,1].text(0.985, 9, np.round(np.median(large_box_sim_ann["obj_func"])).astype(int))
 
     ax[4,2].violinplot(large_box_bo["obj_func"], showextrema=False, showmedians=True)
-    ax[4,2].text(0.99, 10, np.round(np.median(large_box_bo["obj_func"])).astype(int))
+    ax[4,2].text(0.99, 11, np.round(np.median(large_box_bo["obj_func"])).astype(int))
 
     ax[0,0].set_title("Random")
     ax[0,1].set_title("Sim anneal")
@@ -505,13 +556,13 @@ def _(mo):
 
 
 @app.cell
-def _(large_box_rand, n_loops, np):
+def _(large_box_bo, n_loops, np):
     best_indices = []
     for ell in range(50):
         _start_index = ell * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = large_box_rand.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = large_box_bo.iloc[_start_index:_stop_index, 6:11]
         best_index = np.argmin(_analysis_set['obj_func'])
         best_indices.append(best_index)
 
@@ -535,11 +586,12 @@ def _(large_box_bo, n_loops, np, pd, target_alpha, target_power):
     feasibility = {
         "run" : [],
         "feasibility" : [],
-        "strict_feasibility" : []
+        "strict_feasibility" : [],
+        "total_strict_feasibility" : []
     }
 
     epsilon1 = 0.01
-    epsilon2 = 0.01
+    epsilon2 = 0.02
 
     for m in range(50):
         _start_index = m * n_loops
@@ -547,9 +599,9 @@ def _(large_box_bo, n_loops, np, pd, target_alpha, target_power):
 
         _analysis_set = large_box_bo.iloc[_start_index:_stop_index, 6:11]
 
-        within_e1 = (_analysis_set["alpha"] <= target_alpha + epsilon1) & (_analysis_set["power"] >= target_power - epsilon1)
+        within_e1 = (_analysis_set["alpha"] <= target_alpha + epsilon1) & (_analysis_set["power"] >= target_power - epsilon2)
 
-        within_e2_alpha = (_analysis_set["alpha"]>=target_alpha-epsilon2) & (_analysis_set["alpha"]<=target_alpha+epsilon2)
+        within_e2_alpha = (_analysis_set["alpha"]>=target_alpha-epsilon1) & (_analysis_set["alpha"]<=target_alpha+epsilon1)
         within_e2_power = (_analysis_set["power"]>=target_power-epsilon2) & (_analysis_set["power"]<=target_power+epsilon2)
 
         within_e2 = within_e2_alpha & within_e2_power
@@ -557,13 +609,14 @@ def _(large_box_bo, n_loops, np, pd, target_alpha, target_power):
         feasibility["run"].append(m+1)
         feasibility["feasibility"].append(np.mean(within_e1))
         feasibility["strict_feasibility"].append(np.mean(within_e2))
+        feasibility["total_strict_feasibility"].append(np.sum(within_e2))
 
     pd.DataFrame(feasibility).describe()*100
     return
 
 
 @app.cell
-def _(large_box_sim_ann, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
+def _(large_box_bo, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
     tri_diff = abs(0.05-tri_alpha)
 
     diffs = {
@@ -577,8 +630,8 @@ def _(large_box_sim_ann, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
         _start_index = _i * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = large_box_sim_ann.iloc[_start_index:_stop_index, 6:11]
-    
+        _analysis_set = large_box_bo.iloc[_start_index:_stop_index, 6:11]
+
         diffs["run"].append(_i+1)
 
         diffs["alpha_diff"].append(np.sum(abs(_analysis_set["alpha"]-0.05) < tri_diff))
@@ -592,6 +645,189 @@ def _(large_box_sim_ann, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
 @app.cell
 def _(diffs, pd):
     pd.DataFrame(diffs).describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Design boundaries comparison
+    """)
+    return
+
+
+@app.cell
+def _(large_box_bo):
+    large_box_bo.loc[large_box_bo["obj_func"].idxmin(), ["alpha", "power"]]
+    return
+
+
+@app.cell
+def _(np):
+    def best_bound_getter(data):
+        lower=data.loc[data["obj_func"].idxmin(), ["upper1", "upper2","upper3"]].tolist()
+        upper=data.loc[data["obj_func"].idxmin(), ["lower1", "lower2","upper3"]].tolist()
+        obj_f= np.round(data.loc[data["obj_func"].idxmin(), "obj_func"], decimals=4)
+        return lower, upper, obj_f
+
+    return (best_bound_getter,)
+
+
+@app.cell
+def _(
+    best_bound_getter,
+    large_box_bo,
+    large_box_rand,
+    large_box_sim_ann,
+    num_analyses,
+    plt,
+    tri,
+):
+    _fig, _ax = plt.subplots(nrows=1, ncols=3, figsize=(14,3), sharey=True)
+
+    stages = [i+1 for i in range(num_analyses)]
+
+    lower_rand, upper_rand, obj_f_rand = best_bound_getter(large_box_rand)
+    lower_sim_ann, upper_sim_ann, obj_f_sim = best_bound_getter(large_box_sim_ann)
+    lower_bo, upper_bo, obj_f_bo = best_bound_getter(large_box_bo)
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].set_xlabel("Trial stages")
+        _ax[_i].set_xticks([1,2,3])
+        _ax[_i].plot(stages, tri[0], color = "darkorange", label = "Tri bound")
+        _ax[_i].plot(stages, tri[1], color = "darkorange")
+
+    _ax[0].plot(stages, upper_rand, color = "purple", label = "Best bound")
+    _ax[0].plot(stages, lower_rand, color = "purple")
+    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand))
+
+    _ax[1].plot(stages, upper_sim_ann, color = "purple", label = "Best bound")
+    _ax[1].plot(stages, lower_sim_ann, color = "purple")
+    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim))
+
+    _ax[2].plot(stages, upper_bo, color = "purple", label = "Best bound")
+    _ax[2].plot(stages, lower_bo, color = "purple")
+    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo))
+
+    _ax[0].set_title("Random")
+    _ax[1].set_title("Sim anneal")
+    _ax[2].set_title("Bayes opt")
+
+    _fig.suptitle("Large hyperrectangle", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="upper right")
+
+    plt.savefig("/tf/first_year_assessment/analysis/best_bounds_large_box.png", dpi=300, bbox_inches="tight")
+    plt.show()
+    return obj_f_bo, obj_f_rand, obj_f_sim, stages
+
+
+@app.cell
+def _(
+    best_bound_getter,
+    large_box_bo,
+    large_box_rand,
+    large_box_sim_ann,
+    obj_f_bo,
+    obj_f_rand,
+    obj_f_sim,
+    plt,
+    stages,
+    tri,
+):
+    _fig, _ax = plt.subplots(nrows=1, ncols=3, figsize=(14,3), sharey=True)
+
+    lower_rand1, upper_rand1, obj_f_rand1 = best_bound_getter(large_box_rand[large_box_rand["runs"]=="Run_24"])
+    lower_sim_ann1, upper_sim_ann1, obj_f_sim1 = best_bound_getter(large_box_sim_ann[large_box_sim_ann["runs"]=="Run_9"])
+    lower_bo1, upper_bo1, obj_f_bo1 = best_bound_getter(large_box_bo[large_box_bo["runs"]=="Run_6"])
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].set_xlabel("Trial stages")
+        _ax[_i].set_xticks([1,2,3])
+        _ax[_i].plot(stages, tri[0], color = "darkorange", label = "Tri bound")
+        _ax[_i].plot(stages, tri[1], color = "darkorange")
+
+    _ax[0].plot(stages, upper_rand1, color = "purple", label = "Best bound")
+    _ax[0].plot(stages, lower_rand1, color = "purple")
+    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand))
+
+    _ax[1].plot(stages, upper_sim_ann1, color = "purple", label = "Best bound")
+    _ax[1].plot(stages, lower_sim_ann1, color = "purple")
+    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim))
+
+    _ax[2].plot(stages, upper_bo1, color = "purple", label = "Best bound")
+    _ax[2].plot(stages, lower_bo1, color = "purple")
+    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo))
+
+    _ax[0].set_title("Random $-$ Run 24")
+    _ax[1].set_title("Sim anneal $-$ Run 9")
+    _ax[2].set_title("Bayes opt $-$ Run 6")
+
+    _fig.suptitle("Large hyperrectangle", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="upper right")
+
+    plt.savefig("/tf/first_year_assessment/analysis/rand_runs1_large_box.png", dpi=300, bbox_inches="tight")
+    plt.show()
+    return
+
+
+@app.cell
+def _(
+    best_bound_getter,
+    large_box_bo,
+    large_box_rand,
+    large_box_sim_ann,
+    obj_f_bo,
+    obj_f_rand,
+    obj_f_sim,
+    plt,
+    stages,
+    tri,
+):
+    _fig, _ax = plt.subplots(nrows=1, ncols=3, figsize=(14,3), sharey=True)
+
+    lower_rand11, upper_rand11, obj_f_rand11 = best_bound_getter(large_box_rand[large_box_rand["runs"]=="Run_44"])
+    lower_sim_ann11, upper_sim_ann11, obj_f_sim11 = best_bound_getter(large_box_sim_ann[large_box_sim_ann["runs"]=="Run_10"])
+    lower_bo11, upper_bo11, obj_f_bo11 = best_bound_getter(large_box_bo[large_box_bo["runs"]=="Run_14"])
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].set_xlabel("Trial stages")
+        _ax[_i].set_xticks([1,2,3])
+        _ax[_i].plot(stages, tri[0], color = "darkorange", label = "Tri bound")
+        _ax[_i].plot(stages, tri[1], color = "darkorange")
+
+    _ax[0].plot(stages, upper_rand11, color = "purple", label = "Best bound")
+    _ax[0].plot(stages, lower_rand11, color = "purple")
+    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand))
+
+    _ax[1].plot(stages, upper_sim_ann11, color = "purple", label = "Best bound")
+    _ax[1].plot(stages, lower_sim_ann11, color = "purple")
+    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim))
+
+    _ax[2].plot(stages, upper_bo11, color = "purple", label = "Best bound")
+    _ax[2].plot(stages, lower_bo11, color = "purple")
+    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo))
+
+    _ax[0].set_title("Random $-$ Run 44")
+    _ax[1].set_title("Sim anneal $-$ Run 10")
+    _ax[2].set_title("Bayes opt $-$ Run 14")
+
+    _fig.suptitle("Large hyperrectangle", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="upper right")
+
+    plt.savefig("/tf/first_year_assessment/analysis/rand_runs2_large_box.png", dpi=300, bbox_inches="tight")
+    plt.show()
     return
 
 
