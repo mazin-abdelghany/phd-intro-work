@@ -722,7 +722,7 @@ def _(
 
     plt.savefig("/tf/first_year_assessment/analysis/best_bounds_large_box.png", dpi=300, bbox_inches="tight")
     plt.show()
-    return obj_f_bo, obj_f_rand, obj_f_sim, stages
+    return (stages,)
 
 
 @app.cell
@@ -731,9 +731,6 @@ def _(
     large_box_bo,
     large_box_rand,
     large_box_sim_ann,
-    obj_f_bo,
-    obj_f_rand,
-    obj_f_sim,
     plt,
     stages,
     tri,
@@ -752,15 +749,15 @@ def _(
 
     _ax[0].plot(stages, upper_rand1, color = "purple", label = "Best bound")
     _ax[0].plot(stages, lower_rand1, color = "purple")
-    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand))
+    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand1))
 
     _ax[1].plot(stages, upper_sim_ann1, color = "purple", label = "Best bound")
     _ax[1].plot(stages, lower_sim_ann1, color = "purple")
-    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim))
+    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim1))
 
     _ax[2].plot(stages, upper_bo1, color = "purple", label = "Best bound")
     _ax[2].plot(stages, lower_bo1, color = "purple")
-    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo))
+    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo1))
 
     _ax[0].set_title("Random $-$ Run 24")
     _ax[1].set_title("Sim anneal $-$ Run 9")
@@ -784,9 +781,6 @@ def _(
     large_box_bo,
     large_box_rand,
     large_box_sim_ann,
-    obj_f_bo,
-    obj_f_rand,
-    obj_f_sim,
     plt,
     stages,
     tri,
@@ -805,15 +799,15 @@ def _(
 
     _ax[0].plot(stages, upper_rand11, color = "purple", label = "Best bound")
     _ax[0].plot(stages, lower_rand11, color = "purple")
-    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand))
+    _ax[0].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_rand11))
 
     _ax[1].plot(stages, upper_sim_ann11, color = "purple", label = "Best bound")
     _ax[1].plot(stages, lower_sim_ann11, color = "purple")
-    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim))
+    _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim11))
 
     _ax[2].plot(stages, upper_bo11, color = "purple", label = "Best bound")
     _ax[2].plot(stages, lower_bo11, color = "purple")
-    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo))
+    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo11))
 
     _ax[0].set_title("Random $-$ Run 44")
     _ax[1].set_title("Sim anneal $-$ Run 10")
