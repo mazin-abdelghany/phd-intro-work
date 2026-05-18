@@ -133,9 +133,7 @@ def _(
 ):
     tri = bd.calculate_triangular_boundaries(
         n_analyses = num_analyses,
-        alpha = target_alpha,
-        delta = delta1,
-        n_patients = 20
+        alpha = target_alpha
     )
 
     tri_n_patients = ss.find_sample_size(
