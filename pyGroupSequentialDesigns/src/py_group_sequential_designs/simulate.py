@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy import stats
+from scipy.stats import multivariate_normal
 
 # simulate the trials to obtain alpha and beta
 def group_sequential_designs(
