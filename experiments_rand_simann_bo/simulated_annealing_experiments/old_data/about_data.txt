@@ -1,0 +1,14 @@
+_t100 means temperature = 100
+_neigh1 means that the neighbour1() function was used in the loop
+_init_rand means that the initialization was random from within the specified box
+_init_triang means that the initalization was the triangular design
+_best_vals is an accumulation of the lowest objective function value
+_results are the results
+
+_corrected are the results with the correct objective function value saved. There was an error in the original save data code that only saved the objective function after it changed values rather than at each iteration. This was only corrected for the large and small box _init_rand data as this was what was used in the initial first year assessment write up.
+
+The triangular box t100 neigh2 init rand did not need to be corrected because those data were generated after the code was corrected. 
+
+All other data is incorrect.
+
+The old_data directory contains data with incorrect single stage sample size calculations. The single stage sample size function used variance^2 rather than variance to calculate the sinlge stage sample size. Thus, the mu value for the penalty was at a slightly incorrect scale (~154 rather than 51).
