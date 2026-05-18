@@ -1,0 +1,1 @@
+These data were generated with code that had incorrect single stage sample size calculations. The single stage sample size function used variance^2 rather than variance to calculate the sinlge stage sample size. Thus, the mu value for the penalty was at a slightly incorrect scale (~154 rather than 51).
