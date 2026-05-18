@@ -12,128 +12,85 @@ def group_sequential_designs(
         alt_hypothesis=0.5,
         variance=1):
 
-    # convert list to np ndarray
-    upper_bounds = np.array(upper_bounds)
-    lower_bounds = np.array(lower_bounds)
-    
-    # assign values for null and alt hypotheses
-    theta_0 = null_hypothesis
-    delta = alt_hypothesis
+    upper_bounds = np.asarray(upper_bounds, dtype=float)
+    lower_bounds = np.asarray(lower_bounds, dtype=float)
 
-    # empty list to fill mean vectors
-    mean_0 = []
-    mean_1 = []
+    # cumulative sample sizes
+    n_patients_analysis = n_patients * np.arange(1, n_analyses + 1)
 
-    # number of patients in each analysis
-    n_patients_analysis = np.array([x for x in range(1, n_analyses + 1, 1)]) * n_patients
+    # compute the means
+    scale = np.sqrt(n_patients_analysis / (2 * variance))
 
-    # need to parse the upper and lower boundaries of the design
-    # for futility and efficacy, must put the bounds of integration correctly
-    # for pmvnorm
-    futility_l_bounds = [[]]
-    futility_u_bounds = [[]]
-    efficacy_l_bounds = [[]]
-    efficacy_u_bounds = [[]]
+    # mean_0 is under null, mean_1 is under alternative
+    mean_0 = null_hypothesis * scale
+    mean_1 = alt_hypothesis * scale
 
-    n_analyses = len(upper_bounds)
+    # n_i becomes a (x by 1) vector
+    # n_j becomes a (1 by x) vector
+    n_i = n_patients_analysis[:, None]
+    n_j = n_patients_analysis[None, :]
 
-    # loop through number of analyses
+    # np.minimum and np.maximum broadcasts the vectors into (x by x)
+    # matrix where np.minimum contains the min across the rows and colums
+    # comparing each dimension and np.maximum contains the max across
+    # the rows and columns comparing each dimension
+    full_sigma = np.sqrt(np.minimum(n_i, n_j) / np.maximum(n_i, n_j))
+
+    # store results in arrays first, then add to DataFrame at the end
+    futility_null = np.empty(n_analyses)
+    efficacy_null = np.empty(n_analyses)
+    futility_alt = np.empty(n_analyses)
+    efficacy_alt = np.empty(n_analyses)
+
     for i in range(n_analyses):
 
-        # special case of i = 1
-        if i == 0:
-            futility_l_bounds[i].append(-np.inf)
-            futility_u_bounds[i].append(lower_bounds[i])
-            efficacy_l_bounds[i].append(upper_bounds[i])
-            efficacy_u_bounds[i].append(np.inf)
-            continue
+        # the number of dimensions to subselect
+        dim = i + 1
 
-        # all other cases
-        futility_l_bounds.append(np.append(lower_bounds[0:i], -np.inf))
-        futility_u_bounds.append(np.append(upper_bounds[0:i], lower_bounds[i]))
-        efficacy_l_bounds.append(np.append(lower_bounds[0:i], upper_bounds[i]))
-        efficacy_u_bounds.append(np.append(upper_bounds[0:i], np.inf))
+        # select a (dim by dim) section of the matrix
+        cov = full_sigma[:dim, :dim]
 
-    # empty dictionary of SIGMA matrices
-    SIGMA_dict = dict()
+        mvn_null = multivariate_normal(
+            mean=mean_0[:dim],
+            cov=cov
+        )
 
-    # generate the SIGMA matrices
-    for i in range(n_analyses):
+        mvn_alt = multivariate_normal(
+            mean=mean_1[:dim],
+            cov=cov
+        )
 
-        if i == 0: SIGMA_dict.update({i : np.sqrt(variance)})
+        # Futility bounds
+        fut_l = np.concatenate([lower_bounds[:i], [-np.inf]])
+        fut_u = np.concatenate([upper_bounds[:i], [lower_bounds[i]]])
 
-        # start with diagonal matrix for SIGMA
-        SIGMA = np.eye(N = i+1)
+        # Efficacy bounds
+        eff_l = np.concatenate([lower_bounds[:i], [upper_bounds[i]]])
+        eff_u = np.concatenate([upper_bounds[:i], [np.inf]])
 
-        # n = 2, need to fill all but 11, 22
-        # n = 3, need to fill all but 11, 22, 33
-        # n = 4, need to fill all but 11, 22, 33, 44
-        # etc.
-        for j in range(i+1):
-            for k in range(i+1):
+        futility_null[i] = mvn_null.cdf(fut_u, lower_limit=fut_l)
+        futility_alt[i] = mvn_alt.cdf(fut_u, lower_limit=fut_l)
 
-                # leave the 1s on the diagonal, skip interation
-                if j == k: continue
+        efficacy_null[i] = mvn_null.cdf(eff_u, lower_limit=eff_l)
+        efficacy_alt[i] = mvn_alt.cdf(eff_u, lower_limit=eff_l)
 
-                # when j is less than k, the lower number of patients will be in numerator
-                if j < k: SIGMA[j,k] = np.sqrt(n_patients_analysis[j] / n_patients_analysis[k])
+    # fill a DataFrame with the outputs
+    probs_to_return = pd.DataFrame({
+        "futility_null": futility_null,
+        "efficacy_null": efficacy_null,
+        "futility_alt": futility_alt,
+        "efficacy_alt": efficacy_alt,
+    }, index=[f"analysis_{i}" for i in range(1, n_analyses + 1)])
 
-                # when j is greater than j, the lower number of patients will be in numerator
-                if j > k: SIGMA[j,k] = np.sqrt(n_patients_analysis[k] / n_patients_analysis[j])
+    # get alpha and power; alpha is the error of claiming efficacy
+    # under the null. Power is the "correct" call of efficacy under
+    # the alternative
+    alpha = efficacy_null.sum()
+    power = efficacy_alt.sum()
 
-        SIGMA_dict.update({i : SIGMA})
-
-    # empty data frame to collect probabilities
-    # dictionary to DataFrame, column is the key:value pair of the dictionary
-    probs_to_return = {
-        "futility_null" : np.empty(n_analyses),
-        "efficacy_null" : np.empty(n_analyses),
-        "futility_alt" : np.empty(n_analyses),
-        "efficacy_alt" : np.empty(n_analyses)
-    }
-
-    # generate the row names
-    row_names = ["analysis_" + str(row_names) for row_names in range(1, n_analyses + 1, 1)]
-
-    # create the empty data frame with data and index
-    probs_to_return = pd.DataFrame(data = probs_to_return, index = row_names)
-    
-    # start calculations for the analyses
-    for i in range(n_analyses):
-        
-        # mean under null
-        mean_0.append(theta_0 * np.sqrt(n_patients_analysis[i] / (2 * variance)))
-
-        # mean under alternative
-        mean_1.append(delta   * np.sqrt(n_patients_analysis[i] / (2 * variance)))
-        
-        # generate the null and alt multivariate normal
-        mvn_null = stats.multivariate_normal(mean = mean_0, cov = SIGMA_dict[i])
-        mvn_alt  = stats.multivariate_normal(mean = mean_1, cov = SIGMA_dict[i])
-        
-        # prob stop for futility under null
-        futility_null = mvn_null.cdf(futility_u_bounds[i], lower_limit = futility_l_bounds[i])
-        
-        # prob stop for futility under alt
-        futility_alt = mvn_alt.cdf(futility_u_bounds[i], lower_limit = futility_l_bounds[i])
-        
-        # prob stop for efficacy under null
-        efficacy_null = mvn_null.cdf(efficacy_u_bounds[i], lower_limit = efficacy_l_bounds[i])
-
-        # prob stop for efficacy under alt
-        efficacy_alt = mvn_alt.cdf(efficacy_u_bounds[i], lower_limit = efficacy_l_bounds[i])
-
-        # add them to the data frame to return
-        probs_to_return.iloc[i] = [futility_null, efficacy_null, futility_alt, efficacy_alt]
-
-    # get the type I error (alpha)
-    alpha = probs_to_return.sum(axis = 0)["efficacy_null"]
-
-    # get the power (1 - beta)
-    power = probs_to_return.sum(axis = 0)["efficacy_alt"]
-
-    # get expected sample size
-    summed_probs = probs_to_return.iloc[:,2:4].sum(axis=1)
+    # calculate the expected sample size by summing stopping for
+    # futility or efficacy under the alternative
+    summed_probs = futility_alt + efficacy_alt
     expected_sample_size = np.sum(summed_probs * n_patients_analysis)
-    
+
     return probs_to_return, alpha, power, expected_sample_size
