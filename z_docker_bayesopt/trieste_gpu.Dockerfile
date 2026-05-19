@@ -14,7 +14,8 @@ RUN uv pip install --system \
     trieste==4.5.1 \
     trieste[plotting] \
     marimo \
-    plotly
+    plotly \
+    numba
 
 # workspace is the working directory in the image
 WORKDIR /workspace
