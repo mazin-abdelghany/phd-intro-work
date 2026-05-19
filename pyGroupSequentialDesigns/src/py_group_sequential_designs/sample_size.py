@@ -48,7 +48,7 @@ def max_ess(
     while abs(ess_delta_start - ess_delta_stop) > epsilon:
 
         # simulate the trial under delta_start
-        probs, sim_alpha, power, ess_delta_start = sim.group_sequential_designs(
+        _, _, ess_delta_start = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = upper_bounds,
             lower_bounds = lower_bounds,
@@ -59,7 +59,7 @@ def max_ess(
         )
     
         # simulate trial under delta_stop
-        probs, sim_alpha, power, ess_delta_stop = sim.group_sequential_designs(
+        _, _, ess_delta_stop = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = upper_bounds,
             lower_bounds = lower_bounds,
@@ -89,7 +89,7 @@ def find_sample_size(
     n_patients_min = 2
     n_patients_max = 5000
 
-    _, _, power_max, _ = sim.group_sequential_designs(
+    _, power_max, _ = sim.group_sequential_designs(
         n_analyses = n_analyses,
         upper_bounds = upper_bounds,
         lower_bounds = lower_bounds,
@@ -106,7 +106,7 @@ def find_sample_size(
 
         n_mid = (n_patients_min + n_patients_max) / 2
 
-        _, _, power_mid, _ = sim.group_sequential_designs(
+        _, power_mid, _ = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = upper_bounds,
             lower_bounds = lower_bounds,

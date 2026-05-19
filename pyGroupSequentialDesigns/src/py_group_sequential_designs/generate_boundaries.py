@@ -19,7 +19,7 @@ def calculate_pocock_boundaries(
     ub2 = np.repeat(10, repeats = n_analyses)
 
     # first alpha calcuation
-    _, sim_alpha, _, _ = sim.group_sequential_designs(
+    sim_alpha, _, _ = sim.group_sequential_designs(
         n_analyses = n_analyses,
         upper_bounds = ub1,
         lower_bounds = lb1,
@@ -36,7 +36,7 @@ def calculate_pocock_boundaries(
         mid_l = -mid_u
 
         # calculate the simulated alpha
-        _, sim_alpha, _, _ = sim.group_sequential_designs(
+        sim_alpha, _, _ = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = mid_u,
             lower_bounds = mid_l,
@@ -83,7 +83,7 @@ def calculate_of_boundaries(
     of_l1 = -of_u1
     
     # first alpha calcuation
-    _, sim_alpha, _, _ = sim.group_sequential_designs(
+    sim_alpha, _, _ = sim.group_sequential_designs(
         n_analyses = n_analyses,
         upper_bounds = of_u1,
         lower_bounds = of_l1,
@@ -104,7 +104,7 @@ def calculate_of_boundaries(
         mid_of_l = -mid_of_u
 
         # calculate the simulated alpha
-        _, sim_alpha, _, _ = sim.group_sequential_designs(
+        sim_alpha, _, _ = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = mid_of_u,
             lower_bounds = mid_of_l,
