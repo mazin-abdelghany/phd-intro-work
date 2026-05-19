@@ -96,7 +96,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # pkg_resources, which was removed from setuptools 81.0.0 and on
 # IPython also must be pinned to version 8 or less for
 # gpflow print_summary utility error
-RUN uv pip install pandas numpy matplotlib \
+RUN uv pip install pandas numpy matplotlib numba \
   jupyter jupyter_http_over_ws \
   # we have to specify each of these rather than `tensorflow` only
   # because gpflow is relying on older tfp that causes the import
