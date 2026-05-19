@@ -112,7 +112,7 @@ def _numba_grid_engine(
 
 
 # high-level Python wrapper
-def group_sequential_designs_numba(
+def group_sequential_designs(
     n_analyses=3,
     upper_bounds=[2.5, 2, 1.5],
     lower_bounds=[0, 0.75, 1.5],
