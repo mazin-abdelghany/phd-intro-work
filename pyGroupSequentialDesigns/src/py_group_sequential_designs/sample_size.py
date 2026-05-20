@@ -37,9 +37,6 @@ def max_ess(
         epsilon=1e-2):
 
     delta_stop = variance * 5.
-    
-    # step size to calculate the derivative (slope)
-    h = 1e-5
 
     def get_ess(delta):
         _, _, ess = sim.group_sequential_designs(
@@ -51,29 +48,30 @@ def max_ess(
             alt_hypothesis = delta,
             variance = variance
         )
+        # Removed the rounding here so the optimization handles 
+        # continuous, smooth values.
         return ess
 
-    # bisection loop
+    # Pure interval bisection for optimization (Dichotomous Search)
     while (delta_stop - delta_start) > epsilon:
+        # Pick two test points close to the center of the current interval
         midpoint = (delta_start + delta_stop) / 2.0
+        x1 = midpoint - (epsilon / 4.0)
+        x2 = midpoint + (epsilon / 4.0)
         
-        # sample slightly to the left and right of the midpoint to get the slope
-        ess_left = get_ess(midpoint - h)
-        ess_right = get_ess(midpoint + h)
-        
-        slope = ess_right - ess_left
+        ess_1 = get_ess(x1)
+        ess_2 = get_ess(x2)
 
-        if slope > 0:
-            # slope is positive: we are climbing up the left side of the hill.
-            # the peak must be to the right.
-            delta_start = midpoint
+        if ess_1 < ess_2:
+            # ESS is higher to the right, so the peak cannot be in the far left
+            delta_start = x1
         else:
-            # slope is negative: we are sliding down the right side of the hill.
-            # The peak must be to the left.
-            delta_stop = midpoint
+            # ESS is higher to the left (or equal), so the peak cannot be in the far right
+            delta_stop = x2
 
-    # Return the final optimized ESS at the peak midpoint
-    return get_ess((delta_start + delta_stop) / 2.0)
+    # Return the final optimized ESS at the true peak midpoint
+    final_delta = (delta_start + delta_stop) / 2.0
+    return get_ess(final_delta)
 
 def find_sample_size(
         power_target=0.9,
