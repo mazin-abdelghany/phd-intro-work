@@ -36,7 +36,7 @@ def _numba_grid_engine(
     fut_probs[0] = std_norm_cdf(lower_bounds[0] - means[0])
     eff_probs[0] = 1.0 - std_norm_cdf(upper_bounds[0] - means[0])
     
-    if lower_bounds[0] >= upper_bounds[0]:
+    if lower_bounds[0] > upper_bounds[0]:
         print("Error: Upper bounds are lower than lower bounds.")
         return
 
@@ -88,7 +88,7 @@ def _numba_grid_engine(
         if k < n_analyses - 1:
             next_lower, next_upper = lower_bounds[k], upper_bounds[k]
             
-            if next_lower >= next_upper:
+            if next_lower > next_upper:
                 print("Error: Upper bounds are lower than lower bounds.")
                 return
             
