@@ -135,7 +135,7 @@ def _(fn_min, fp, target_alpha, target_power):
         )
 
         f_val = fn_min.function_to_minimize(
-            max_ess_val = row["max_ess"],
+            max_ess_val = row["max_ess"]/mu,
             penalty = penalty
         )
 
@@ -318,7 +318,7 @@ def _(np, random_search_huge):
 
 @app.cell
 def _(random_search_huge):
-    random_search_huge.loc[56842]
+    random_search_huge.loc[10953]
     return
 
 
@@ -385,7 +385,7 @@ def _(mo):
 
 @app.cell
 def _(np, plt, random_search_huge, wason_cpp):
-    fig, ax = plt.subplots(nrows=5, ncols=3, figsize=(8,11), sharey="row")
+    fig, ax = plt.subplots(nrows=6, ncols=2, figsize=(8,11), sharey="row")
 
     ax[0,0].violinplot(random_search_huge["alpha"], showextrema=False, showmedians=True)
     ax[0,0].text(0.95, 0.06, np.round(np.median(random_search_huge["alpha"]), decimals=2))
@@ -411,11 +411,14 @@ def _(np, plt, random_search_huge, wason_cpp):
     ax[3,1].violinplot(wason_cpp["max_ess"], showextrema=False, showmedians=True)
     ax[3,1].text(0.96, 165, np.round(np.median(wason_cpp["max_ess"])).astype(int))
 
-    ax[4,0].violinplot(random_search_huge["obj_func"], showextrema=False, showmedians=True)
-    ax[4,0].text(0.985, 11, np.round(np.median(random_search_huge["obj_func"])).astype(int))
-
     ax[4,1].violinplot(wason_cpp["obj_func"], showextrema=False, showmedians=True)
     ax[4,1].text(0.985, 9, np.round(np.median(wason_cpp["obj_func"])).astype(int))
+
+    ax[5,0].violinplot(random_search_huge["obj_func"], showextrema=False, showmedians=True)
+    ax[5,0].text(0.985, 11, np.round(np.median(random_search_huge["obj_func"])).astype(int))
+
+    ax[5,1].violinplot(wason_cpp["our_obj_func"], showextrema=False, showmedians=True)
+    ax[5,1].text(0.985, 9, np.round(np.median(wason_cpp["our_obj_func"])).astype(int))
 
     ax[0,0].set_title("Random")
     ax[0,1].set_title("Wason")
@@ -424,7 +427,8 @@ def _(np, plt, random_search_huge, wason_cpp):
     ax[1,0].set_ylabel("$1-\\beta'$")
     ax[2,0].set_ylabel("Sample size")
     ax[3,0].set_ylabel("Max ESS")
-    ax[4,0].set_ylabel("Loss")
+    ax[4,0].set_ylabel("Wason loss")
+    ax[5,0].set_ylabel("Our loss")
 
     for a in ax.flat:
         a.set_xticks([])
@@ -449,7 +453,7 @@ def _(n_experiments, n_loops, np, random_search_huge):
         _start_index = ell * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = random_search_huge.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = random_search_huge.iloc[_start_index:_stop_index, 7:12]
         best_index = np.argmin(_analysis_set['obj_func'])
         best_indices.append(best_index)
 
@@ -457,6 +461,24 @@ def _(n_experiments, n_loops, np, random_search_huge):
     print(f"Maximum best index: {np.max(best_indices)+1}")
     print(f"Average best index: {np.mean(best_indices)+1}")
     print(f"Median best index: {np.median(best_indices)+1}")
+    return
+
+
+@app.cell
+def _(n_experiments, n_loops, np, wason_cpp):
+    _best_indices = []
+    for _ell in range(n_experiments):
+        _start_index = _ell * n_loops
+        _stop_index = _start_index + n_loops
+
+        _analysis_set = wason_cpp.iloc[_start_index:_stop_index, 8:13]
+        _best_index = np.argmin(_analysis_set['obj_func'])
+        _best_indices.append(_best_index)
+
+    print(f"Minimum best index: {np.min(_best_indices)+1}")
+    print(f"Maximum best index: {np.max(_best_indices)+1}")
+    print(f"Average best index: {np.mean(_best_indices)+1}")
+    print(f"Median best index: {np.median(_best_indices)+1}")
     return
 
 
@@ -533,7 +555,7 @@ def _(
         _start_index = _i * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = random_search_huge.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = random_search_huge.iloc[_start_index:_stop_index, 7:12]
 
         diffs["run"].append(_i+1)
 
@@ -560,8 +582,14 @@ def _(mo):
 
 
 @app.cell
-def _(large_box_bo):
-    large_box_bo.loc[large_box_bo["obj_func"].idxmin(), ["alpha", "power"]]
+def _(random_search_huge):
+    random_search_huge.loc[random_search_huge["obj_func"].idxmin(), ["alpha", "power"]]
+    return
+
+
+@app.cell
+def _(wason_cpp):
+    wason_cpp.loc[wason_cpp["obj_func"].idxmin(), ["alpha", "power"]]
     return
 
 
@@ -577,18 +605,22 @@ def _(np):
 
 
 @app.cell
+def _(np, random_search_huge):
+    np.min(random_search_huge["obj_func"])
+    return
+
+
+@app.cell
 def _(
     best_bound_getter,
-    lower_bo,
+    np,
     num_analyses,
-    obj_f_bo,
     plt,
     random_search_huge,
     tri,
-    upper_bo,
     wason_cpp,
 ):
-    _fig, _ax = plt.subplots(nrows=1, ncols=3, figsize=(14,3), sharey=True)
+    _fig, _ax = plt.subplots(nrows=1, ncols=2, figsize=(14,3), sharey=True)
 
     stages = [i+1 for i in range(num_analyses)]
 
@@ -608,14 +640,10 @@ def _(
     _ax[1].plot(stages, upper_sim_ann, color = "purple", label = "Best bound")
     _ax[1].plot(stages, lower_sim_ann, color = "purple")
     _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim))
-
-    _ax[2].plot(stages, upper_bo, color = "purple", label = "Best bound")
-    _ax[2].plot(stages, lower_bo, color = "purple")
-    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo))
+    _ax[1].text(2.4,-1, "our loss = "+str(np.round(wason_cpp.loc[wason_cpp["obj_func"].idxmin(), "our_obj_func"], decimals=4)))
 
     _ax[0].set_title("Random")
     _ax[1].set_title("Sim anneal")
-    _ax[2].set_title("Bayes opt")
 
     _fig.suptitle("Large hyperrectangle", y=1.05)
 
@@ -630,20 +658,10 @@ def _(
 
 
 @app.cell
-def _(
-    best_bound_getter,
-    lower_bo1,
-    obj_f_bo1,
-    plt,
-    random_search_huge,
-    stages,
-    tri,
-    upper_bo1,
-    wason_cpp,
-):
-    _fig, _ax = plt.subplots(nrows=1, ncols=3, figsize=(14,3), sharey=True)
+def _(best_bound_getter, np, plt, random_search_huge, stages, tri, wason_cpp):
+    _fig, _ax = plt.subplots(nrows=1, ncols=2, figsize=(14,3), sharey=True)
 
-    lower_rand1, upper_rand1, obj_f_rand1 = best_bound_getter(random_search_huge[random_search_huge["runs"]=="Run_24"])
+    lower_rand1, upper_rand1, obj_f_rand1 = best_bound_getter(random_search_huge[random_search_huge["runs"]=="Run_3"])
     lower_sim_ann1, upper_sim_ann1, obj_f_sim1 = best_bound_getter(wason_cpp[wason_cpp["runs"]=="Run_9"])
 
     for _i in range(_ax.shape[0]):
@@ -659,14 +677,10 @@ def _(
     _ax[1].plot(stages, upper_sim_ann1, color = "purple", label = "Best bound")
     _ax[1].plot(stages, lower_sim_ann1, color = "purple")
     _ax[1].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_sim1))
+    _ax[1].text(2.4,-1, "our loss = "+str(np.round(wason_cpp[wason_cpp["runs"]=="Run_9"].loc[wason_cpp[wason_cpp["runs"]=="Run_9"]["obj_func"].idxmin(), "our_obj_func"], decimals=4)))
 
-    _ax[2].plot(stages, upper_bo1, color = "purple", label = "Best bound")
-    _ax[2].plot(stages, lower_bo1, color = "purple")
-    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo1))
-
-    _ax[0].set_title("Random $-$ Run 24")
+    _ax[0].set_title("Random $-$ Run 2")
     _ax[1].set_title("Sim anneal $-$ Run 9")
-    _ax[2].set_title("Bayes opt $-$ Run 6")
 
     _fig.suptitle("Large hyperrectangle", y=1.05)
 
