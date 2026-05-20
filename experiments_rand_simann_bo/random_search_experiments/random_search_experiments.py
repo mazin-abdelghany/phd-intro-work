@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -41,7 +41,7 @@ def _():
     from py_group_sequential_designs import simulate as sim
     from py_group_sequential_designs import sample_size as ss
 
-    return bd, fn_min, fp, sim, ss
+    return bd, fmt_bd, fn_min, fp, sim, ss
 
 
 @app.cell(hide_code=True)
@@ -59,7 +59,7 @@ def _(ss):
     target_power = 0.9
     delta0 = 0.
     delta1 = 1.
-    sigma2 = 3.
+    sigma2 = 9.
 
     mu = ss.sample_size_means(
         ratio=1,
@@ -88,39 +88,6 @@ def _(mo):
     BO vector: $\{c, \Delta u_3, \Delta \ell_3, \Delta u_2, \Delta \ell_2\}$
     """)
     return
-
-
-@app.cell
-def _(np):
-    def reverse_to_boundaries(params, K):
-        params = np.asarray(params).flatten()
-        c = params[0]
-
-        delta_u = params[1::2][::-1]
-        delta_l = params[2::2][::-1]
-
-        upper_bounds = np.array([c + np.sum(delta_u[k:]) for k in range(K)])
-        lower_bounds = np.array([c - np.sum(delta_l[k:]) for k in range(K)])
-
-        return upper_bounds, lower_bounds
-
-    def boundaries_to_reverse(upper_bounds, lower_bounds):
-        upper_bounds = np.asarray(upper_bounds)
-        lower_bounds = np.asarray(lower_bounds)
-
-        K = len(upper_bounds)
-        c = upper_bounds[-1]
-
-        delta_u = np.diff(upper_bounds[::-1])
-        delta_l = np.diff(lower_bounds)[::-1]
-
-        increments = np.empty(2 * (K - 1))
-        increments[0::2] = delta_u
-        increments[1::2] = delta_l
-
-        return np.concatenate([[c], increments])
-
-    return boundaries_to_reverse, reverse_to_boundaries
 
 
 @app.cell(hide_code=True)
@@ -156,8 +123,8 @@ def _(fn_min, fp, sim, ss):
             variance = variance
         )
 
-        alpha_prime = trial_sim[1]
-        beta_prime = 1-trial_sim[2]
+        alpha_prime = trial_sim[0]
+        beta_prime = 1-trial_sim[1]
 
         max_ess = ss.max_ess(
             n_analyses = n_analyses,
@@ -191,10 +158,9 @@ def _(fn_min, fp, sim, ss):
 @app.cell
 def _(
     bd,
-    boundaries_to_reverse,
     delta0,
     delta1,
-    mu,
+    fmt_bd,
     np,
     num_analyses,
     obj_f,
@@ -206,8 +172,7 @@ def _(
     tri = bd.calculate_triangular_boundaries(
         n_analyses = num_analyses,
         alpha = target_alpha,
-        delta = delta1,
-        n_patients = 20
+        delta = delta1
     )
 
     tri_n_patients = ss.find_sample_size(
@@ -221,7 +186,7 @@ def _(
     )[0]
 
     tri_alpha, tri_power, tri_max_ess, tri_obj = obj_f(
-        mu = mu,
+        mu = 154,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
         n_analyses = num_analyses,
@@ -233,7 +198,7 @@ def _(
         variance = sigma2
     )
 
-    tri_params = boundaries_to_reverse(
+    tri_params = fmt_bd.boundaries_to_reverse(
         upper_bounds = tri[0],
         lower_bounds = tri[1]
     )
@@ -477,6 +442,7 @@ def _(n_experiments, n_loops, np, random_search_large_box):
 def _(
     delta0,
     delta1,
+    fmt_bd,
     labels,
     lower_dropdown,
     mu,
@@ -486,7 +452,6 @@ def _(
     num_analyses,
     obj_f,
     random_search_large_box,
-    reverse_to_boundaries,
     short_seed_list,
     sigma2,
     target_alpha,
@@ -510,7 +475,7 @@ def _(
         # there are n_loops number of reverse_bounds to iterate through
         for j, boundaries in enumerate(reverse_bounds):
 
-            bounds = reverse_to_boundaries(params = boundaries, K = num_analyses)
+            bounds = fmt_bd.reverse_to_boundaries(params = boundaries, K = num_analyses)
             bounds_list = np.concatenate( (bounds[0], bounds[1][0:2]) )
 
             alpha, power, max_ess, obj = obj_f(
@@ -556,7 +521,7 @@ def _(
 
 @app.cell
 def _(pd, random_search_large_box):
-    pd.DataFrame(random_search_large_box).to_csv("/tf/2026-04-t20/random_search_experiments/small_box_ss_change.csv")
+    pd.DataFrame(random_search_large_box).to_csv("/tf/experiments_rand_simann_bo/random_search_experiments/large_box.csv")
     return
 
 
