@@ -1,5 +1,5 @@
 from scipy import stats
-
+from scipy.optimize import minimize_scalar
 from . import simulate as sim
 
 # sample size per group for a difference in means
@@ -25,6 +25,7 @@ def sample_size_means(
     return n
 
 # obtain maximum expected sample size for an interval of interest
+# using interval search on the derivative
 def max_ess(
         delta_start=0,
         n_analyses=3,
@@ -32,49 +33,47 @@ def max_ess(
         lower_bounds=[0, 0.75, 1.5],
         n_patients=20,
         null_hypothesis=0,
-        variance=1):
+        variance=1,
+        epsilon=1e-2):
 
-    # epsilon precision for max ESS calculated
-    epsilon = 1e-4
-
-    # delta_stop based on the variance (5x the variance)
-    delta_stop = variance * 5
+    delta_stop = variance * 5.
     
-    # random starting values of ess
-    ess_delta_start = 10
-    ess_delta_stop = 0
-    
-    # while the error is greater than desired precision
-    while abs(ess_delta_start - ess_delta_stop) > epsilon:
+    # step size to calculate the derivative (slope)
+    h = 1e-5
 
-        # simulate the trial under delta_start
-        _, _, ess_delta_start = sim.group_sequential_designs(
+    def get_ess(delta):
+        _, _, ess = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = upper_bounds,
             lower_bounds = lower_bounds,
             n_patients = n_patients,
             null_hypothesis = null_hypothesis,
-            alt_hypothesis = delta_start,
+            alt_hypothesis = delta,
             variance = variance
         )
-    
-        # simulate trial under delta_stop
-        _, _, ess_delta_stop = sim.group_sequential_designs(
-            n_analyses = n_analyses,
-            upper_bounds = upper_bounds,
-            lower_bounds = lower_bounds,
-            n_patients = n_patients,
-            null_hypothesis = null_hypothesis,
-            alt_hypothesis = delta_stop,
-            variance = variance
-        )
+        return ess
+
+    # bisection loop
+    while (delta_stop - delta_start) > epsilon:
+        midpoint = (delta_start + delta_stop) / 2.0
         
-        if ess_delta_start >= ess_delta_stop:
-            delta_stop = (delta_start + delta_stop)/2 
-        else:
-            delta_start = (delta_start + delta_stop)/2
+        # sample slightly to the left and right of the midpoint to get the slope
+        ess_left = get_ess(midpoint - h)
+        ess_right = get_ess(midpoint + h)
+        
+        slope = ess_right - ess_left
 
-    return ess_delta_start
+        if slope > 0:
+            # slope is positive: we are climbing up the left side of the hill.
+            # the peak must be to the right.
+            delta_start = midpoint
+        else:
+            # slope is negative: we are sliding down the right side of the hill.
+            # The peak must be to the left.
+            delta_stop = midpoint
+
+    # Return the final optimized ESS at the peak midpoint
+    return get_ess((delta_start + delta_stop) / 2.0)
 
 def find_sample_size(
         power_target=0.9,
@@ -83,26 +82,14 @@ def find_sample_size(
         lower_bounds=[0, 0.75, 1.5],
         null_hypothesis=0,
         alt_hypothesis=0.5,
-        variance=1):
+        variance=1,
+        epsilon=1e-2):
 
     # initial sample sizes
     n_patients_min = 2
     n_patients_max = 5000
 
-    _, power_max, _ = sim.group_sequential_designs(
-        n_analyses = n_analyses,
-        upper_bounds = upper_bounds,
-        lower_bounds = lower_bounds,
-        n_patients = n_patients_max,
-        null_hypothesis = null_hypothesis,
-        alt_hypothesis = alt_hypothesis,
-        variance = variance
-    )
-    
-    if power_max < power_target:
-        return None
-
-    while n_patients_max - n_patients_min > 0.5:
+    while (n_patients_max - n_patients_min) > epsilon:
 
         n_mid = (n_patients_min + n_patients_max) / 2
 
