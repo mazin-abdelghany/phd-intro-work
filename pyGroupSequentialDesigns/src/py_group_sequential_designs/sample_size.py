@@ -33,12 +33,16 @@ def max_ess(
         lower_bounds=[0, 0.75, 1.5],
         n_patients=20,
         null_hypothesis=0,
-        variance=1,
-        epsilon=1e-2):
+        variance=1):
 
-    delta_stop = variance * 5.
+    # epsilon precision for max ESS calculated
+    epsilon = 1e-4
 
-    def get_ess(delta):
+    # delta_stop based on the variance (5x the variance)
+    delta_stop = variance * 5
+    
+    # helper function 
+    def run_sim(delta):
         _, _, ess = sim.group_sequential_designs(
             n_analyses = n_analyses,
             upper_bounds = upper_bounds,
@@ -48,30 +52,29 @@ def max_ess(
             alt_hypothesis = delta,
             variance = variance
         )
-        # Removed the rounding here so the optimization handles 
-        # continuous, smooth values.
         return ess
 
-    # Pure interval bisection for optimization (Dichotomous Search)
-    while (delta_stop - delta_start) > epsilon:
-        # Pick two test points close to the center of the current interval
+    # calculate initial values outside the loop
+    ess_delta_start = run_sim(delta_start)
+    ess_delta_stop = run_sim(delta_stop)
+    
+    # while the error is greater than desired precision
+    while abs(ess_delta_start - ess_delta_stop) > epsilon:
+        # calculate the midpoint
         midpoint = (delta_start + delta_stop) / 2.0
-        x1 = midpoint - (epsilon / 4.0)
-        x2 = midpoint + (epsilon / 4.0)
         
-        ess_1 = get_ess(x1)
-        ess_2 = get_ess(x2)
-
-        if ess_1 < ess_2:
-            # ESS is higher to the right, so the peak cannot be in the far left
-            delta_start = x1
+        if ess_delta_start >= ess_delta_stop:
+            # move the right bound to the midpoint
+            delta_stop = midpoint
+            # only update the ESS value that actually changed
+            ess_delta_stop = run_sim(delta_stop)
         else:
-            # ESS is higher to the left (or equal), so the peak cannot be in the far right
-            delta_stop = x2
+            # move the left bound to the midpoint
+            delta_start = midpoint
+            # only update the ESS value that actually changed
+            ess_delta_start = run_sim(delta_start)
 
-    # Return the final optimized ESS at the true peak midpoint
-    final_delta = (delta_start + delta_stop) / 2.0
-    return get_ess(final_delta)
+    return ess_delta_start
 
 def find_sample_size(
         power_target=0.9,
