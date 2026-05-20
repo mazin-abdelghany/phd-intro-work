@@ -173,8 +173,9 @@ def _(
 
 @app.cell
 def _():
+    n_experiments = 50
     n_loops = 500
-    return (n_loops,)
+    return n_experiments, n_loops
 
 
 @app.cell(hide_code=True)
@@ -210,8 +211,8 @@ def _(pd):
 
 
 @app.cell
-def _(np):
-    runs = np.concatenate([np.repeat(f"Run_{i+1}", 500) for i in range(50)])
+def _(n_experiments, n_loops, np):
+    runs = np.concatenate([np.repeat(f"Run_{i+1}", n_loops) for i in range(n_experiments)])
     return (runs,)
 
 
@@ -223,18 +224,18 @@ def _(large_box_bo, large_box_rand, large_box_sim_ann, runs):
     return
 
 
-@app.cell
-def _(np):
-    rng = np.random.default_rng(seed=897234107894630)
-    return (rng,)
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     # Random run summary
     """)
     return
+
+
+@app.cell
+def _(np):
+    rng = np.random.default_rng(seed=897234107894630)
+    return (rng,)
 
 
 @app.cell
@@ -492,9 +493,9 @@ def _(mo):
 
 
 @app.cell
-def _(large_box_bo, n_loops, np):
+def _(large_box_bo, n_experiments, n_loops, np):
     best_indices = []
-    for ell in range(50):
+    for ell in range(n_experiments):
         _start_index = ell * n_loops
         _stop_index = _start_index + n_loops
 
@@ -518,7 +519,15 @@ def _(mo):
 
 
 @app.cell
-def _(large_box_bo, n_loops, np, pd, target_alpha, target_power):
+def _(
+    large_box_bo,
+    n_experiments,
+    n_loops,
+    np,
+    pd,
+    target_alpha,
+    target_power,
+):
     feasibility = {
         "run" : [],
         "feasibility" : [],
@@ -529,7 +538,7 @@ def _(large_box_bo, n_loops, np, pd, target_alpha, target_power):
     epsilon1 = 0.01
     epsilon2 = 0.02
 
-    for m in range(50):
+    for m in range(n_experiments):
         _start_index = m * n_loops
         _stop_index = _start_index + n_loops
 
@@ -552,7 +561,15 @@ def _(large_box_bo, n_loops, np, pd, target_alpha, target_power):
 
 
 @app.cell
-def _(large_box_bo, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
+def _(
+    large_box_bo,
+    n_experiments,
+    n_loops,
+    np,
+    tri_alpha,
+    tri_max_ess,
+    tri_obj,
+):
     tri_diff = abs(0.05-tri_alpha)
 
     diffs = {
@@ -562,7 +579,7 @@ def _(large_box_bo, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
         "obj_func_diff" : []
     }
 
-    for _i in range(50):
+    for _i in range(n_experiments):
         _start_index = _i * n_loops
         _stop_index = _start_index + n_loops
 
