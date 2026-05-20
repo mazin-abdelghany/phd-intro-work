@@ -308,8 +308,24 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    The sample size search space maximum was selected to be approximate the same size as the single stage sample size $\mu\approx 155$. The triangular design (considered near-optimal) has a staged sample size for $1-\beta=0.9$ of 65. The lower bound was selected as a floor for the number of patients that would not be too low to get near this power.
+    """)
+    return
+
+
 @app.cell
-def _(c0, mo, np, tri_params):
+def _():
+    # commentary on selection above
+    lower_sample_size = 20
+    upper_sample_size = 160
+    return lower_sample_size, upper_sample_size
+
+
+@app.cell
+def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
     # create a single dropdown
     space_dropdown = mo.ui.dropdown(
         options=['large_box', 'small_box', 'triang_box'],
@@ -319,15 +335,15 @@ def _(c0, mo, np, tri_params):
 
     # lookups for lower and upper spaces based on the selected key
     lower_spaces = {
-        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
-        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
-        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [2])
+        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
+        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
+        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [lower_sample_size])
     }
 
     upper_spaces = {
-        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
-        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
-        'triang_box' : np.array([param + 0.4 for param in tri_params] + [100])
+        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, upper_sample_size]),
+        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, upper_sample_size]),
+        'triang_box' : np.array([param + 0.4 for param in tri_params] + [upper_sample_size])
     }
     return lower_spaces, space_dropdown, upper_spaces
 
@@ -701,14 +717,14 @@ def _(box_values_collection, pd):
 @app.cell
 def _(best_values_df):
     best_values_df.to_csv(
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_best_journey.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triang_box_t100_best_journey.csv")
     return
 
 
 @app.cell
 def _(box_collections_df):
     box_collections_df.to_csv(
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_results.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triang_box_t100_results.csv")
     return
 
 
