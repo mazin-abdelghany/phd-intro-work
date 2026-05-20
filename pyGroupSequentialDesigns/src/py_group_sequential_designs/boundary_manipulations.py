@@ -60,3 +60,35 @@ def check_monotonicity(n_analyses, bounds):
             if upper[_i] != lower[_i]: return False
 
     return True
+
+def reverse_to_boundaries(params, K):
+    params = np.asarray(params).flatten()
+    c = params[0]
+
+    # delta_u and delta_l are already sliced and reversed
+    delta_u = params[1::2][::-1]
+    delta_l = params[2::2][::-1]
+
+    u_pads = np.concatenate([[0], delta_u[::-1]])
+    l_pads = np.concatenate([[0], delta_l[::-1]])
+
+    # np.cumsum(x[::-1])[::-1] efficiently computes suffix sums from left-to-right
+    upper_bounds = c + np.cumsum(u_pads)[::-1]
+    lower_bounds = c - np.cumsum(l_pads)[::-1]
+
+    return upper_bounds, lower_bounds
+
+def boundaries_to_reverse(upper_bounds, lower_bounds):
+    upper_bounds = np.asarray(upper_bounds)
+    lower_bounds = np.asarray(lower_bounds)
+
+    c = upper_bounds[-1]
+
+    delta_u = np.diff(upper_bounds[::-1])
+    delta_l = np.diff(lower_bounds)[::-1]
+
+    increments = np.empty(2 * len(delta_u), dtype=upper_bounds.dtype)
+    increments[0::2] = delta_u
+    increments[1::2] = delta_l
+
+    return np.concatenate([[c], increments])
