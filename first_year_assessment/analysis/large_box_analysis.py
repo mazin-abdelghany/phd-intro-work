@@ -193,13 +193,13 @@ def _(pd):
     )
 
     large_box_bo = pd.read_csv(
-        filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/old_data/large_box_bo.csv"
+        filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo.csv"
     )
 
     # importing the corrected data
     large_box_sim_ann = pd.read_csv(
         filepath_or_buffer=
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/old_data/large_box_t100_neigh2_corrected.csv"
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_results.csv"
     )
 
     # remove the first column as it is not needed
