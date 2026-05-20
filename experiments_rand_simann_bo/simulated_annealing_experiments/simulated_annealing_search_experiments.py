@@ -475,19 +475,18 @@ def _(mo):
     return
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Experiment initiation
-    """)
-    return
-
-
 @app.cell
 def _():
     n_experiments = 50
     n_loops = 500
-    return n_experiments, n_loops
+
+    # generate labels for data frame
+    # if we have experiments <1000, then we need 3 spaces 
+    # to fill. this is the length of the string and then
+    # we raise 10 to this number to obtain the labels
+    space_needed_for_label = len(str(n_loops))
+    label_range = 10**(space_needed_for_label)
+    return label_range, n_experiments, n_loops
 
 
 @app.cell
@@ -520,21 +519,12 @@ def _(labels):
     return (best_values,)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## Stop!
-    If more than 1000 loops are to be run, the index labels in the following code block must be corrected.
-    """)
-    return
-
-
 @app.cell
-def _(best_values, box_values_collection, n_experiments, n_loops):
+def _(best_values, box_values_collection, label_range, n_experiments, n_loops):
     # generate the indices using the pattern described above
     index_list = [
         i 
-        for start in range(1000, (n_experiments+1)*1000, 1000) 
+        for start in range(label_range, (n_experiments+1)*label_range, label_range) 
         for i in range(start + 1, start + (n_loops+1))
     ]
 
@@ -558,6 +548,14 @@ def _(box_values_collection, n_experiments, n_loops, np):
 
     box_values_collection["seed"] = seed_list
     return (short_seed_list,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Experiment initiation
+    """)
+    return
 
 
 @app.cell
@@ -687,6 +685,14 @@ def _(
             print("\n===========================")
             print(f"= Completed experiment {i+1}. =")
             print("===========================")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Saving data
+    """)
     return
 
 
