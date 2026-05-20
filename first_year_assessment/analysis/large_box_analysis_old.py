@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -85,8 +85,8 @@ def _(fn_min, fp, sim, ss):
             variance = variance
         )
 
-        alpha_prime = trial_sim[1]
-        beta_prime = 1-trial_sim[2]
+        alpha_prime = trial_sim[0]
+        beta_prime = 1-trial_sim[1]
 
         max_ess = ss.max_ess(
             n_analyses = n_analyses,
@@ -188,12 +188,19 @@ def _(mo):
 @app.cell
 def _(pd):
     # import the sample size from uniform distribution
-    large_box_rand = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/random_search_experiments/large_box_ss_change.csv")
+    large_box_rand = pd.read_csv(
+        filepath_or_buffer="/tf/experiments_rand_simann_bo/random_search_experiments/old_data/large_box_ss_change.csv"
+    )
 
-    large_box_bo = pd.read_csv(filepath_or_buffer="/tf/2026-04-t20/bayes_opt_experiments/large_box_bo.csv")
+    large_box_bo = pd.read_csv(
+        filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/old_data/large_box_bo.csv"
+    )
 
     # importing the corrected data
-    large_box_sim_ann = pd.read_csv(filepath_or_buffer="/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_corrected.csv")
+    large_box_sim_ann = pd.read_csv(
+        filepath_or_buffer=
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/old_data/large_box_t100_neigh2_corrected.csv"
+    )
 
     # remove the first column as it is not needed
     large_box_rand = large_box_rand.iloc[:, 1:]
@@ -217,57 +224,6 @@ def _(large_box_bo):
         .str.extract(r'tf\.Tensor\(([-+]?\d*\.?\d+)')[0]
         .astype(float)
     )
-    return
-
-
-@app.cell
-def _(
-    delta0,
-    delta1,
-    mu,
-    num_analyses,
-    obj_f,
-    sigma2,
-    target_alpha,
-    target_power,
-):
-    # correct the objective function calculation in sim anneal
-    def correct_obj_func_error(data, index):
-        upper_bounds = data.iloc[index][["upper1", "upper2", "upper3"]].to_list()
-        lower_bounds = data.iloc[index][["lower1", "lower2", "upper3"]].to_list()
-        sample_size = data.iloc[index]["sample_size"]
-
-        _, _, _, obj = obj_f(
-            mu = mu,
-            upper_bounds = upper_bounds,
-            lower_bounds = lower_bounds,
-            n_analyses = num_analyses,
-            n_patients = sample_size,
-            target_power = target_power,
-            target_alpha = target_alpha,
-            null_hypothesis = delta0,
-            alternative_hypothesis = delta1,
-            variance = sigma2
-        )
-
-        return obj
-
-    return
-
-
-@app.cell
-def _():
-    # large_box_sim_ann["obj_func_corrected"] = [
-    #     correct_obj_func_error(large_box_sim_ann, idx)
-    #     for idx in large_box_sim_ann.index
-    # ]
-    return
-
-
-@app.cell
-def _():
-    # used to save the data for the objective function that was saved wrong
-    # large_box_sim_ann.to_csv("/tf/2026-04-t21/simulated_annealing_experiments/large_box_t100_neigh2_corrected.csv")
     return
 
 
