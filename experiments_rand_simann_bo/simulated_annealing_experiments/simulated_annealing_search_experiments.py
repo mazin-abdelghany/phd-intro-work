@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -22,7 +22,6 @@ def _(mo):
 @app.cell
 def _():
     import time
-    import scipy.stats as stats
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -41,7 +40,7 @@ def _():
     from py_group_sequential_designs import simulate as sim
     from py_group_sequential_designs import sample_size as ss
 
-    return bd, fn_min, fp, sim, ss
+    return bd, fmt_bd, fn_min, fp, sim, ss
 
 
 @app.cell(hide_code=True)
@@ -59,7 +58,7 @@ def _(ss):
     target_power = 0.9
     delta0 = 0.
     delta1 = 1.
-    sigma2 = 3.
+    sigma2 = 9.
 
     mu = ss.sample_size_means(
         ratio=1,
@@ -88,39 +87,6 @@ def _(mo):
     BO vector: $\{c, \Delta u_3, \Delta \ell_3, \Delta u_2, \Delta \ell_2\}$
     """)
     return
-
-
-@app.cell
-def _(np):
-    def reverse_to_boundaries(params, K):
-        params = np.asarray(params).flatten()
-        c = params[0]
-
-        delta_u = params[1::2][::-1]
-        delta_l = params[2::2][::-1]
-
-        upper_bounds = np.array([c + np.sum(delta_u[k:]) for k in range(K)])
-        lower_bounds = np.array([c - np.sum(delta_l[k:]) for k in range(K)])
-
-        return upper_bounds, lower_bounds
-
-    def boundaries_to_reverse(upper_bounds, lower_bounds):
-        upper_bounds = np.asarray(upper_bounds)
-        lower_bounds = np.asarray(lower_bounds)
-
-        K = len(upper_bounds)
-        c = upper_bounds[-1]
-
-        delta_u = np.diff(upper_bounds[::-1])
-        delta_l = np.diff(lower_bounds)[::-1]
-
-        increments = np.empty(2 * (K - 1))
-        increments[0::2] = delta_u
-        increments[1::2] = delta_l
-
-        return np.concatenate([[c], increments])
-
-    return boundaries_to_reverse, reverse_to_boundaries
 
 
 @app.cell(hide_code=True)
@@ -155,8 +121,8 @@ def _(fn_min, fp, sim, ss):
             variance = variance
         )
 
-        alpha_prime = trial_sim[1]
-        beta_prime = 1-trial_sim[2]
+        alpha_prime = trial_sim[0]
+        beta_prime = 1-trial_sim[1]
 
         max_ess = ss.max_ess(
             n_analyses = n_analyses,
@@ -190,9 +156,9 @@ def _(fn_min, fp, sim, ss):
 @app.cell
 def _(
     bd,
-    boundaries_to_reverse,
     delta0,
     delta1,
+    fmt_bd,
     mu,
     np,
     num_analyses,
@@ -205,8 +171,7 @@ def _(
     tri = bd.calculate_triangular_boundaries(
         n_analyses = num_analyses,
         alpha = target_alpha,
-        delta = delta1,
-        n_patients = 20
+        delta = delta1
     )
 
     tri_n_patients = ss.find_sample_size(
@@ -232,7 +197,7 @@ def _(
         variance = sigma2
     )
 
-    tri_params = boundaries_to_reverse(
+    tri_params = fmt_bd.boundaries_to_reverse(
         upper_bounds = tri[0],
         lower_bounds = tri[1]
     )
@@ -345,48 +310,42 @@ def _(mo):
 
 @app.cell
 def _(c0, mo, np, tri_params):
-    lower_dropdown = mo.ui.dropdown(
-        options={
-            'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
-            'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
-            'triang_box' : [max(0, param - 0.4) for param in tri_params] + [2]
-        },
+    # create a single dropdown
+    space_dropdown = mo.ui.dropdown(
+        options=['large_box', 'small_box', 'triang_box'],
         value="triang_box",
-        label="Choose lower search space:"
+        label="Choose search space:"
     )
 
-    upper_dropdown = mo.ui.dropdown(
-        options={
-            'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
-            'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
-            'triang_box' : [param + 0.4 for param in tri_params] + [100]
-        }, 
-        value="triang_box",
-        label="Choose upper search space:"
-    )
-    return lower_dropdown, upper_dropdown
+    # lookups for lower and upper spaces based on the selected key
+    lower_spaces = {
+        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
+        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
+        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [2])
+    }
+
+    upper_spaces = {
+        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
+        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
+        'triang_box' : np.array([param + 0.4 for param in tri_params] + [100])
+    }
+    return lower_spaces, space_dropdown, upper_spaces
 
 
 @app.cell
-def _(lower_dropdown, mo, np):
+def _(lower_spaces, mo, np, space_dropdown, upper_spaces):
+    # get active arrays based on the dropdown current value
+    current_lower = lower_spaces[space_dropdown.value]
+    current_upper = upper_spaces[space_dropdown.value]
+
     mo.vstack(
         [
-            lower_dropdown, 
-            mo.md(f"Has value: {np.round(lower_dropdown.value, decimals = 3)}")
+            space_dropdown, 
+            mo.md(f"**Lower value:** {np.round(current_lower, decimals=3)}"),
+            mo.md(f"**Upper value:** {np.round(current_upper, decimals=3)}")
         ]
     )
-    return
-
-
-@app.cell
-def _(mo, np, upper_dropdown):
-    mo.vstack(
-        [
-            upper_dropdown, 
-            mo.md(f"Has value: {np.round(upper_dropdown.value, decimals = 3)}")
-        ]
-    )
-    return
+    return current_lower, current_upper
 
 
 @app.cell(hide_code=True)
@@ -429,39 +388,9 @@ def _(np):
 
 
 @app.cell
-def _(lower_dropdown, np, upper_dropdown):
+def _(current_lower, current_upper):
     # the neighbour function
-    def neighbour1(params, K, rng):
-
-        modifying_params = params.copy()
-
-        # generates discrete uniform values from 0 to 5
-        idx_to_change = rng.integers(low=0, high=6)
-
-        # depending on the index, the magnitude of change varies
-        # that is, much be different for bounds vs. sample size
-        num_of_params = K*2
-        bound_selected = idx_to_change < num_of_params-1
-
-        if bound_selected:
-            new_param = modifying_params[idx_to_change] + rng.uniform(low = -0.5, high = 0.5)
-            new_param = np.clip(new_param, lower_dropdown.value[idx_to_change], upper_dropdown.value[idx_to_change])
-            modifying_params[idx_to_change] = new_param
-        else:
-            new_param = modifying_params[idx_to_change] + rng.uniform(low = -2.5, high = 2.5)
-            new_param = np.clip(new_param, lower_dropdown.value[idx_to_change], upper_dropdown.value[idx_to_change])
-            modifying_params[idx_to_change] = new_param
-
-        #print(params)
-        return modifying_params
-
-    return (neighbour1,)
-
-
-@app.cell
-def _(lower_dropdown, upper_dropdown):
-    # the neighbour function
-    def neighbour2(params, K, rng):
+    def neighbour(params, K, rng):
 
         modifying_params = params.copy()
 
@@ -469,13 +398,13 @@ def _(lower_dropdown, upper_dropdown):
         idx_to_change = rng.integers(low=0, high=6)
 
         modifying_params[idx_to_change] = rng.uniform(
-            low = lower_dropdown.value[idx_to_change], 
-            high = upper_dropdown.value[idx_to_change]
+            low = current_lower[idx_to_change], 
+            high = current_upper[idx_to_change]
         )
 
         return modifying_params
 
-    return (neighbour2,)
+    return (neighbour,)
 
 
 @app.cell
@@ -485,33 +414,33 @@ def _(np, tri_params):
 
 
 @app.cell
-def _(neighbour1, np, rngt, tri_params):
-    neighbour1(np.concatenate((tri_params, [20])), 3, rng = rngt)
+def _(neighbour, np, rngt, tri_params):
+    neighbour(np.concatenate((tri_params, [20])), 3, rng = rngt)
     return
 
 
 @app.cell
-def _(neighbour1, np, rngt, tri_params):
-    collector_b1 = []
-    collector_n1 = []
+def _(neighbour, np, rngt, tri_params):
+    bounds_collector = []
+    sample_size_collector = []
     num_tests = 2000
     tmp = np.concatenate((tri_params, [20]))
     for _i in range(num_tests):
-        tmp = neighbour1(tmp, 3, rng = rngt)
+        tmp = neighbour(tmp, 3, rng = rngt)
         bound = tmp[0:5]
-        collector_n1.append(tmp[5])
-        collector_b1.append(bound.tolist())
-    return collector_b1, collector_n1, num_tests
+        sample_size_collector.append(tmp[5])
+        bounds_collector.append(bound.tolist())
+    return bounds_collector, num_tests
 
 
 @app.cell
-def _(collector_b1, num_analyses, num_tests, plt, reverse_to_boundaries, tri):
+def _(bounds_collector, fmt_bd, num_analyses, num_tests, plt, tri):
     _fig, _ax = plt.subplots()
 
     analyses = [i+1 for i in range(num_analyses)]
 
     for _i in range(num_tests):
-        _bounds = reverse_to_boundaries(collector_b1[_i], K=3)
+        _bounds = fmt_bd.reverse_to_boundaries(bounds_collector[_i], K=3)
         _ax.plot(analyses, _bounds[0], color = "purple", alpha = 0.1)
         _ax.plot(analyses, _bounds[1], color = "purple", alpha = 0.1)
 
@@ -519,132 +448,6 @@ def _(collector_b1, num_analyses, num_tests, plt, reverse_to_boundaries, tri):
     _ax.plot(analyses, tri[1], color = "red", lw = 2)
 
     _fig
-    return
-
-
-@app.cell
-def _(np, tri_params):
-    np.concatenate((tri_params, [20]))
-    return
-
-
-@app.cell
-def _(collector_b1, collector_n1, slider1):
-    print(collector_b1[slider1.value], collector_n1[slider1.value])
-    return
-
-
-@app.cell
-def _(collector_b1, collector_n1, slider1):
-    print(collector_b1[slider1.value+1], collector_n1[slider1.value+1])
-    return
-
-
-@app.cell
-def _(mo, num_tests):
-    # what is a neighbour?
-    slider1 = mo.ui.slider(start=0, stop=num_tests)
-    slider1
-    return (slider1,)
-
-
-@app.cell
-def _(collector_b1, num_analyses, plt, reverse_to_boundaries, slider1, tri):
-    _fig, _ax = plt.subplots()
-
-    _analyses = [i+1 for i in range(num_analyses)]
-
-
-    _bounds = reverse_to_boundaries(collector_b1[slider1.value], K=3)
-    _ax.plot(_analyses, _bounds[0], color = "purple")
-    _ax.plot(_analyses, _bounds[1], color = "purple")
-
-    _ax.plot(_analyses, tri[0], color = "red", lw = 2)
-    _ax.plot(_analyses, tri[1], color = "red", lw = 2)
-
-    _fig
-    return
-
-
-@app.cell
-def _(collector_n1, plt):
-    plt.hist(collector_n1, bins = 100)
-    return
-
-
-@app.cell
-def _(neighbour2, np, rngt, tri_params):
-    collector_b2 = []
-    collector_n2 = []
-    num_tests2 = 2000
-    tmp1 = np.concatenate((tri_params, [20]))
-    for _i in range(num_tests2):
-        tmp1 = neighbour2(tmp1, 3, rng = rngt)
-        bound1 = tmp1[0:5]
-        collector_n2.append(tmp1[5])
-        collector_b2.append(bound1.tolist())
-    return collector_b2, collector_n2, num_tests2
-
-
-@app.cell
-def _(collector_b2, num_analyses, num_tests, plt, reverse_to_boundaries, tri):
-    _fig, _ax = plt.subplots()
-
-    _analyses = [i+1 for i in range(num_analyses)]
-
-    for _i in range(num_tests):
-        _bounds = reverse_to_boundaries(collector_b2[_i], K=3)
-        _ax.plot(_analyses, _bounds[0], color = "purple", alpha = 0.1)
-        _ax.plot(_analyses, _bounds[1], color = "purple", alpha = 0.1)
-
-    _ax.plot(_analyses, tri[0], color = "red", lw = 2)
-    _ax.plot(_analyses, tri[1], color = "red", lw = 2)
-
-    _fig
-    return
-
-
-@app.cell
-def _(collector_b2, collector_n2, slider2):
-    print(collector_b2[slider2.value], collector_n2[slider2.value])
-    return
-
-
-@app.cell
-def _(collector_b2, collector_n2, slider2):
-    print(collector_b2[slider2.value+1], collector_n2[slider2.value+1])
-    return
-
-
-@app.cell
-def _(mo, num_tests2):
-    # what is a neighbour?
-    slider2 = mo.ui.slider(start=0, stop=num_tests2)
-    slider2
-    return (slider2,)
-
-
-@app.cell
-def _(collector_b2, num_analyses, plt, reverse_to_boundaries, slider2, tri):
-    _fig, _ax = plt.subplots()
-
-    _analyses = [i+1 for i in range(num_analyses)]
-
-
-    _bounds = reverse_to_boundaries(collector_b2[slider2.value], K=3)
-    _ax.plot(_analyses, _bounds[0], color = "purple")
-    _ax.plot(_analyses, _bounds[1], color = "purple")
-
-    _ax.plot(_analyses, tri[0], color = "red", lw = 2)
-    _ax.plot(_analyses, tri[1], color = "red", lw = 2)
-
-    _fig
-    return
-
-
-@app.cell
-def _(collector_n2, plt):
-    plt.hist(collector_n2, bins = 100)
     return
 
 
@@ -745,25 +548,25 @@ def _(box_values_collection, n_experiments, n_loops, np):
 def _(
     best_values,
     box_values_collection,
+    current_lower,
+    current_upper,
     delta0,
     delta1,
+    fmt_bd,
     labels,
-    lower_dropdown,
     mu,
     n_experiments,
     n_loops,
-    neighbour2,
+    neighbour,
     np,
     num_analyses,
     obj_f,
-    reverse_to_boundaries,
     short_seed_list,
     sigma2,
     target_alpha,
     target_power,
     time,
     tri_obj,
-    upper_dropdown,
 ):
     for i in range(n_experiments):
 
@@ -776,9 +579,9 @@ def _(
 
         # _init_rand is the below code chunk:
         initial_params = rng.uniform(
-            lower_dropdown.value,
-            upper_dropdown.value,
-            size = len(lower_dropdown.value)
+            current_lower,
+            current_upper,
+            size = len(current_lower)
         )
 
         f_value = tri_obj.copy()
@@ -795,10 +598,10 @@ def _(
         for j in range(n_loops):
 
             # generate a new design with neighbour
-            candidate_design = neighbour2(params = current_design, K = num_analyses, rng = rng)
+            candidate_design = neighbour(params = current_design, K = num_analyses, rng = rng)
 
             # get its characteristics and calculate its penalty
-            candidate_bounds = reverse_to_boundaries(params = candidate_design[0:5], K = num_analyses)
+            candidate_bounds = fmt_bd.reverse_to_boundaries(params = candidate_design[0:5], K = num_analyses)
             candidate_n = candidate_design[5]
 
             # calculate its new function value
@@ -844,7 +647,7 @@ def _(
             box_values_collection["temperature"].extend([temperature])
 
             # collect the best design and f_min
-            best_bounds = reverse_to_boundaries(params = best_design[0:5], K = num_analyses)
+            best_bounds = fmt_bd.reverse_to_boundaries(params = best_design[0:5], K = num_analyses)
             best_bounds_list = np.concatenate( (best_bounds[0], best_bounds[1][0:2]) )
             best_n = best_design[5]
 
@@ -898,14 +701,14 @@ def _(box_values_collection, pd):
 @app.cell
 def _(best_values_df):
     best_values_df.to_csv(
-        "/tf/2026-04-t21/simulated_annealing_experiments/triangular_box_t100_neigh2_init_rand_best_vals.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triangular_box_t100_best_journey.csv")
     return
 
 
 @app.cell
 def _(box_collections_df):
     box_collections_df.to_csv(
-        "/tf/2026-04-t21/simulated_annealing_experiments/triangular_box_t100_neigh2_init_rand_results.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triangular_box_t100_results.csv")
     return
 
 
