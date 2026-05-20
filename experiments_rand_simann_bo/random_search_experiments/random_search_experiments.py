@@ -311,48 +311,42 @@ def _(mo):
 
 @app.cell
 def _(c0, mo, np, tri_params):
-    lower_dropdown = mo.ui.dropdown(
-        options={
-            'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
-            'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
-            'triang_box' : [max(0, param - 0.4) for param in tri_params] + [2]
-        },
+    # create a single dropdown
+    space_dropdown = mo.ui.dropdown(
+        options=['large_box', 'small_box', 'triang_box'],
         value="triang_box",
-        label="Choose lower search space:"
+        label="Choose search space:"
     )
 
-    upper_dropdown = mo.ui.dropdown(
-        options={
-            'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
-            'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
-            'triang_box' : [param + 0.4 for param in tri_params] + [100]
-        }, 
-        value="triang_box",
-        label="Choose upper search space:"
-    )
-    return lower_dropdown, upper_dropdown
+    # lookups for lower and upper spaces based on the selected key
+    lower_spaces = {
+        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
+        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
+        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [2])
+    }
+
+    upper_spaces = {
+        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
+        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
+        'triang_box' : np.array([param + 0.4 for param in tri_params] + [100])
+    }
+    return lower_spaces, space_dropdown, upper_spaces
 
 
 @app.cell
-def _(lower_dropdown, mo, np):
+def _(lower_spaces, mo, np, space_dropdown, upper_spaces):
+    # get active arrays based on the dropdown current value
+    current_lower = lower_spaces[space_dropdown.value]
+    current_upper = upper_spaces[space_dropdown.value]
+
     mo.vstack(
         [
-            lower_dropdown, 
-            mo.md(f"Has value: {np.round(lower_dropdown.value, decimals = 3)}")
+            space_dropdown, 
+            mo.md(f"**Lower value:** {np.round(current_lower, decimals=3)}"),
+            mo.md(f"**Upper value:** {np.round(current_upper, decimals=3)}")
         ]
     )
-    return
-
-
-@app.cell
-def _(mo, np, upper_dropdown):
-    mo.vstack(
-        [
-            upper_dropdown, 
-            mo.md(f"Has value: {np.round(upper_dropdown.value, decimals = 3)}")
-        ]
-    )
-    return
+    return current_lower, current_upper
 
 
 @app.cell(hide_code=True)
@@ -440,11 +434,12 @@ def _(n_experiments, n_loops, np, random_search_large_box):
 
 @app.cell
 def _(
+    current_lower,
+    current_upper,
     delta0,
     delta1,
     fmt_bd,
     labels,
-    lower_dropdown,
     mu,
     n_experiments,
     n_loops,
@@ -457,7 +452,6 @@ def _(
     target_alpha,
     target_power,
     time,
-    upper_dropdown,
 ):
     for i in range(n_experiments):
 
@@ -465,7 +459,7 @@ def _(
         rng = np.random.default_rng(seed = short_seed_list[i])
 
         # generate n_loops # of reverse bounds, array shape is (n_loops x 5)
-        parameters = rng.uniform(lower_dropdown.value, upper_dropdown.value, size = (n_loops, len(lower_dropdown.value)))
+        parameters = rng.uniform(current_lower, current_upper, size = (n_loops, len(current_lower)))
 
         reverse_bounds = parameters[:, 0:5]
         sample_size = parameters[:, 5]
