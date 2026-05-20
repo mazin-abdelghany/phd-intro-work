@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -52,7 +52,7 @@ def _():
     from py_group_sequential_designs import simulate as sim
     from py_group_sequential_designs import sample_size as ss
 
-    return bd, fn_min, fp, sim, ss
+    return bd, fmt_bd, fn_min, fp, sim, ss
 
 
 @app.cell(hide_code=True)
@@ -70,7 +70,7 @@ def _(ss):
     target_power = 0.9
     delta0 = 0.
     delta1 = 1.
-    sigma2 = 3.
+    sigma2 = 9.
 
     mu = ss.sample_size_means(
         ratio=1,
@@ -99,39 +99,6 @@ def _(mo):
     BO vector: $\{c, \Delta u_3, \Delta \ell_3, \Delta u_2, \Delta \ell_2\}$
     """)
     return
-
-
-@app.cell
-def _(np):
-    def reverse_to_boundaries(params, K):
-        params = np.asarray(params).flatten()
-        c = params[0]
-
-        delta_u = params[1::2][::-1]
-        delta_l = params[2::2][::-1]
-
-        upper_bounds = np.array([c + np.sum(delta_u[k:]) for k in range(K)])
-        lower_bounds = np.array([c - np.sum(delta_l[k:]) for k in range(K)])
-
-        return upper_bounds, lower_bounds
-
-    def boundaries_to_reverse(upper_bounds, lower_bounds):
-        upper_bounds = np.asarray(upper_bounds)
-        lower_bounds = np.asarray(lower_bounds)
-
-        K = len(upper_bounds)
-        c = upper_bounds[-1]
-
-        delta_u = np.diff(upper_bounds[::-1])
-        delta_l = np.diff(lower_bounds)[::-1]
-
-        increments = np.empty(2 * (K - 1))
-        increments[0::2] = delta_u
-        increments[1::2] = delta_l
-
-        return np.concatenate([[c], increments])
-
-    return boundaries_to_reverse, reverse_to_boundaries
 
 
 @app.cell(hide_code=True)
@@ -167,8 +134,8 @@ def _(fn_min, fp, sim, ss):
             variance = variance
         )
 
-        alpha_prime = trial_sim[1]
-        beta_prime = 1-trial_sim[2]
+        alpha_prime = trial_sim[0]
+        beta_prime = 1-trial_sim[1]
 
         max_ess = ss.max_ess(
             n_analyses = n_analyses,
@@ -202,9 +169,9 @@ def _(fn_min, fp, sim, ss):
 @app.cell
 def _(
     bd,
-    boundaries_to_reverse,
     delta0,
     delta1,
+    fmt_bd,
     mu,
     np,
     num_analyses,
@@ -217,8 +184,7 @@ def _(
     tri = bd.calculate_triangular_boundaries(
         n_analyses = num_analyses,
         alpha = target_alpha,
-        delta = delta1,
-        n_patients = 20
+        delta = delta1
     )
 
     tri_n_patients = ss.find_sample_size(
@@ -244,7 +210,7 @@ def _(
         variance = sigma2
     )
 
-    tri_params = boundaries_to_reverse(
+    tri_params = fmt_bd.boundaries_to_reverse(
         upper_bounds = tri[0],
         lower_bounds = tri[1]
     )
@@ -261,7 +227,7 @@ def _(
     print(f"Triangular delta beta: {abs(0.9-tri_power):.4f}")
     print(f"Triangular sample size: {tri_n_patients:.1f}")
     print(f"Triangular max ESS: {tri_max_ess:.1f}")
-    return (c0,)
+    return c0, tri_params
 
 
 @app.cell(hide_code=True)
@@ -356,44 +322,48 @@ def _(mo):
 
 
 @app.cell
-def _(c0, np):
-    #############
-    # large box #
-    #############
-    # lower = np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2])
-    # upper = np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100])
+def _(c0, mo, np, tri_params):
+    # create a single dropdown
+    space_dropdown = mo.ui.dropdown(
+        options=['large_box', 'small_box', 'triang_box'],
+        value="triang_box",
+        label="Choose search space:"
+    )
 
-    #############
-    # small box #
-    #############
-    lower = np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2])
-    upper = np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100])
-    return lower, upper
+    # lookups for lower and upper spaces based on the selected key
+    lower_spaces = {
+        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, 2]),
+        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, 2]),
+        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [2])
+    }
 
-
-@app.cell
-def _():
-    ###################
-    # near triangular #
-    ###################
-    # lower = []
-    # upper = []
-
-    # for param in tri_params:
-    #     lower.append(max(0, param - 0.4))
-    #     upper.append(param + 0.4)
-
-    # lower.append(2)
-    # upper.append(100)
-
-    # print(f"Lower: {np.round(lower, 3)}")
-    # print(f"Upper: {np.round(upper, 3)}")
-    return
+    upper_spaces = {
+        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, 100]),
+        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, 100]),
+        'triang_box' : np.array([param + 0.4 for param in tri_params] + [100])
+    }
+    return lower_spaces, space_dropdown, upper_spaces
 
 
 @app.cell
-def _(Box, lower, np, upper):
-    search_space = Box(lower=lower, upper=upper)
+def _(lower_spaces, mo, np, space_dropdown, upper_spaces):
+    # get active arrays based on the dropdown current value
+    current_lower = lower_spaces[space_dropdown.value]
+    current_upper = upper_spaces[space_dropdown.value]
+
+    mo.vstack(
+        [
+            space_dropdown, 
+            mo.md(f"**Lower value:** {np.round(current_lower, decimals=3)}"),
+            mo.md(f"**Upper value:** {np.round(current_upper, decimals=3)}")
+        ]
+    )
+    return current_lower, current_upper
+
+
+@app.cell
+def _(Box, current_lower, current_upper, np):
+    search_space = Box(lower=current_lower, upper=current_upper)
     print(f"  lower: {np.round(search_space.lower.numpy(), 3)}")
     print(f"  upper: {np.round(search_space.upper.numpy(), 3)}")
     return (search_space,)
@@ -504,19 +474,9 @@ def _(mo):
 
 
 @app.cell
-def _(
-    bd,
-    boundaries_to_reverse,
-    delta0,
-    delta1,
-    np,
-    num_analyses,
-    sigma2,
-    ss,
-    target_power,
-):
+def _(bd, delta0, delta1, fmt_bd, np, num_analyses, sigma2, ss, target_power):
     poc = bd.calculate_pocock_boundaries(
-        n_analyses=num_analyses, alpha=0.05, n_patients=20
+        n_analyses=num_analyses, alpha=0.05
     )
 
     poc_n = ss.find_sample_size(
@@ -529,26 +489,16 @@ def _(
         variance = sigma2
     )[0]
 
-    poc_rev_bounds = boundaries_to_reverse(poc[0], poc[1])
+    poc_rev_bounds = fmt_bd.boundaries_to_reverse(poc[0], poc[1])
 
     poc_params = np.concatenate((poc_rev_bounds, [poc_n]))
     return poc, poc_n, poc_params
 
 
 @app.cell
-def _(
-    bd,
-    boundaries_to_reverse,
-    delta0,
-    delta1,
-    np,
-    num_analyses,
-    sigma2,
-    ss,
-    target_power,
-):
+def _(bd, delta0, delta1, fmt_bd, np, num_analyses, sigma2, ss, target_power):
     obf = bd.calculate_of_boundaries(
-        n_analyses=num_analyses, alpha=0.05, n_patients=20
+        n_analyses=num_analyses, alpha=0.05
     )
 
     obf_n = ss.find_sample_size(
@@ -561,7 +511,7 @@ def _(
         variance = sigma2
     )[0]
 
-    obf_rev_bounds = boundaries_to_reverse(obf[0], obf[1])
+    obf_rev_bounds = fmt_bd.boundaries_to_reverse(obf[0], obf[1])
 
     obf_params = np.concatenate((obf_rev_bounds, [obf_n]))
     return obf, obf_n, obf_params
@@ -648,6 +598,7 @@ def _(
     delta0,
     delta1,
     design_matrix,
+    fmt_bd,
     gc,
     gpflow,
     initial_data,
@@ -659,7 +610,6 @@ def _(
     num_analyses,
     obj_f,
     output_vals,
-    reverse_to_boundaries,
     search_space,
     short_seed_list,
     sigma2,
@@ -692,7 +642,7 @@ def _(
             models           = bayes_opt_model,
             acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
                 optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer(
-                    num_optimization_runs = 500
+                    num_optimization_runs = 50
                 )
             )
         )
@@ -706,7 +656,7 @@ def _(
             x_new_sample_size = x_new[0][5,]
             x_new_bounds = x_new[0][:-1]
 
-            bounds = reverse_to_boundaries(params = x_new_bounds, K = num_analyses)
+            bounds = fmt_bd.reverse_to_boundaries(params = x_new_bounds, K = num_analyses)
             bounds_list = np.concatenate( (bounds[0], bounds[1][0:2]) )
 
             alpha, power, max_ess, y_new = obj_f(
