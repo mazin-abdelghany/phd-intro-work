@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <random>
+#include <tuple>
 
 // Wichmann–Hill uniform pseudorandom number generator
 // Wichmann, Brian A.; Hill, I. David (1982). "Algorithm AS 183: An Efficient 
@@ -763,7 +764,7 @@ void trial_properties_seq(
 
 }
 
-double function_value_delta_minimax(
+std::tuple<double, double, double, double> function_value_delta_minimax(
         std::vector<double>& candidate_params,
         double delta0,
         double delta1,
@@ -821,7 +822,7 @@ double function_value_delta_minimax(
     
     functionvalue += expected_sample_size_dm;
     
-    return(functionvalue); 
+    return{functionvalue, type_I_error, power, expected_sample_size_dm}; 
 
 }
 
@@ -1086,7 +1087,7 @@ void simulatedannealing_delta_minimax(
     //////////////////////////////////////   
     // OBJECTIVE FUNCTION VALUE HOLDERS //
     // calculate the first minimum functinon value
-    double min_func_value = function_value_delta_minimax(
+    auto [min_func_value, init_alpha, init_power, init_ess_dm] = function_value_delta_minimax(
         initial_parameters,
         delta0,
         delta1,
@@ -1099,7 +1100,7 @@ void simulatedannealing_delta_minimax(
 
     // holds the new objective function value after a new design candidate is
     // generated
-    double new_func_value {};
+    // double new_func_value {};
 
     // hold the current working function value (i.e., the objective function
     // value from the last loop)
@@ -1117,6 +1118,22 @@ void simulatedannealing_delta_minimax(
     // assessment for the simulated annealing move
     double x {};
 
+    // keep track of loop index (1 to ~100,000)
+    // keep track of fixed sample size loop or not (1 or 2)
+    // int csv_index {1};
+    // int loop_n {1};
+
+    // open file and write the csv header for saving the data
+    // std::ofstream file("wason_sim_ann_cpp.csv");
+
+    // if (!file.is_open())
+    // {
+    //     std::cerr << "Failed to open file!\n";
+    // }
+
+    // create csv header
+    // file << "index,loop_n,restart,upper1,upper2,upper3,lower1,lower2,alpha,power,sample_size,max_ess,obj_func,temperature\n";
+
     std::cout << "######################\n"
               << "First loop starting...\n"
               << "######################\n\n";
@@ -1124,7 +1141,6 @@ void simulatedannealing_delta_minimax(
     while (n_restarts <= min_n_restarts || reduction_in_func_value < -0.005)
     {
 
-        
         gen_candidate_state_delta_minimax(
             current_params,
             candidate_params,
@@ -1134,7 +1150,7 @@ void simulatedannealing_delta_minimax(
             0 // allow for sample size to change
         );
         
-        new_func_value = function_value_delta_minimax(
+        auto [new_func_value, new_alpha, new_power, new_ess_dm] = function_value_delta_minimax(
             candidate_params,
             delta0,
             delta1,
@@ -1144,7 +1160,29 @@ void simulatedannealing_delta_minimax(
             penalty_parameter,
             n_restarts - min_n_restarts
         );
-            
+        
+        // std::cout << "alpha: " << new_alpha << "\n" 
+        //           << "power: " << new_power << "\n"
+        //           << "ess: " << new_ess_dm << "\n";
+        
+        // file << csv_index << ","
+        //      << loop_n << ","
+        //      << n_restarts << ","
+        //      << candidate_params.at(2) << "," // upper1
+        //      << candidate_params.at(4) << "," // upper2
+        //      << candidate_params.at(6) << "," // upper3
+        //      << candidate_params.at(1) << "," // lower1
+        //      << candidate_params.at(3) << "," // lower2
+        //      << new_alpha << ","
+        //      << new_power << ","
+        //      << candidate_params.at(0) << "," // sample size
+        //      << new_ess_dm << ","
+        //      << new_func_value << ","
+        //      << cost_temp << "\n";
+             
+        // increment index
+        // ++csv_index; 
+
         for (size_t i = 0; i < param_sigmas.size(); i++)
         {
             param_sigmas.at(i) *= rhosigma;
@@ -1223,7 +1261,8 @@ void simulatedannealing_delta_minimax(
     } 
         
     min_params.at(0) = floor(min_params.at(0));
-    min_func_value = function_value_delta_minimax(
+    
+    auto [tmp_func_value, min_alpha, min_power, min_ess_dm] = function_value_delta_minimax(
         min_params,
         delta0,
         delta1,
@@ -1233,6 +1272,8 @@ void simulatedannealing_delta_minimax(
         penalty_parameter,
         1
     );
+
+    min_func_value = tmp_func_value;
 
     current_func_value=min_func_value;
     current_params=min_params;
@@ -1246,6 +1287,9 @@ void simulatedannealing_delta_minimax(
               << "######################\n\n";
 
     std::cout << "Searching with a fixed, integer sample size...\n";
+
+    // increment the loop counter
+    // ++loop_n;
     
     while (n_restarts <= min_n_restarts || reduction_in_func_value < 0)
     {
@@ -1258,7 +1302,7 @@ void simulatedannealing_delta_minimax(
             1 // fix sample size
         );
             
-        new_func_value = function_value_delta_minimax(
+        auto [new_func_value, new_alpha, new_power, new_ess_dm] = function_value_delta_minimax(
             candidate_params,
             delta0,
             delta1,
@@ -1268,6 +1312,24 @@ void simulatedannealing_delta_minimax(
             penalty_parameter,
             1
         );
+
+        // file << csv_index << ","
+        //      << loop_n << ","
+        //      << n_restarts << ","
+        //      << candidate_params.at(2) << "," // upper1
+        //      << candidate_params.at(4) << "," // upper2
+        //      << candidate_params.at(6) << "," // upper3
+        //      << candidate_params.at(1) << "," // lower1
+        //      << candidate_params.at(3) << "," // lower2
+        //      << new_alpha << ","
+        //      << new_power << ","
+        //      << candidate_params.at(0) << "," // sample size
+        //      << new_ess_dm << ","
+        //      << new_func_value << ","
+        //      << cost_temp << "\n";
+             
+        // increment index
+        // ++csv_index; 
         
         for (size_t i = 0; i < param_sigmas.size(); i++)
         {
@@ -1344,6 +1406,9 @@ void simulatedannealing_delta_minimax(
         }
 
     }
+
+    // file.close();
+    // std::cout << "Completed csv writing.\n";
   
     finalparameters = min_params;
     *finalfunctionvalue = min_func_value;
@@ -1474,28 +1539,27 @@ int main(int argc, char *argv[])
     double finalfunctionvalue;
     
     // DEBUG
+    std::cout << "Initial parameters: ";
     for (auto num : initial_parameters)
         std::cout << num << " ";
-
     std::cout << "\n";
 
     // DEBUG
+    std::cout << "Lower bound search space: ";
     for (auto num : lower_ranges)
         std::cout << num << " ";
-
     std::cout << "\n";
 
     // DEBUG
+    std::cout << "Upper bound search space: ";
     for (auto num : upper_ranges)
         std::cout << num << " ";
-
     std::cout << "\n";
 
     // DEBUG
+    std::cout << "Initial standard devs: ";
     for (auto num : initial_param_sigmas)
         std::cout << num << " ";
-
-    // DEBUG
     std::cout << "\n";
 
     // carries out simulated annealing to find sample size and stopping
