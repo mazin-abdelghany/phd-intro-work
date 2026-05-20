@@ -701,14 +701,14 @@ def _(box_values_collection, pd):
 @app.cell
 def _(best_values_df):
     best_values_df.to_csv(
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triangular_box_t100_best_journey.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_best_journey.csv")
     return
 
 
 @app.cell
 def _(box_collections_df):
     box_collections_df.to_csv(
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triangular_box_t100_results.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_results.csv")
     return
 
 
