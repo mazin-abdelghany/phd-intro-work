@@ -396,14 +396,8 @@ def _(large_box_bo, np):
 
 @app.cell
 def _(large_box_bo, np):
-    np.argmin(large_box_bo["obj_func"])
-    return
-
-
-@app.cell
-def _(large_box_bo, np):
     np.round(
-        large_box_bo[["alpha","power","sample_size","max_ess","obj_func"]].iloc[674],
+        large_box_bo[["alpha","power","sample_size","max_ess","obj_func"]].iloc[np.argmin(large_box_bo["obj_func"])],
         decimals = 2
     )
     return
@@ -431,40 +425,40 @@ def _(large_box_bo, large_box_rand, large_box_sim_ann, np, plt):
     ax[0,2].text(0.95, 0.06, np.round(np.median(large_box_bo["alpha"]), decimals=2))
 
     ax[1,0].violinplot(large_box_rand["power"], showextrema=False, showmedians=True)
-    ax[1,0].text(0.965, 0.89, np.round(np.median(large_box_rand["power"]), decimals=2))
+    ax[1,0].text(0.95, 0.85, np.round(np.median(large_box_rand["power"]), decimals=2))
 
     ax[1,1].violinplot(large_box_sim_ann["power"], showextrema=False, showmedians=True)
-    ax[1,1].text(0.965, 0.89, np.round(np.median(large_box_sim_ann["power"]), decimals=2))
+    ax[1,1].text(0.95, 0.85, np.round(np.median(large_box_sim_ann["power"]), decimals=2))
 
     ax[1,2].violinplot(large_box_bo["power"], showextrema=False, showmedians=True)
-    ax[1,2].text(0.965, 0.89, np.round(np.median(large_box_bo["power"]), decimals=2))
+    ax[1,2].text(0.95, 0.85, np.round(np.median(large_box_bo["power"]), decimals=2))
 
     ax[2,0].violinplot(large_box_rand["sample_size"], showextrema=False, showmedians=True)
-    ax[2,0].text(0.97, 56, np.round(np.median(large_box_rand["sample_size"]).astype(int), decimals=0))
+    ax[2,0].text(0.97, 95, np.round(np.median(large_box_rand["sample_size"]).astype(int), decimals=0))
 
     ax[2,1].violinplot(large_box_sim_ann["sample_size"], showextrema=False, showmedians=True)
-    ax[2,1].text(0.97, 61, np.round(np.median(large_box_sim_ann["sample_size"]).astype(int), decimals=0))
+    ax[2,1].text(0.97, 105, np.round(np.median(large_box_sim_ann["sample_size"]).astype(int), decimals=0))
 
     ax[2,2].violinplot(large_box_bo["sample_size"], showextrema=False, showmedians=True)
-    ax[2,2].text(0.97, 56, np.round(np.median(large_box_bo["sample_size"]).astype(int), decimals=0))
+    ax[2,2].text(0.97, 94, np.round(np.median(large_box_bo["sample_size"]).astype(int), decimals=0))
 
     ax[3,0].violinplot(large_box_rand["max_ess"], showextrema=False, showmedians=True)
-    ax[3,0].text(0.97, 153, np.round(np.median(large_box_rand["max_ess"]).astype(int), decimals=0))
+    ax[3,0].text(0.97, 273, np.round(np.median(large_box_rand["max_ess"]).astype(int), decimals=0))
 
     ax[3,1].violinplot(large_box_sim_ann["max_ess"], showextrema=False, showmedians=True)
-    ax[3,1].text(0.96, 165, np.round(np.median(large_box_sim_ann["max_ess"])).astype(int))
+    ax[3,1].text(0.96, 293, np.round(np.median(large_box_sim_ann["max_ess"])).astype(int))
 
     ax[3,2].violinplot(large_box_bo["max_ess"], showextrema=False, showmedians=True)
-    ax[3,2].text(0.96, 153, np.round(np.median(large_box_bo["max_ess"])).astype(int))
+    ax[3,2].text(0.96, 267, np.round(np.median(large_box_bo["max_ess"])).astype(int))
 
     ax[4,0].violinplot(large_box_rand["obj_func"], showextrema=False, showmedians=True)
-    ax[4,0].text(0.985, 11, np.round(np.median(large_box_rand["obj_func"])).astype(int))
+    ax[4,0].text(0.972, 21, np.round(np.median(large_box_rand["obj_func"])).astype(int))
 
     ax[4,1].violinplot(large_box_sim_ann["obj_func"], showextrema=False, showmedians=True)
     ax[4,1].text(0.985, 9, np.round(np.median(large_box_sim_ann["obj_func"])).astype(int))
 
     ax[4,2].violinplot(large_box_bo["obj_func"], showextrema=False, showmedians=True)
-    ax[4,2].text(0.99, 11, np.round(np.median(large_box_bo["obj_func"])).astype(int))
+    ax[4,2].text(0.973, 21, np.round(np.median(large_box_bo["obj_func"])).astype(int))
 
     ax[0,0].set_title("Random")
     ax[0,1].set_title("Sim anneal")
@@ -493,13 +487,13 @@ def _(mo):
 
 
 @app.cell
-def _(large_box_bo, n_experiments, n_loops, np):
+def _(large_box_sim_ann, n_experiments, n_loops, np):
     best_indices = []
     for ell in range(n_experiments):
         _start_index = ell * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = large_box_bo.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = large_box_sim_ann.iloc[_start_index:_stop_index, 6:11]
         best_index = np.argmin(_analysis_set['obj_func'])
         best_indices.append(best_index)
 
@@ -520,7 +514,7 @@ def _(mo):
 
 @app.cell
 def _(
-    large_box_bo,
+    large_box_sim_ann,
     n_experiments,
     n_loops,
     np,
@@ -542,7 +536,7 @@ def _(
         _start_index = m * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = large_box_bo.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = large_box_sim_ann.iloc[_start_index:_stop_index, 6:11]
 
         within_e1 = (_analysis_set["alpha"] <= target_alpha + epsilon1) & (_analysis_set["power"] >= target_power - epsilon2)
 
@@ -562,7 +556,7 @@ def _(
 
 @app.cell
 def _(
-    large_box_bo,
+    large_box_sim_ann,
     n_experiments,
     n_loops,
     np,
@@ -583,7 +577,7 @@ def _(
         _start_index = _i * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = large_box_bo.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = large_box_sim_ann.iloc[_start_index:_stop_index, 6:11]
 
         diffs["run"].append(_i+1)
 
@@ -666,7 +660,7 @@ def _(
     _ax[1].set_title("Sim anneal")
     _ax[2].set_title("Bayes opt")
 
-    _fig.suptitle("Large hyperrectangle", y=1.05)
+    _fig.suptitle("Large hyperrectangle: Best boundary", y=1.05)
 
     _ax[0].set_ylabel("$Z_k$ values")
 
@@ -710,13 +704,13 @@ def _(
 
     _ax[2].plot(stages, upper_bo1, color = "purple", label = "Best bound")
     _ax[2].plot(stages, lower_bo1, color = "purple")
-    _ax[2].text(2.4,-0.5, "$\\mathcal{L}$ = "+str(obj_f_bo1))
+    _ax[2].text(2.4,-2, "$\\mathcal{L}$ = "+str(obj_f_bo1))
 
     _ax[0].set_title("Random $-$ Run 24")
     _ax[1].set_title("Sim anneal $-$ Run 9")
     _ax[2].set_title("Bayes opt $-$ Run 6")
 
-    _fig.suptitle("Large hyperrectangle", y=1.05)
+    _fig.suptitle("Large hyperrectangle: Random run 1", y=1.05)
 
     _ax[0].set_ylabel("$Z_k$ values")
 
@@ -766,7 +760,7 @@ def _(
     _ax[1].set_title("Sim anneal $-$ Run 10")
     _ax[2].set_title("Bayes opt $-$ Run 14")
 
-    _fig.suptitle("Large hyperrectangle", y=1.05)
+    _fig.suptitle("Large hyperrectangle: Random run 2", y=1.05)
 
     _ax[0].set_ylabel("$Z_k$ values")
 
