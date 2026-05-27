@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -17,6 +17,12 @@ def _():
     import matplotlib.pyplot as plt
 
     return np, plt
+
+
+@app.cell
+def _(plt):
+    plt.rcParams["figure.dpi"] = 500
+    return
 
 
 @app.cell
@@ -159,8 +165,7 @@ def _(
     tri = bd.calculate_triangular_boundaries(
         n_analyses=num_analyses,
         alpha=target_alpha,
-        delta=delta1,
-        n_patients=20
+        delta=delta1
     )
 
     _,_,_,tri_obj = obj_f(
@@ -186,8 +191,7 @@ def _(
 def _(bd, num_analyses, target_alpha):
     po = bd.calculate_pocock_boundaries(
         n_analyses=num_analyses,
-        alpha=target_alpha,
-        n_patients=20
+        alpha=target_alpha
     )
     return (po,)
 
@@ -196,8 +200,7 @@ def _(bd, num_analyses, target_alpha):
 def _(bd, num_analyses, target_alpha):
     of = bd.calculate_of_boundaries(
         n_analyses=num_analyses,
-        alpha=target_alpha,
-        n_patients=20
+        alpha=target_alpha
     )
     return (of,)
 
@@ -271,7 +274,7 @@ def _(b_bounds_to_test, n_baseline, np, plt, tri):
     for _i in range(n_baseline):
         up_bound = np.asarray(b_bounds_to_test[_i][0])
         lo_bound = np.asarray(b_bounds_to_test[_i][1])
-    
+
         if ((up_bound[0] <= 2.5) and (lo_bound[0] >= -0.5)):
             _ax.plot([1,2,3], b_bounds_to_test[_i][0], color = "purple", alpha = 0.1)
             _ax.plot([1,2,3], b_bounds_to_test[_i][1], color = "purple", alpha = 0.1)
@@ -358,7 +361,7 @@ def _(bounds_to_test, n_baseline, np, plt, tri):
     for _i in range(n_baseline):
         upper_bound = np.asarray(bounds_to_test[_i][0])
         lower_bound = np.asarray(bounds_to_test[_i][1])
-    
+
         if ((upper_bound[0] <= 2.5) and (lower_bound[0] >= -0.5)):
             _ax.plot([1,2,3], bounds_to_test[_i][0], color = "purple", alpha = 0.1)
             _ax.plot([1,2,3], bounds_to_test[_i][1], color = "purple", alpha = 0.1)
@@ -433,13 +436,13 @@ def _(
 def _(fmt_bd, n_baseline, np, small_bounds_to_test):
     n_monotonic = 0
     for _i in range(n_baseline):
-    
+
         u = small_bounds_to_test[_i][0]
         l = small_bounds_to_test[_i][1]
-    
+
         u = np.concatenate((u, l[0:2]))
         u = np.concatenate((u, [1]))
-    
+
         mono = fmt_bd.check_monotonicity(
             n_analyses = 3,
             bounds = u
@@ -480,7 +483,7 @@ def _(n_baseline, np, plt, small_bounds_to_test, tri):
     for _i in range(n_baseline):
         u_bound = np.asarray(small_bounds_to_test[_i][0])
         l_bound = np.asarray(small_bounds_to_test[_i][1])
-    
+
         if ((u_bound[0] <= 2.5) and (l_bound[0] >= -0.5)):
             _ax.plot([1,2,3], small_bounds_to_test[_i][0], color = "purple", alpha = 0.1)
             _ax.plot([1,2,3], small_bounds_to_test[_i][1], color = "purple", alpha = 0.1)
