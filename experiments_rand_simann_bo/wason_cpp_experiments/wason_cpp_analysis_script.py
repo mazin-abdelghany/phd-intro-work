@@ -747,7 +747,13 @@ def _(best_bound_getter, np, plt, random_search_huge, stages, tri, wason_cpp):
 
 @app.cell
 def _(random_search_huge):
-    best_random_constrained = random_search_huge[random_search_huge["alpha"]<= 0.05].loc[random_search_huge[random_search_huge["alpha"] <=0.05]["obj_func"].idxmin()]
+    random_at_alpha_target = random_search_huge[random_search_huge["alpha"] <= 0.05]
+    return (random_at_alpha_target,)
+
+
+@app.cell
+def _(random_at_alpha_target):
+    best_random_constrained = random_at_alpha_target.loc[random_at_alpha_target["obj_func"].idxmin()]
     return (best_random_constrained,)
 
 
