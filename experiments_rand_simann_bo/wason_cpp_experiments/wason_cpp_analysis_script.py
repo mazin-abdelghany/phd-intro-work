@@ -21,6 +21,12 @@ def _():
 
 
 @app.cell
+def _(plt):
+    plt.rcParams["figure.dpi"] = 500
+    return
+
+
+@app.cell
 def _():
     # group sequential design assessment imports
     from py_group_sequential_designs import generate_boundaries as bd
@@ -85,8 +91,8 @@ def _(fn_min, fp, sim, ss):
             variance = variance
         )
 
-        alpha_prime = trial_sim[1]
-        beta_prime = 1-trial_sim[2]
+        alpha_prime = trial_sim[0]
+        beta_prime = 1-trial_sim[1]
 
         max_ess = ss.max_ess(
             n_analyses = n_analyses,
@@ -195,7 +201,7 @@ def _(
     print(f"Triangular delta power: {abs(0.9-tri_power):.4f}")
     print(f"Triangular sample size: {tri_n_patients:.1f}")
     print(f"Triangular max ESS: {tri_max_ess:.1f}")
-    return tri, tri_alpha, tri_max_ess, tri_obj
+    return tri, tri_alpha, tri_max_ess
 
 
 @app.cell
@@ -259,7 +265,7 @@ def _(np):
 
 @app.cell
 def _(rng):
-    rng.integers(low=1, high=11, size=10)
+    rng.integers(low=1, high=11, size=4)
     return
 
 
@@ -268,15 +274,6 @@ def _(mo):
     mo.md(r"""
     ## Random search
     """)
-    return
-
-
-@app.cell
-def _(np, random_search_huge):
-    np.round(
-        random_search_huge[random_search_huge["runs"] == "Run_7"][["alpha","power","sample_size","max_ess","obj_func"]].mean(),
-        decimals = 2
-    )
     return
 
 
@@ -292,7 +289,7 @@ def _(np, random_search_huge):
 @app.cell
 def _(np, random_search_huge):
     np.round(
-        random_search_huge[random_search_huge["runs"] == "Run_5"][["alpha","power","sample_size","max_ess","obj_func"]].mean(),
+        random_search_huge[random_search_huge["runs"] == "Run_7"][["alpha","power","sample_size","max_ess","obj_func"]].mean(),
         decimals = 2
     )
     return
@@ -316,12 +313,6 @@ def _(np, random_search_huge):
     return
 
 
-@app.cell
-def _(random_search_huge):
-    random_search_huge.loc[10953]
-    return
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -342,16 +333,7 @@ def _(np, wason_cpp):
 @app.cell
 def _(np, wason_cpp):
     np.round(
-        wason_cpp[wason_cpp["runs"] == "Run_10"][["alpha","power","sample_size","max_ess","obj_func"]].mean(),
-        decimals = 2
-    )
-    return
-
-
-@app.cell
-def _(np, wason_cpp):
-    np.round(
-        wason_cpp[wason_cpp["runs"] == "Run_8"][["alpha","power","sample_size","max_ess","obj_func"]].mean(),
+        wason_cpp[wason_cpp["runs"] == "Run_5"][["alpha","power","sample_size","max_ess","obj_func"]].mean(),
         decimals = 2
     )
     return
@@ -369,7 +351,7 @@ def _(np, wason_cpp):
 @app.cell
 def _(np, wason_cpp):
     np.round(
-        wason_cpp[["alpha","power","sample_size","max_ess","obj_func"]].describe(),
+        wason_cpp[["alpha","power","sample_size","max_ess","obj_func"]].iloc[np.argmin(wason_cpp["obj_func"])],
         decimals = 2
     )
     return
@@ -438,6 +420,85 @@ def _(np, plt, random_search_huge, wason_cpp):
     return
 
 
+@app.cell
+def _(np, wason_cpp):
+    np.sum(wason_cpp["alpha"] > 0.2)
+    return
+
+
+@app.cell
+def _(np, wason_cpp):
+    np.sum(wason_cpp["obj_func"]>1000)
+    return
+
+
+@app.cell
+def _(wason_cpp):
+    len(wason_cpp["alpha"])
+    return
+
+
+@app.cell
+def _(np, plt, wason_cpp):
+    fig1, ax1 = plt.subplots(nrows=6, ncols=1, figsize=(8,11))
+
+    ax1[0].hist(wason_cpp[wason_cpp["alpha"] > 0.2]["alpha"], bins=100)
+
+    ax1[1].violinplot(wason_cpp["power"], showextrema=False, showmedians=True)
+    ax1[1].text(0.965, 0.89, np.round(np.median(wason_cpp["power"]), decimals=2))
+
+    ax1[2].violinplot(wason_cpp["sample_size"], showextrema=False, showmedians=True)
+    ax1[2].text(0.97, 61, np.round(np.median(wason_cpp["sample_size"]).astype(int), decimals=0))
+
+    ax1[3].violinplot(wason_cpp["max_ess"], showextrema=False, showmedians=True)
+    ax1[3].text(0.96, 165, np.round(np.median(wason_cpp["max_ess"])).astype(int))
+
+    ax1[4].violinplot(wason_cpp["obj_func"], showextrema=False, showmedians=True)
+    ax1[4].text(0.985, 9, np.round(np.median(wason_cpp["obj_func"])).astype(int))
+
+    ax1[5].violinplot(wason_cpp["our_obj_func"], showextrema=False, showmedians=True)
+    ax1[5].text(0.985, 9, np.round(np.median(wason_cpp["our_obj_func"])).astype(int))
+
+    ax1[0].set_ylabel("$\\alpha'$")
+    ax1[1].set_ylabel("$1-\\beta'$")
+    ax1[2].set_ylabel("Sample size")
+    ax1[3].set_ylabel("Max ESS")
+    ax1[4].set_ylabel("Wason loss")
+    ax1[5].set_ylabel("Our loss")
+
+    # plt.savefig("/tf/first_year_assessment/analysis/violin_plots_large_box.png", dpi=300, bbox_inches="tight")
+    plt.show()
+    return
+
+
+@app.cell
+def _(plt, tri, wason_cpp):
+    _fig, _ax = plt.subplots()
+
+    for i in range(100000):
+        _ax.plot([1,2,3],wason_cpp[["upper1", "upper2","upper3"]].loc[i], color = "purple", alpha=0.01)
+        _ax.plot([1,2,3],wason_cpp[["lower1","lower2","upper3"]].loc[i], color = "purple", alpha=0.01)
+
+    _ax.plot([1,2,3], tri[0], color = "red")
+    _ax.plot([1,2,3], tri[1], color = "red")
+    _fig
+    return
+
+
+@app.cell
+def _(plt, random_search_huge, tri):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(100000):
+        _ax.plot([1,2,3],random_search_huge[["upper1", "upper2","upper3"]].loc[_i], color = "purple", alpha=0.01)
+        _ax.plot([1,2,3],random_search_huge[["lower1","lower2","upper3"]].loc[_i], color = "purple", alpha=0.01)
+
+    _ax.plot([1,2,3], tri[0], color = "red")
+    _ax.plot([1,2,3], tri[1], color = "red")
+    _fig
+    return
+
+
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -491,15 +552,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    n_experiments,
-    n_loops,
-    np,
-    pd,
-    random_search_huge,
-    target_alpha,
-    target_power,
-):
+def _(n_experiments, n_loops, np, pd, target_alpha, target_power, wason_cpp):
     feasibility = {
         "run" : [],
         "feasibility" : [],
@@ -514,7 +567,7 @@ def _(
         _start_index = m * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = random_search_huge.iloc[_start_index:_stop_index, 6:11]
+        _analysis_set = wason_cpp.iloc[_start_index:_stop_index, 6:11]
 
         within_e1 = (_analysis_set["alpha"] <= target_alpha + epsilon1) & (_analysis_set["power"] >= target_power - epsilon2)
 
@@ -533,15 +586,7 @@ def _(
 
 
 @app.cell
-def _(
-    n_experiments,
-    n_loops,
-    np,
-    random_search_huge,
-    tri_alpha,
-    tri_max_ess,
-    tri_obj,
-):
+def _(n_experiments, n_loops, np, tri_alpha, tri_max_ess, wason_cpp):
     tri_diff = abs(0.05-tri_alpha)
 
     diffs = {
@@ -555,7 +600,7 @@ def _(
         _start_index = _i * n_loops
         _stop_index = _start_index + n_loops
 
-        _analysis_set = random_search_huge.iloc[_start_index:_stop_index, 7:12]
+        _analysis_set = wason_cpp.iloc[_start_index:_stop_index, 7:12]
 
         diffs["run"].append(_i+1)
 
@@ -563,8 +608,14 @@ def _(
 
         diffs["max_ess_diff"].append(np.sum(_analysis_set["max_ess"] < tri_max_ess))
 
-        diffs["obj_func_diff"].append(np.sum(_analysis_set["obj_func"] < tri_obj))
+        #diffs["obj_func_diff"].append(np.sum(_analysis_set["obj_func"] < tri_obj))
     return (diffs,)
+
+
+@app.cell
+def _(diffs):
+    diffs
+    return
 
 
 @app.cell
@@ -654,7 +705,7 @@ def _(
 
     # plt.savefig("/tf/first_year_assessment/analysis/best_bounds_large_box.png", dpi=300, bbox_inches="tight")
     plt.show()
-    return (stages,)
+    return lower_sim_ann, obj_f_sim, stages, upper_sim_ann
 
 
 @app.cell
@@ -690,6 +741,60 @@ def _(best_bound_getter, np, plt, random_search_huge, stages, tri, wason_cpp):
         _ax[_i].legend(loc="upper right")
 
     # plt.savefig("/tf/first_year_assessment/analysis/rand_runs1_large_box.png", dpi=300, bbox_inches="tight")
+    plt.show()
+    return
+
+
+@app.cell
+def _(random_search_huge):
+    best_random_constrained = random_search_huge[random_search_huge["alpha"]<= 0.05].loc[random_search_huge[random_search_huge["alpha"] <=0.05]["obj_func"].idxmin()]
+    return (best_random_constrained,)
+
+
+@app.cell
+def _(
+    best_random_constrained,
+    lower_sim_ann,
+    np,
+    obj_f_sim,
+    plt,
+    stages,
+    tri,
+    upper_sim_ann,
+    wason_cpp,
+):
+    _fig, _ax = plt.subplots(nrows=1, ncols=2, figsize=(14,3), sharey=True)
+
+    lower_rand_const = best_random_constrained[["lower1","lower2","upper3"]]
+    upper_rand_const = best_random_constrained[["upper1","upper2","upper3"]]
+    obj_f_rand_const = round(best_random_constrained["obj_func"], 4)
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].set_xlabel("Trial stages")
+        _ax[_i].set_xticks([1,2,3])
+        _ax[_i].plot(stages, tri[0], color = "darkorange", label = "Tri bound")
+        _ax[_i].plot(stages, tri[1], color = "darkorange")
+
+    _ax[0].plot(stages, upper_rand_const, color = "purple", label = "Best bound")
+    _ax[0].plot(stages, lower_rand_const, color = "purple")
+    _ax[0].text(2.4,0, "$\\mathcal{L}$ = "+str(obj_f_rand_const))
+
+    _ax[1].plot(stages, upper_sim_ann, color = "purple", label = "Best bound")
+    _ax[1].plot(stages, lower_sim_ann, color = "purple")
+    _ax[1].text(2.4,0.4, "$\\mathcal{L}$ = "+str(obj_f_sim))
+    _ax[1].text(2.4,0, "our loss = "+str(np.round(wason_cpp.loc[wason_cpp["obj_func"].idxmin(), "our_obj_func"], decimals=4)))
+
+    _ax[0].set_title("Random")
+    _ax[1].set_title("Sim anneal")
+
+    _fig.suptitle("Large hyperrectangle", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="upper right")
+
+    # plt.savefig("/tf/first_year_assessment/analysis/best_bounds_large_box.png", dpi=300, bbox_inches="tight")
     plt.show()
     return
 
