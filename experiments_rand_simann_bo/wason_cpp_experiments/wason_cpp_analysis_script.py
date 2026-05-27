@@ -787,7 +787,7 @@ def _(
     _ax[0].set_title("Random")
     _ax[1].set_title("Sim anneal")
 
-    _fig.suptitle("Large hyperrectangle", y=1.05)
+    _fig.suptitle("Large hyperrectangle - Random constrained", y=1.05)
 
     _ax[0].set_ylabel("$Z_k$ values")
 
