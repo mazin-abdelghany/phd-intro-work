@@ -17,7 +17,13 @@ def _():
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    return np, pd
+    return np, pd, plt
+
+
+@app.cell
+def _(plt):
+    plt.rcParams["figure.dpi"] = 500
+    return
 
 
 @app.cell
@@ -304,7 +310,40 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(data_a, data_b, label_a, label_b, np, plt):
+    plot_cols = ["alpha", "power", "sample_size", "max_ess", "obj_func"]
+
+    _fig, _ax = plt.subplots(nrows=len(plot_cols), ncols=2, figsize=(8,11), sharey="row")
+
+    for i, col in enumerate(plot_cols):
+        for j, data in enumerate([data_a, data_b]):
+            _ax[i, j].violinplot(
+                data[col],
+                showextrema=False,
+                showmedians=True
+            )
+
+            median_to_plot = np.round(np.median(data[col]), 3)
+
+            _ax[i, j].text(
+                median_to_plot, 
+                median_to_plot, 
+                median_to_plot
+            )
+
+    _ax[0,0].set_title(label_a.value)
+    _ax[0,1].set_title(label_b.value)
+
+    _ax[0,0].set_ylabel("$\\alpha'$")
+    _ax[1,0].set_ylabel("$1-\\beta'$")
+    _ax[2,0].set_ylabel("Sample size")
+    _ax[3,0].set_ylabel("Max ESS")
+    _ax[4,0].set_ylabel("Loss")
+
+    for a in _ax.flat:
+        a.set_xticks([])
+
+    plt.show()
     return
 
 
