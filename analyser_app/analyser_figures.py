@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.8"
 app = marimo.App(width="medium")
 
 
@@ -158,7 +158,7 @@ def _(
         alternative_hypothesis = delta1,
         variance = sigma2
     )
-    return
+    return (tri,)
 
 
 @app.cell
@@ -298,7 +298,7 @@ def _(mo, runs_to_compare):
 @app.cell
 def _(runs_to_compare):
     column_runs_compare = ["Run_"+str(run) for run in runs_to_compare]
-    return
+    return (column_runs_compare,)
 
 
 @app.cell(hide_code=True)
@@ -313,47 +313,38 @@ def _(mo):
 def _(data_a, data_b, label_a, label_b, np, plt):
     plot_cols = ["alpha", "power", "sample_size", "max_ess", "obj_func"]
 
-    _fig, _ax = plt.subplots(nrows=len(plot_cols), ncols=2, figsize=(8,11), sharey="row")
+    fig, ax = plt.subplots(nrows=len(plot_cols), ncols=2, figsize=(8,11), sharey="row")
 
     for i, col in enumerate(plot_cols):
         for j, data in enumerate([data_a, data_b]):
-            _ax[i, j].violinplot(
+            ax[i, j].violinplot(
                 data[col],
                 showextrema=False,
                 showmedians=True
             )
 
-            median_to_plot = np.round(np.median(data[col]), 3)
-
-            _ax[i, j].text(
-                median_to_plot, 
-                median_to_plot, 
-                median_to_plot
+            ax[i,j].text(
+                0.5,
+                0.7,
+                np.round(np.median(data[col]), 3),
+                horizontalalignment='center',
+                verticalalignment='center',
+                transform=ax[i,j].transAxes
             )
 
-    _ax[0,0].set_title(label_a.value)
-    _ax[0,1].set_title(label_b.value)
+    ax[0,0].set_title(label_a.value)
+    ax[0,1].set_title(label_b.value)
 
-    _ax[0,0].set_ylabel("$\\alpha'$")
-    _ax[1,0].set_ylabel("$1-\\beta'$")
-    _ax[2,0].set_ylabel("Sample size")
-    _ax[3,0].set_ylabel("Max ESS")
-    _ax[4,0].set_ylabel("Loss")
+    ax[0,0].set_ylabel("$\\alpha'$")
+    ax[1,0].set_ylabel("$1-\\beta'$")
+    ax[2,0].set_ylabel("Sample size")
+    ax[3,0].set_ylabel("Max ESS")
+    ax[4,0].set_ylabel("Loss")
 
-    for a in _ax.flat:
+    for a in ax.flat:
         a.set_xticks([])
 
-    plt.show()
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
+    plt.gca()
     return
 
 
@@ -366,27 +357,249 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(np):
+    def best_bound_getter(data):
+        min_idx = data["obj_func"].idxmin()
+        lower = data.loc[min_idx, ["upper1", "upper2","upper3"]].tolist()
+        upper = data.loc[min_idx, ["lower1", "lower2","upper3"]].tolist()
+        obj_f = np.round(data.loc[min_idx, "obj_func"], decimals=4)
+        alpha = np.round(data.loc[min_idx, "alpha"], decimals=4)
+        power = np.round(data.loc[min_idx, "power"], decimals=4)
+        return lower, upper, obj_f, alpha, power
+
+    return (best_bound_getter,)
+
+
+@app.cell
+def _(num_analyses):
+    stages = [i+1 for i in range(num_analyses)]
+    return (stages,)
+
+
+@app.cell
+def _(best_bound_getter, data_a, data_b, label_a, label_b, plt, stages, tri):
+    _fig, _ax = plt.subplots(1, 2, figsize=(14,3), sharey=True)
+
+    _results = [
+        (*best_bound_getter(data_a), _ax[0]),
+        (*best_bound_getter(data_b), _ax[1]),
+    ]
+
+    for _upper, _lower, _obj_f, _alpha, _power, _b in _results:
+        _b.set(xlabel="Trial stages", xticks=[1,2,3])
+
+        _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
+        _b.plot(stages, tri[1], color="darkorange")
+
+        _b.plot(stages, _upper, color="purple", label="Best bound")
+        _b.plot(stages, _lower, color="purple")
+
+        for _y, _txt in zip(
+            [0.96, 0.88, 0.8],
+            [f"$\\mathcal{{L}}$ = {_obj_f}",
+             f"$\\alpha$ = {_alpha}",
+             f"$1-\\beta$ = {_power}"]
+        ):
+            _b.text(0.98, _y, _txt,
+                   ha="right", va="top",
+                   transform=_b.transAxes)
+
+    _ax[0].set_title(label_a.value)
+    _ax[1].set_title(label_b.value)
+
+    _fig.suptitle("Best boundary", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="lower right")
+
+    plt.gca()
     return
 
 
 @app.cell
-def _():
+def _(np):
+    def best_constrained_bound_getter(data):
+        constrained_data = data[data["alpha"] <= 0.05]
+        min_idx = constrained_data["obj_func"].idxmin()
+        lower = constrained_data.loc[min_idx, ["upper1", "upper2","upper3"]].tolist()
+        upper = constrained_data.loc[min_idx, ["lower1", "lower2","upper3"]].tolist()
+        obj_f = np.round(constrained_data.loc[min_idx, "obj_func"], decimals=4)
+        alpha = np.round(constrained_data.loc[min_idx, "alpha"], decimals=4)
+        power = np.round(constrained_data.loc[min_idx, "power"], decimals=4)
+        return lower, upper, obj_f, alpha, power
+
+    return (best_constrained_bound_getter,)
+
+
+@app.cell
+def _(
+    best_constrained_bound_getter,
+    data_a,
+    data_b,
+    label_a,
+    label_b,
+    plt,
+    stages,
+    tri,
+):
+    _fig, _ax = plt.subplots(1, 2, figsize=(14,3), sharey=True)
+
+    _results = [
+        (*best_constrained_bound_getter(data_a), _ax[0]),
+        (*best_constrained_bound_getter(data_b), _ax[1]),
+    ]
+
+    for _upper, _lower, _obj_f, _alpha, _power, _b in _results:
+        _b.set(xlabel="Trial stages", xticks=[1,2,3])
+
+        _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
+        _b.plot(stages, tri[1], color="darkorange")
+
+        _b.plot(stages, _upper, color="purple", label="Best bound")
+        _b.plot(stages, _lower, color="purple")
+
+        for _y, _txt in zip(
+            [0.96, 0.88, 0.8],
+            [f"$\\mathcal{{L}}$ = {_obj_f}",
+             f"$\\alpha$ = {_alpha}",
+             f"$1-\\beta$ = {_power}"]
+        ):
+            _b.text(0.98, _y, _txt,
+                   ha="right", va="top",
+                   transform=_b.transAxes)
+
+    _ax[0].set_title(label_a.value)
+    _ax[1].set_title(label_b.value)
+
+    _fig.suptitle("Best constrained boundary", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="lower right")
+
+    plt.gca()
     return
 
 
 @app.cell
-def _():
+def _(np):
+    def rand_bound_getter(data, run):
+        run_data = data[data["runs"] == run]
+        min_idx = run_data["obj_func"].idxmin()
+        lower = run_data.loc[min_idx, ["upper1", "upper2","upper3"]].tolist()
+        upper = run_data.loc[min_idx, ["lower1", "lower2","upper3"]].tolist()
+        obj_f = np.round(run_data.loc[min_idx, "obj_func"], decimals=4)
+        alpha = np.round(run_data.loc[min_idx, "alpha"], decimals=4)
+        power = np.round(run_data.loc[min_idx, "power"], decimals=4)
+        return lower, upper, obj_f, alpha, power
+
+    return (rand_bound_getter,)
+
+
+@app.cell
+def _(
+    column_runs_compare,
+    data_a,
+    data_b,
+    label_a,
+    label_b,
+    plt,
+    rand_bound_getter,
+    stages,
+    tri,
+):
+    _fig, _ax = plt.subplots(1, 2, figsize=(14,3), sharey=True)
+
+    _results = [
+        (*rand_bound_getter(data_a, column_runs_compare[0]), _ax[0]),
+        (*rand_bound_getter(data_b, column_runs_compare[1]), _ax[1]),
+    ]
+
+    for _upper, _lower, _obj_f, _alpha, _power, _b in _results:
+        _b.set(xlabel="Trial stages", xticks=[1,2,3])
+
+        _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
+        _b.plot(stages, tri[1], color="darkorange")
+
+        _b.plot(stages, _upper, color="purple", label="Best bound")
+        _b.plot(stages, _lower, color="purple")
+
+        for _y, _txt in zip(
+            [0.96, 0.88, 0.8],
+            [f"$\\mathcal{{L}}$ = {_obj_f}",
+             f"$\\alpha$ = {_alpha}",
+             f"$1-\\beta$ = {_power}"]
+        ):
+            _b.text(0.98, _y, _txt,
+                   ha="right", va="top",
+                   transform=_b.transAxes)
+
+    _ax[0].set_title(label_a.value + " " + column_runs_compare[0])
+    _ax[1].set_title(label_b.value + " " + column_runs_compare[1])
+
+    _fig.suptitle("Best boundary -- Random run 1", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="lower right")
+
+    plt.gca()
     return
 
 
 @app.cell
-def _():
-    return
+def _(
+    column_runs_compare,
+    data_a,
+    data_b,
+    label_a,
+    label_b,
+    plt,
+    rand_bound_getter,
+    stages,
+    tri,
+):
+    _fig, _ax = plt.subplots(1, 2, figsize=(14,3), sharey=True)
 
+    _results = [
+        (*rand_bound_getter(data_a, column_runs_compare[2]), _ax[0]),
+        (*rand_bound_getter(data_b, column_runs_compare[3]), _ax[1]),
+    ]
 
-@app.cell
-def _():
+    for _upper, _lower, _obj_f, _alpha, _power, _b in _results:
+        _b.set(xlabel="Trial stages", xticks=[1,2,3])
+
+        _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
+        _b.plot(stages, tri[1], color="darkorange")
+
+        _b.plot(stages, _upper, color="purple", label="Best bound")
+        _b.plot(stages, _lower, color="purple")
+
+        for _y, _txt in zip(
+            [0.96, 0.88, 0.8],
+            [f"$\\mathcal{{L}}$ = {_obj_f}",
+             f"$\\alpha$ = {_alpha}",
+             f"$1-\\beta$ = {_power}"]
+        ):
+            _b.text(0.98, _y, _txt,
+                   ha="right", va="top",
+                   transform=_b.transAxes)
+
+    _ax[0].set_title(label_a.value + " " + column_runs_compare[2])
+    _ax[1].set_title(label_b.value + " " + column_runs_compare[3])
+
+    _fig.suptitle("Best boundary -- Random run 2", y=1.05)
+
+    _ax[0].set_ylabel("$Z_k$ values")
+
+    for _i in range(_ax.shape[0]):
+        _ax[_i].legend(loc="lower right")
+
+    plt.gca()
     return
 
 
