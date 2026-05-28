@@ -50,3 +50,37 @@ def smooth_penalty(
     beta = 1-power
 
     return mu * ((alpha_prime - alpha)**2 + (beta_prime - beta)**2)
+
+# penalty with lower repulsion
+def low_repulsion(
+        mu,
+        power,
+        alpha,
+        alpha_prime,
+        beta_prime):
+    
+    # calculate beta from power
+    beta = 1-power
+
+    return mu * ((alpha_prime - alpha)**4 + (beta_prime - beta)**4)
+
+# penalty with cliff and high repulsion
+def absolute_cliff(
+        mu,
+        power,
+        alpha,
+        alpha_prime,
+        beta_prime,
+        alpha_epsilon = 0.01,
+        beta_epsilon = 0.05):
+    
+    # calculate beta from power
+    beta = 1-power
+
+    alpha_met = (-alpha_epsilon <= alpha_prime - alpha) & (alpha_prime - alpha <= 0)
+    beta_met = (-beta_epsilon <= beta_prime - beta) & (beta_prime - beta <= 0)
+
+    if (alpha_met and beta_met):
+        return 0
+    else:
+        return mu * (abs(alpha_prime - alpha) + abs(beta_prime - beta))
