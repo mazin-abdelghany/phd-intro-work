@@ -111,7 +111,6 @@ def _(mo):
 
 @app.cell
 def _(fn_min, fp, sim, ss):
-    # this function contains a penalty for non-monotonicity
     def obj_f(
             mu,
             upper_bounds,
@@ -395,7 +394,7 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 50
+    n_experiments = 10
     n_loops = 500
 
     # generate labels for data frame
@@ -744,7 +743,7 @@ def _(bayes_opt_results, pd):
 
 @app.cell
 def _(bayes_opt_results, pd):
-    pd.DataFrame(bayes_opt_results).to_csv("/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo.csv")
+    pd.DataFrame(bayes_opt_results).to_csv("/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_repulsion.csv")
     return
 
 
