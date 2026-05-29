@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -207,18 +207,6 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    file_a = mo.ui.text(placeholder="/path/to/file.csv", label="File 1: ")
-    return (file_a,)
-
-
-@app.cell
-def _(mo):
-    file_b = mo.ui.text(placeholder="/path/to/file.csv", label="File 2: ")
-    return (file_b,)
-
-
-@app.cell
-def _(mo):
     label_a = mo.ui.text(placeholder="data_label", label="Method 1: ")
     return (label_a,)
 
@@ -230,19 +218,29 @@ def _(mo):
 
 
 @app.cell
-def _(file_a, file_b, label_a, label_b, mo):
-    mo.hstack(
-        [mo.vstack([label_a, label_b]),
-         mo.vstack([file_a, file_b])]
-    )
+def _(label_a, label_b, mo):
+    mo.vstack([label_a, label_b])
     return
 
 
 @app.cell
-def _(file_a, file_b, pd):
+def _(mo):
+    file_browser = mo.ui.file_browser(initial_path = "/workspace/experiments_rand_simann_bo/",
+                                      label = "Select files in the order of the methods.")
+    return (file_browser,)
+
+
+@app.cell
+def _(file_browser, mo):
+    mo.vstack([file_browser])
+    return
+
+
+@app.cell
+def _(file_browser, pd):
     # import the data
-    data_a = pd.read_csv(file_a.value)
-    data_b = pd.read_csv(file_b.value)
+    data_a = pd.read_csv(file_browser.path(index=0))
+    data_b = pd.read_csv(file_browser.path(index=1))
 
     # remove the first column as it is not needed
     data_a = data_a.iloc[:, 1:]

@@ -201,18 +201,6 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    file_a = mo.ui.text(placeholder="/path/to/file.csv", label="File 1: ")
-    return (file_a,)
-
-
-@app.cell
-def _(mo):
-    file_b = mo.ui.text(placeholder="/path/to/file.csv", label="File 2: ")
-    return (file_b,)
-
-
-@app.cell
-def _(mo):
     label_a = mo.ui.text(placeholder="data_label", label="Method 1: ")
     return (label_a,)
 
@@ -224,19 +212,29 @@ def _(mo):
 
 
 @app.cell
-def _(file_a, file_b, label_a, label_b, mo):
-    mo.hstack(
-        [mo.vstack([label_a, label_b]),
-         mo.vstack([file_a, file_b])]
-    )
+def _(label_a, label_b, mo):
+    mo.vstack([label_a, label_b])
     return
 
 
 @app.cell
-def _(file_a, file_b, pd):
+def _(mo):
+    file_browser = mo.ui.file_browser(initial_path = "/workspace/experiments_rand_simann_bo/",
+                                      label = "Select files in the order of the methods.")
+    return (file_browser,)
+
+
+@app.cell
+def _(file_browser, mo):
+    mo.vstack([file_browser])
+    return
+
+
+@app.cell
+def _(file_browser, pd):
     # import the data
-    data_a = pd.read_csv(file_a.value)
-    data_b = pd.read_csv(file_b.value)
+    data_a = pd.read_csv(file_browser.path(index=0))
+    data_b = pd.read_csv(file_browser.path(index=1))
 
     # remove the first column as it is not needed
     data_a = data_a.iloc[:, 1:]
@@ -279,7 +277,7 @@ def _(np, seed_for_runs):
 
 @app.cell
 def _(rng):
-    runs_to_compare = rng.integers(low=1, high=51, size=6)
+    runs_to_compare = rng.integers(low=1, high=11, size=9)
     return (runs_to_compare,)
 
 
@@ -296,7 +294,7 @@ def _(runs_to_compare):
 
 
 @app.cell
-def _(column_runs_compare):
+def _(column_runs_compare, data_a):
     table_a = {
         column_runs_compare[0] : [],
         column_runs_compare[1] : [],
@@ -306,73 +304,33 @@ def _(column_runs_compare):
         "best_design" : [],
         "best_constrained_design" : []
     }
-    return (table_a,)
 
-
-@app.cell
-def _(column_runs_compare, data_a, table_a):
     table_a[column_runs_compare[0]] = data_a[
         data_a["runs"]==column_runs_compare[0]
         ][["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(column_runs_compare, data_a, table_a):
     table_a[column_runs_compare[1]] = data_a[
         data_a["runs"]==column_runs_compare[1]
         ][["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(column_runs_compare, data_a, table_a):
     table_a[column_runs_compare[2]] = data_a[
         data_a["runs"]==column_runs_compare[2]
         ][["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(data_a, table_a):
     table_a["grand_mean"] = data_a[["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(data_a, table_a):
     table_a["grand_std"] = data_a[["alpha","power","sample_size","max_ess","obj_func"]].std().to_numpy()
-    return
 
-
-@app.cell
-def _(data_a):
     best_bounds_a = data_a[data_a["obj_func"]==data_a["obj_func"].min()]
-    return (best_bounds_a,)
 
-
-@app.cell
-def _(best_bounds_a, table_a):
     table_a["best_design"] = best_bounds_a[["alpha","power","sample_size","max_ess","obj_func"]].to_numpy().flatten()
-    return
 
-
-@app.cell
-def _(data_a):
     constrained_a = data_a[data_a["alpha"] <= 0.05]
-    return (constrained_a,)
 
-
-@app.cell
-def _(constrained_a):
     best_contrained_bounds_a = constrained_a[constrained_a["obj_func"]==constrained_a["obj_func"].min()]
-    return (best_contrained_bounds_a,)
 
-
-@app.cell
-def _(best_contrained_bounds_a, table_a):
     table_a["best_constrained_design"] = best_contrained_bounds_a[["alpha","power","sample_size","max_ess","obj_func"]].to_numpy().flatten()
-    return
+    return (table_a,)
 
 
 @app.cell
@@ -405,7 +363,7 @@ def _(round_to, summary_a):
 
 
 @app.cell
-def _(column_runs_compare):
+def _(column_runs_compare, data_b):
     table_b = {
         column_runs_compare[3] : [],
         column_runs_compare[4] : [],
@@ -415,73 +373,33 @@ def _(column_runs_compare):
         "best_design" : [],
         "best_constrained_design" : []
     }
-    return (table_b,)
 
-
-@app.cell
-def _(column_runs_compare, data_b, table_b):
     table_b[column_runs_compare[3]] = data_b[
         data_b["runs"]==column_runs_compare[3]
         ][["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(column_runs_compare, data_b, table_b):
     table_b[column_runs_compare[4]] = data_b[
         data_b["runs"]==column_runs_compare[4]
         ][["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(column_runs_compare, data_b, table_b):
     table_b[column_runs_compare[5]] = data_b[
         data_b["runs"]==column_runs_compare[5]
         ][["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(data_b, table_b):
     table_b["grand_mean"] = data_b[["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
-    return
 
-
-@app.cell
-def _(data_b, table_b):
     table_b["grand_std"] = data_b[["alpha","power","sample_size","max_ess","obj_func"]].std().to_numpy()
-    return
 
-
-@app.cell
-def _(data_b):
     best_bounds_b = data_b[data_b["obj_func"]==data_b["obj_func"].min()]
-    return (best_bounds_b,)
 
-
-@app.cell
-def _(best_bounds_b, table_b):
     table_b["best_design"] = best_bounds_b[["alpha","power","sample_size","max_ess","obj_func"]].to_numpy().flatten()
-    return
 
-
-@app.cell
-def _(data_b):
     constrained_b = data_b[data_b["alpha"] <= 0.05]
-    return (constrained_b,)
 
-
-@app.cell
-def _(constrained_b):
     best_contrained_bounds_b = constrained_b[constrained_b["obj_func"]==constrained_b["obj_func"].min()]
-    return (best_contrained_bounds_b,)
 
-
-@app.cell
-def _(best_contrained_bounds_b, table_b):
     table_b["best_constrained_design"] = best_contrained_bounds_b[["alpha","power","sample_size","max_ess","obj_func"]].to_numpy().flatten()
-    return
+    return (table_b,)
 
 
 @app.cell
@@ -619,18 +537,18 @@ def _(
 
         analysis_set_a1 = data_a.loc[start_index1:stop_index1]
         analysis_set_b1 = data_b.loc[start_index1:stop_index1]
-    
+
         # feasibility
         alpha_feas_a = analysis_set_a1["alpha"] <= target_alpha + epsilon1.value
         power_feas_a = analysis_set_a1["power"] >= target_power - epsilon2.value
-    
+
         feasibility_a.append(
             np.mean(alpha_feas_a & power_feas_a)
         )
 
         alpha_feas_b = analysis_set_b1["alpha"] <= target_alpha + epsilon1.value
         power_feas_b = analysis_set_b1["power"] >= target_power - epsilon2.value
-    
+
         feasibility_b.append(
             np.mean(alpha_feas_b & power_feas_b)
         )
@@ -638,12 +556,12 @@ def _(
         # strict feasibility
         within_e1_alpha_lower = target_alpha - epsilon1.value <= analysis_set_a1["alpha"]
         within_e1_alpha_upper = analysis_set_a1["alpha"] <= target_alpha+epsilon1.value
-    
+
         strict_feas_alpha_a = within_e1_alpha_lower & within_e1_alpha_upper
 
         within_e2_power_lower = target_power - epsilon2.value <= analysis_set_a1["power"]
         within_e2_power_upper = analysis_set_a1["power"] <= target_power+epsilon2.value
-    
+
         strict_feas_power_a = within_e2_power_lower & within_e2_power_upper
 
         strict_feas_a.append(
@@ -652,12 +570,12 @@ def _(
 
         within_e1_alpha_lower_b = target_alpha-epsilon1.value <= analysis_set_b1["alpha"]
         within_e1_alpha_upper_b = analysis_set_b1["alpha"] <= target_alpha+epsilon1.value
-    
+
         strict_feas_alpha_b = within_e1_alpha_lower_b & within_e1_alpha_upper_b
 
         within_e2_power_lower_b = target_power-epsilon2.value <= analysis_set_b1["power"]
         within_e2_power_upper_b = analysis_set_b1["power"] <= target_power+epsilon2.value
-    
+
         strict_feas_power_b = within_e2_power_lower_b & within_e2_power_upper_b
 
         strict_feas_b.append(
