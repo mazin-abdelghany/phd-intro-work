@@ -27,6 +27,7 @@ def _():
     import numpy as np
     import pandas as pd
     import tensorflow as tf
+    import tensorflow_probability as tfp
 
     return gc, np, pd, tf, time
 
@@ -378,7 +379,10 @@ def _(lower_spaces, mo, np, space_dropdown, upper_spaces):
 
 @app.cell
 def _(Box, current_lower, current_upper, np):
-    search_space = Box(lower=current_lower, upper=current_upper)
+    search_space = Box(
+        lower = current_lower, 
+        upper = current_upper
+    )
     print(f"  lower: {np.round(search_space.lower.numpy(), 3)}")
     print(f"  upper: {np.round(search_space.upper.numpy(), 3)}")
     return (search_space,)
@@ -394,7 +398,7 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 10
+    n_experiments = 50
     n_loops = 500
 
     # generate labels for data frame
@@ -481,13 +485,14 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Initialisation
+    ## Old initialisation
     """)
     return
 
 
-@app.cell
-def _(bd, delta0, delta1, fmt_bd, np, num_analyses, sigma2, ss, target_power):
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     poc = bd.calculate_pocock_boundaries(
         n_analyses=num_analyses, alpha=0.05
     )
@@ -505,11 +510,13 @@ def _(bd, delta0, delta1, fmt_bd, np, num_analyses, sigma2, ss, target_power):
     poc_rev_bounds = fmt_bd.boundaries_to_reverse(poc[0], poc[1])
 
     poc_params = np.concatenate((poc_rev_bounds, [poc_n]))
-    return poc, poc_n, poc_params
+    """)
+    return
 
 
-@app.cell
-def _(bd, delta0, delta1, fmt_bd, np, num_analyses, sigma2, ss, target_power):
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     obf = bd.calculate_of_boundaries(
         n_analyses=num_analyses, alpha=0.05
     )
@@ -527,24 +534,13 @@ def _(bd, delta0, delta1, fmt_bd, np, num_analyses, sigma2, ss, target_power):
     obf_rev_bounds = fmt_bd.boundaries_to_reverse(obf[0], obf[1])
 
     obf_params = np.concatenate((obf_rev_bounds, [obf_n]))
-    return obf, obf_n, obf_params
+    """)
+    return
 
 
-@app.cell
-def _(
-    delta0,
-    delta1,
-    mu,
-    num_analyses,
-    obf,
-    obf_n,
-    obj_f,
-    poc,
-    poc_n,
-    sigma2,
-    target_alpha,
-    target_power,
-):
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     _,_,_,poc_obj_f = obj_f(
         mu = mu,
         upper_bounds = poc[0],
@@ -570,30 +566,29 @@ def _(
         alternative_hypothesis = delta1,
         variance = sigma2
     )
-    return obf_obj_f, poc_obj_f
-
-
-@app.cell
-def _(np, obf_obj_f, obf_params, poc_obj_f, poc_params):
-    design_matrix = np.concatenate((np.atleast_2d(poc_params), np.atleast_2d(obf_params)))
-    output_vals = np.concatenate((np.atleast_2d(poc_obj_f), np.atleast_2d(obf_obj_f)))
-    return design_matrix, output_vals
-
-
-@app.cell
-def _(design_matrix, output_vals):
-    print(f"Initial dataset:\n{design_matrix}\n")
-    print(f"Initial f(x):\n{output_vals}")
+    """)
     return
 
 
-@app.cell
-def _(design_matrix, output_vals, trieste):
-    initial_data = trieste.data.Dataset(
-        query_points = design_matrix,
-        observations = output_vals
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    design_matrix = np.concatenate(
+        (np.atleast_2d(standardize(poc_params)), np.atleast_2d(standardize(obf_params)))
     )
-    return (initial_data,)
+
+    output_vals = np.concatenate((np.atleast_2d(poc_obj_f), np.atleast_2d(obf_obj_f)))
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    print(f"Initial dataset:\n{design_matrix}\n")
+    print(f"Initial f(x):\n{output_vals/200}")
+    """)
+    return
 
 
 @app.cell(hide_code=True)
@@ -610,11 +605,9 @@ def _(
     bayes_opt_results,
     delta0,
     delta1,
-    design_matrix,
     fmt_bd,
     gc,
     gpflow,
-    initial_data,
     labels,
     mu,
     n_experiments,
@@ -622,7 +615,6 @@ def _(
     np,
     num_analyses,
     obj_f,
-    output_vals,
     search_space,
     short_seed_list,
     sigma2,
@@ -637,16 +629,68 @@ def _(
         np.random.seed(short_seed_list[i])
         tf.random.set_seed(short_seed_list[i])
 
-        kernel = gpflow.kernels.Matern52(
-            lengthscales=[1.0] * design_matrix.shape[1]
+        ########################
+        # Halton initialisation #
+        ########################
+        initial_x = search_space.sample_halton(500, seed = short_seed_list[i])
+        initial_y = []
+
+        for point in initial_x:
+
+            sample_size = point[5,]
+            bounds = point[:-1]
+
+            bounds = fmt_bd.reverse_to_boundaries(params = bounds, K = num_analyses)
+
+            _, _, _, initial_y_new = obj_f(
+                mu = mu,
+                upper_bounds = bounds[0],
+                lower_bounds = bounds[1],
+                n_analyses = num_analyses,
+                n_patients = sample_size.numpy(),
+                target_power = target_power,
+                target_alpha = target_alpha,
+                null_hypothesis = delta0,
+                alternative_hypothesis = delta1,
+                variance = sigma2
+            )
+
+            initial_y.append(initial_y_new)
+
+        initial_y_formatted = np.atleast_2d(initial_y).transpose()
+
+        initial_data = trieste.data.Dataset(
+            query_points = initial_x,
+            observations = initial_y_formatted
         )
+
+        #######################
+        # GP regression model #
+        #######################
+        kernel = gpflow.kernels.Matern52(
+            lengthscales = [1.0] * (num_analyses * 2)
+        )
+
+        #kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        #    gpflow.utilities.to_default_float(0), gpflow.utilities.to_default_float(3)
+        #        )
+        #kernel.variance.prior = tfp.distributions.LogNormal(
+        #    gpflow.utilities.to_default_float(0), gpflow.utilities.to_default_float(3)
+        #)
+
+        likelihood = gpflow.likelihoods.Gaussian(variance = 1e-1)
+
+        gpflow.set_trainable(likelihood, False)
 
         gpr = gpflow.models.GPR(
-            data      = (design_matrix, output_vals),
+            data      = (initial_x, initial_y_formatted),
             kernel    = kernel,
-            likelihood = gpflow.likelihoods.Gaussian()
+            likelihood = likelihood
         )
 
+        ###################
+        # Bayes opt model #
+        ###################
         bayes_opt_model = GaussianProcessRegression(gpr)
 
         ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
@@ -654,12 +698,13 @@ def _(
             datasets         = initial_data,
             models           = bayes_opt_model,
             acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
-                optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer(
-                    num_optimization_runs = 50
-                )
+                optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer()
             )
         )
 
+        ############################
+        # Start the bayes opt loop #
+        ############################
         start_time = time.time()
 
         # there are n_loops number of reverse_bounds to iterate through
@@ -702,7 +747,12 @@ def _(
             ))
 
             if j % 25 == 0:
-                print(".", end = "")
+                print(".", end="")
+
+            if j % 100 == 0:
+                print(gpr.kernel.lengthscales.numpy())
+                print(gpr.kernel.variance.numpy())
+                print(gpr.likelihood.variance.numpy())
 
         stop_time = time.time()
         execute_time = stop_time - start_time
@@ -711,7 +761,7 @@ def _(
         time_list += time_list.tolist()
         bayes_opt_results["execute_time"].extend(time_list)
 
-        if i % 10 == 0:
+        if i % 1 == 0:
             print("\n===========================")
             print(f"= Completed experiment {i+1}. =")
             print("===========================")
@@ -743,7 +793,9 @@ def _(bayes_opt_results, pd):
 
 @app.cell
 def _(bayes_opt_results, pd):
-    pd.DataFrame(bayes_opt_results).to_csv("/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_repulsion.csv")
+    pd.DataFrame(bayes_opt_results).to_csv(
+        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth.csv"
+    )
     return
 
 
