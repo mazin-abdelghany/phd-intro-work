@@ -794,7 +794,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth.csv"
+        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_50x500.csv"
     )
     return
 
