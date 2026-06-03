@@ -165,9 +165,9 @@ def _(alpha_grid, beta_grid, np, target_alpha, target_beta):
 @app.cell
 def _(X, Y, go, objective1, objective3):
     _fig = go.Figure(data=[
-        go.Surface(z=objective3, x=X, y=Y),
+        go.Surface(z=objective3, x=X, y=Y, coloraxis="coloraxis"),
         #go.Surface(z=objective2, x=X, y=Y),
-        go.Surface(z=objective1, x=X, y=Y)
+        go.Surface(z=objective1, x=X, y=Y, coloraxis="coloraxis")
     ]
                     )
     _fig.show()
