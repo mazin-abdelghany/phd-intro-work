@@ -398,16 +398,20 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 50
+    n_experiments = 10
     n_loops = 500
+    return n_experiments, n_loops
 
+
+@app.cell
+def _(n_loops):
     # generate labels for data frame
     # if we have experiments <1000, then we need 3 spaces 
     # to fill. this is the length of the string and then
     # we raise 10 to this number to obtain the labels
     space_needed_for_label = len(str(n_loops))
     label_range = 10**(space_needed_for_label)
-    return label_range, n_experiments, n_loops
+    return (label_range,)
 
 
 @app.cell
@@ -794,7 +798,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_full-ess.csv"
+        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_full-max-ess-penalty.csv"
     )
     return
 
