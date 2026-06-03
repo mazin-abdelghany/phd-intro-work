@@ -225,7 +225,7 @@ def _(label_a, label_b, mo):
 
 @app.cell
 def _(mo):
-    file_browser = mo.ui.file_browser(initial_path = "/workspace/experiments_rand_simann_bo/",
+    file_browser = mo.ui.file_browser(initial_path = "/tf/experiments_rand_simann_bo/",
                                       label = "Select files in the order of the methods.")
     return (file_browser,)
 
