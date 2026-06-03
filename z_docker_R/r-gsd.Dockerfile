@@ -1,7 +1,7 @@
 # from the Rocker project, use rstudio Docker container
 FROM rocker/rstudio:latest
 
-# install posterior, tidybayes, ggdist, and loo
+# install packages of interest 
 RUN install2.r --error \
      gplite \
      mvtnorm \
