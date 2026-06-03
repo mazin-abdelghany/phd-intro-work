@@ -194,7 +194,7 @@ def _(pd):
     )
 
     large_box_bo = pd.read_csv(
-        filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo.csv"
+        filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_50x500.csv"
     )
 
     # importing the corrected data
