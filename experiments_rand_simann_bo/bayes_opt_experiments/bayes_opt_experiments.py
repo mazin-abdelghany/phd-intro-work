@@ -154,7 +154,7 @@ def _(fn_min, fp, sim, ss):
             alpha_prime = alpha_prime
         )
 
-        f_val = fn_min.function_to_minimize(max_ess_val = max_ess/mu, penalty = penalty)
+        f_val = fn_min.function_to_minimize(max_ess_val = max_ess, penalty = penalty)
 
         return (
             alpha_prime,
@@ -794,7 +794,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_50x500.csv"
+        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_full-ess.csv"
     )
     return
 
