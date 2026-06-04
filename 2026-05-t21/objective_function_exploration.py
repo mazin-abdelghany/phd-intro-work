@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.8"
 app = marimo.App(width="medium")
 
 
@@ -8,16 +8,17 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
 
-    return
+    return (mo,)
 
 
 @app.cell
 def _():
     import numpy as np
+    import pandas as pd
     import matplotlib.pyplot as plt
     import plotly.graph_objects as go
 
-    return go, np, plt
+    return go, np, pd, plt
 
 
 @app.cell
@@ -121,7 +122,7 @@ def objective2_loop(
     beta_epsilon = 0.05
 ):
 
-    return (alpha-target_alpha)**2 + (beta-target_beta)**2
+    return 150*((alpha-target_alpha)**2 + (beta-target_beta)**2)
 
 
 @app.cell
@@ -166,8 +167,241 @@ def _(alpha_grid, beta_grid, np, target_alpha, target_beta):
 def _(X, Y, go, objective1, objective3):
     _fig = go.Figure(data=[
         go.Surface(z=objective3, x=X, y=Y, coloraxis="coloraxis"),
-        #go.Surface(z=objective2, x=X, y=Y),
+        #go.Surface(z=objective2, x=X, y=Y, coloraxis="coloraxis"),
         go.Surface(z=objective1, x=X, y=Y, coloraxis="coloraxis")
+    ]
+                    )
+    _fig.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    Objective 1: cliff,
+    $$
+    f(x)=\begin{cases}
+    150\cdot[\,|\alpha-\alpha'| + |\beta-\beta'|\,], & -\epsilon \le \alpha'-\alpha \le 0 \\
+    0, & \text{otherwise}
+    \end{cases}
+    $$
+    Objective 2: smooth, $150\cdot[(\alpha-\alpha')^2 + (\beta-\beta')^2]$
+    Objective 3: repulsion, $150\cdot[(\alpha-\alpha')^4 + (\beta-\beta')^4]$
+    """)
+    return
+
+
+@app.cell
+def _():
+    alpha_epsilon = 0.01
+    beta_epsilon = 0.02
+    return alpha_epsilon, beta_epsilon
+
+
+@app.cell
+def _(alpha_epsilon, alpha_grid, np, target_alpha):
+    alpha_diff = alpha_grid - target_alpha
+    abs_alpha_diff = np.abs(alpha_diff)
+
+    alpha_obj2 = 150 * (alpha_diff**2)
+    alpha_obj3 = 150 * (alpha_diff**4)
+
+    alpha_met = (-alpha_epsilon <= alpha_diff) & (alpha_diff <= 0)
+    alpha_obj1 = np.where(alpha_met, 0, 150 * abs_alpha_diff)
+    return alpha_obj1, alpha_obj2, alpha_obj3
+
+
+@app.cell
+def _(beta_epsilon, beta_grid, np, target_beta):
+    beta_diff = beta_grid - target_beta
+    abs_beta_diff = np.abs(beta_diff)
+
+    beta_obj2 = 150 * (beta_diff**2)
+    beta_obj3 = 150 * (beta_diff**4)
+
+    beta_met = (-beta_epsilon <= beta_diff) & (beta_diff <= 0)
+    beta_obj1 = np.where(beta_met, 0, 150 * abs_beta_diff)
+    return beta_obj1, beta_obj2, beta_obj3
+
+
+@app.cell
+def _(
+    alpha_obj1,
+    alpha_obj2,
+    alpha_obj3,
+    beta_obj1,
+    beta_obj2,
+    beta_obj3,
+    objective1,
+    objective2,
+    objective3,
+    pd,
+):
+    data = {
+        "alpha_obj1": [alpha_obj1.min(), alpha_obj1.max()],
+        "alpha_obj2": [alpha_obj2.min(), alpha_obj2.max()],
+        "alpha_obj3": [alpha_obj3.min(), alpha_obj3.max()],
+        "beta_obj1": [beta_obj1.min(), beta_obj1.max()],
+        "beta_obj2": [beta_obj2.min(), beta_obj2.max()],
+        "beta_obj3": [beta_obj3.min(), beta_obj3.max()],
+        "max_ess" : [24/150, 480/150],
+        "sum1": [objective1.min(), objective1.max()],
+        "sum2": [objective2.min(), objective2.max()],
+        "sum3": [objective3.min(), objective2.max()],
+    }
+
+    # 2. Construct the DataFrame (orient='index' maps keys to rows, list values to columns)
+    df = pd.DataFrame.from_dict(data, orient="index", columns=["min", "max"])
+
+    # 3. Display the final table
+    df
+    return
+
+
+@app.cell
+def _(alpha_obj1, beta_obj1):
+    def objective1_loop_scaled(
+        alpha, 
+        beta,
+        target_alpha,
+        target_beta,
+        alpha_epsilon = 0.01,
+        beta_epsilon = 0.02
+    ):
+
+        alpha_met = (-alpha_epsilon <= alpha - target_alpha) & (alpha-target_alpha <= 0)
+        beta_met = (-beta_epsilon <= beta - target_beta) & (beta-target_beta <= 0)
+
+        if (alpha_met and beta_met):
+            return 0
+        else:
+            val_a = 150 * abs(alpha - target_alpha)
+            val_b = 150 * abs(beta  - target_beta)
+
+        val_a_scaled = (val_a - alpha_obj1.min())/(alpha_obj1.max() - alpha_obj1.min())
+        val_b_scaled = (val_b - beta_obj1.min())/(beta_obj1.max() - beta_obj1.min())
+
+        return (val_a_scaled + val_b_scaled) * 10
+
+    return (objective1_loop_scaled,)
+
+
+@app.cell
+def _(
+    alpha_grid,
+    beta_grid,
+    np,
+    objective1_loop_scaled,
+    target_alpha,
+    target_beta,
+):
+    obj1_scaled = np.empty(shape=(len(alpha_grid), len(beta_grid)))
+    for _i, _alpha in enumerate(alpha_grid):
+        for _j, _beta in enumerate(beta_grid):
+            obj1_scaled[_i,_j] = objective1_loop_scaled(_alpha, _beta, target_alpha, target_beta)
+    return (obj1_scaled,)
+
+
+@app.cell
+def _(X, Y, go, obj1_scaled):
+    _fig = go.Figure(data=[
+        go.Surface(z=obj1_scaled, x=X, y=Y)
+    ]
+                    )
+    _fig.show()
+    return
+
+
+@app.cell
+def _(alpha_obj2, beta_obj2):
+    def objective2_loop_scaled(
+        alpha, 
+        beta,
+        target_alpha,
+        target_beta,
+        alpha_epsilon = 0.01,
+        beta_epsilon = 0.02
+    ):
+
+        val_a = 150 * (alpha - target_alpha)**2
+        val_b = 150 * (beta - target_beta)**2
+
+        val_a_scaled = (val_a - alpha_obj2.min())/(alpha_obj2.max() - alpha_obj2.min())
+        val_b_scaled = (val_b - beta_obj2.min())/(beta_obj2.max() - beta_obj2.min())
+
+        return (val_a_scaled + val_b_scaled) * 10
+
+    return (objective2_loop_scaled,)
+
+
+@app.cell
+def _(
+    alpha_grid,
+    beta_grid,
+    np,
+    objective2_loop_scaled,
+    target_alpha,
+    target_beta,
+):
+    obj2_scaled = np.empty(shape=(len(alpha_grid), len(beta_grid)))
+    for _i, _alpha in enumerate(alpha_grid):
+        for _j, _beta in enumerate(beta_grid):
+            obj2_scaled[_i,_j] = objective2_loop_scaled(_alpha, _beta, target_alpha, target_beta)
+    return (obj2_scaled,)
+
+
+@app.cell
+def _(X, Y, go, obj2_scaled):
+    _fig = go.Figure(data=[
+        go.Surface(z=obj2_scaled, x=X, y=Y)
+    ]
+                    )
+    _fig.show()
+    return
+
+
+@app.cell
+def _(alpha_obj3, beta_obj3):
+    def objective3_loop_scaled(
+        alpha, 
+        beta,
+        target_alpha,
+        target_beta,
+        alpha_epsilon = 0.01,
+        beta_epsilon = 0.05
+    ):
+
+        val_a = 150 * (alpha - target_alpha)**4
+        val_b = 150 * (beta - target_beta)**4
+
+        val_a_scaled = (val_a - alpha_obj3.min())/(alpha_obj3.max() - alpha_obj3.min())
+        val_b_scaled = (val_b - beta_obj3.min())/(beta_obj3.max() - beta_obj3.min())
+
+        return (val_a_scaled + val_b_scaled) * 10
+
+    return (objective3_loop_scaled,)
+
+
+@app.cell
+def _(
+    alpha_grid,
+    beta_grid,
+    np,
+    objective3_loop_scaled,
+    target_alpha,
+    target_beta,
+):
+    obj3_scaled = np.empty(shape=(len(alpha_grid), len(beta_grid)))
+    for _i, _alpha in enumerate(alpha_grid):
+        for _j, _beta in enumerate(beta_grid):
+            obj3_scaled[_i,_j] = objective3_loop_scaled(_alpha, _beta, target_alpha, target_beta)
+    return (obj3_scaled,)
+
+
+@app.cell
+def _(X, Y, go, obj3_scaled):
+    _fig = go.Figure(data=[
+        go.Surface(z=obj3_scaled, x=X, y=Y)
     ]
                     )
     _fig.show()
@@ -176,6 +410,35 @@ def _(X, Y, go, objective1, objective3):
 
 @app.cell
 def _():
+    from py_group_sequential_designs import feasibility_penalty as fp
+
+    return (fp,)
+
+
+@app.cell
+def _(alpha_grid, beta_grid, fp, np, target_alpha, target_beta):
+    func_test = np.empty(shape=(len(alpha_grid), len(beta_grid)))
+    for _i, _alpha in enumerate(alpha_grid):
+        for _j, _beta in enumerate(beta_grid):
+
+            func_test[_i,_j] = fp.absolute_cliff(
+                mu = 150,
+                power = 1-target_beta,
+                alpha = target_alpha,
+                alpha_prime = _alpha,
+                beta_prime = _beta,
+                scaled=True
+            )
+    return (func_test,)
+
+
+@app.cell
+def _(X, Y, func_test, go):
+    _fig = go.Figure(data=[
+        go.Surface(z=func_test, x=X, y=Y)
+    ]
+                    )
+    _fig.show()
     return
 
 
