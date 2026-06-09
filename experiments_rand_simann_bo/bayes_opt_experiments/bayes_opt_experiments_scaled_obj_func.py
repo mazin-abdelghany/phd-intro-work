@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -150,7 +150,7 @@ def _(fn_min, fp, sim, ss):
         if scaled:
             scaled_max_ess = 20 * ((max_ess - 25) / (485 - 25))
 
-            penalty = fp.smooth_penalty(
+            penalty = fp.absolute_cliff(
                 mu = mu,
                 power = target_power,
                 alpha = target_alpha,
@@ -748,7 +748,8 @@ def _(
                 target_alpha = target_alpha,
                 null_hypothesis = delta0,
                 alternative_hypothesis = delta1,
-                variance = sigma2
+                variance = sigma2,
+                scaled = True
             )
 
             # collect the boundaries using the labels
@@ -815,7 +816,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_scaled-penalty.csv"
+        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_cliff_10x500_scaled-penalty.csv"
     )
     return
 
