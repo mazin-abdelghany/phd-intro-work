@@ -13,3 +13,4 @@ RUN install2.r --error \
 
 # run command, detached with password
 # docker run -d -e PASSWORD=aeSoochif9moonga --rm --mount type=bind,src=.,dst=/project -ti -p 8787:8787 esd-presentation
+dock
