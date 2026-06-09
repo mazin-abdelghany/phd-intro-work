@@ -67,11 +67,11 @@ Reject $H_0$ if $Z>c$.
 
 ## Group sequential design
 
-Multiple analyses are performed throughout the trial.
+In a group sequential design, multiple analyses performed throughout the trial.
 
 ## Group sequential design
 
-Multiple analyses are performed throughout the trial.
+In a group sequential design, multiple analyses performed throughout the trial.
 
 If we have $K$ total analyses, one possible design, $D$, defines boundaries:
 
@@ -80,7 +80,7 @@ If we have $K$ total analyses, one possible design, $D$, defines boundaries:
 
 ## Group sequential design
 
-Multiple analyses are performed throughout the trial.
+In a group sequential design, multiple analyses performed throughout the trial.
 
 If we have $K$ total analyses, one possible design, $D$, defines boundaries:
 
@@ -94,7 +94,7 @@ And a sample size, $n$, constant at each stage:
 
 ## Group sequential design
 
-Multiple analyses are performed throughout the trial.
+In a group sequential design, multiple analyses performed throughout the trial.
 
 If we have $K$ total analyses, one possible design, $D$, defines boundaries:
 
@@ -110,7 +110,7 @@ If we naively test, for instance, all upper bounds set such that $P(Z>c\,|\,\the
 
 ## Group sequential design
 
-Multiple analyses are performed throughout the trial.
+In a group sequential design, multiple analyses performed throughout the trial.
 
 If we have $K$ total analyses, one possible design, $D$, defines boundaries:
 
@@ -163,7 +163,7 @@ ggplot(data = boundaries) +
 
 </div>
 
-<div class="centered blue" style="float: right; width: 25%;">
+<div style="float: right; width: 25%;">
 </div>
 
 ## Group sequential design
@@ -203,13 +203,293 @@ ggplot(data = boundaries) +
 
 </div>
 
-<div class="centered blue" style="float: right; width: 25%;">
+<div class="centered" style="float: right; width: 25%;">
 <b> Problem: an _infinite_ number of possible designs! </b>
 </div>
 
-# Gaussian processes: Motivating problem
+# Reviewing optim techniques | (1) random search, (2) simulated annealing, (3) Bayesian optimisation
 
-## Non-linear regression
+## Optimisation
+
+Let $f$ denote a real-valued objective function. We seek
+$$
+\min_{\boldsymbol{x}} f(\boldsymbol{x})
+$$
+where $\boldsymbol{x}$ is a $d$-dimensional vector of inputs and $f$ maps these inputs onto the real numbers, $f\colon\mathbb{R}^d \mapsto \mathbb{R}$.
+
+In the simplest case, $d=1$, and we have $f(x) = y$.
+
+## Optimisation
+
+Visually, we look for the value $x$ that gives the lowest $f(x)$.
+
+```{r}
+f_of_x <- function(x) {x^4 + x^3 - 3*x^2 + 1}
+
+best_x <- optim(par=2, f_of_x, method="Brent", lower = -3, upper = 3)
+
+ggplot() +
+  geom_function(fun = f_of_x) + 
+  geom_point(mapping = aes(x = best_x$par, y = best_x$value), color = "purple", size = 3) +
+  labs(
+    title = "Objective function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-2.75,2) +
+  theme_bw()
+```
+
+# Random search
+
+## Bounded random search
+
+Assuming, now, a 2-dimensional search space, $\{d_1, d_2\} \in [0,1]$
+
+```{r}
+ggplot() + 
+  labs(
+    title = "Bounded random search",
+    x = expression(d[1]),
+    y = expression(d[2])
+  ) +
+  xlim(0,1) + 
+  ylim(0,1) +
+  theme_bw()
+```
+
+## Bounded random search
+
+Select a uniform distribution over the bounded search space.
+
+```{r}
+rand_x <- runif(15)
+rand_y <- runif(15)
+
+ggplot() +
+  geom_point(mapping = aes(x = rand_x, y = rand_y)) +
+  labs(
+    title = "Bounded random search",
+    x = expression(d[1]),
+    y = expression(d[2])
+  ) +
+  xlim(0,1) + 
+  ylim(0,1) +
+  theme_bw()
+```
+
+## Bounded random search
+
+Find $(x^\star, y^\star)$ with the lowest objective function value.
+
+```{r}
+ggplot() +
+  geom_point(mapping = aes(x = rand_x, y = rand_y)) +
+  geom_point(mapping = aes(x = rand_x[10], y = rand_y[10]), color = "purple", size = 5, shape = 5, stroke = 3) +
+  labs(
+    title = "Bounded random search",
+    x = expression(d[1]),
+    y = expression(d[2])
+  ) +
+  xlim(0,1) + 
+  ylim(0,1) +
+  theme_bw()
+```
+
+## Bounded random search
+
+This type of optimisation is generally computationally inexpensive and is a useful control method with which to compare other optimisation methods.
+
+# Simulated annealing
+
+## Probabilistic optimisation
+
+Let us take the objective function introduced before:
+
+```{r}
+ggplot() +
+  geom_function(fun = f_of_x) + 
+  labs(
+    title = "Objective function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-2.75,2) +
+  theme_bw()
+```
+
+## Probabilistic optimisation
+
+Starting here, . . .
+
+```{r}
+right_point_x = 1.75
+right_point_y = f_of_x(right_point_x)
+
+ggplot() +
+  geom_function(fun = f_of_x) + 
+  geom_point(mapping = aes(x = right_point_x, y = right_point_y), color = "purple", size = 3) +
+  labs(
+    title = "Objective function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-2.75,2) +
+  theme_bw()
+```
+
+## Probabilistic optimisation
+
+. . . many optimisation methods use gradients . . .
+
+```{r}
+right_point_x = 1.75
+right_point_y = f_of_x(right_point_x)
+
+ggplot() +
+  geom_function(fun = f_of_x) + 
+  geom_point(mapping = aes(x = right_point_x, y = right_point_y), color = "purple", size = 3) +
+  geom_point(mapping = aes(x = 1.5, y = f_of_x(1.5)), color = "purple", size = 3) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(x = right_point_x - 0.07, 
+        y = right_point_y - 0.2, 
+        xend = 1.5 - 0.03, 
+        yend = f_of_x(1.5) + 0.4), 
+    arrow = arrow(length = unit(0.25, "cm"))) +
+  labs(
+    title = "Objective function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-2.75,2) +
+  theme_bw()
+```
+
+## Probabilistic optimisation
+
+. . . risking getting stuck at local optima.
+
+```{r}
+right_point_x = 1.75
+right_point_y = f_of_x(right_point_x)
+
+wrong_optim <- optim(par=2, f_of_x, method = "Brent", lower=0, upper=2)
+
+ggplot() +
+  geom_function(fun = f_of_x) + 
+  geom_point(mapping = aes(x = right_point_x, y = right_point_y), color = "purple", size = 3) +
+  geom_point(mapping = aes(x = wrong_optim$par, y = wrong_optim$value), color = "darkorange", size = 3) +
+  geom_point(mapping = aes(x = right_point_x, y = right_point_y), color = "purple", size = 3) +
+  geom_point(mapping = aes(x = 1.5, y = f_of_x(1.5)), color = "purple", size = 3) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(x = right_point_x - 0.07, 
+        y = right_point_y - 0.2, 
+        xend = 1.5 - 0.03, 
+        yend = f_of_x(1.5) + 0.4), 
+    arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(x = 1.5 - 0.06, 
+        y = f_of_x(1.5) + 0.2, 
+        xend = wrong_optim$par + 0.02, 
+        yend = wrong_optim$value + 0.5), 
+    arrow=arrow(length = unit(0.25, "cm"))
+  ) +
+  labs(
+    title = "Objective function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-2.75,2) +
+  theme_bw()
+```
+
+## Simulated annealing
+
+Simulated annealing allows for acceptance of inferior points . . .
+
+$$
+\Pr(\text{accepting a less optimal state}) \propto \exp\left\{-\frac{f(x_{\texttt{new}})-f(x)}{T}\right\}
+$$
+
+## Simulated annealing
+
+. . . letting the algorithm find global optima!
+
+```{r}
+right_point_x = 1.75
+right_point_y = f_of_x(right_point_x)
+
+wrong_optim <- optim(par=2, f_of_x, method = "Brent", lower=0, upper=2)
+
+ggplot() +
+  geom_function(fun = f_of_x) + 
+  geom_point(mapping = aes(x = right_point_x, y = right_point_y), color = "purple", size = 3) +
+  geom_point(mapping = aes(x = wrong_optim$par, y = wrong_optim$value), color = "darkorange", size = 3) +
+  geom_point(mapping = aes(x = right_point_x, y = right_point_y), color = "purple", size = 3) +
+  geom_point(mapping = aes(x = 1.5, y = f_of_x(1.5)), color = "purple", size = 3) +
+  geom_point(mapping = aes(x = 0, y = f_of_x(0)), color = "darkgreen", size = 3) +
+  geom_point(mapping = aes(x = best_x$par, y = best_x$value), color = "purple", size = 3) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(x = right_point_x - 0.07, 
+        y = right_point_y - 0.2, 
+        xend = 1.5 - 0.03, 
+        yend = f_of_x(1.5) + 0.4), 
+    arrow = arrow(length = unit(0.25, "cm"))
+  ) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(x = 1.5 - 0.06, 
+        y = f_of_x(1.5) + 0.2, 
+        xend = wrong_optim$par + 0.02, 
+        yend = wrong_optim$value + 0.5), 
+    arrow=arrow(length = unit(0.25, "cm"))
+  ) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(x = wrong_optim$par - 0.03, 
+        y = wrong_optim$value+0.4, 
+        xend = 0 + 0.05, 
+        yend = f_of_x(0)+0.4),
+    arrow=arrow(length = unit(0.25, "cm"))
+  ) +
+  geom_curve(
+    lineend = "round",
+    linewidth = 1,
+    aes(xend = -0.8, 
+        yend = f_of_x(-0.8) + 0.6),
+        x = 0-0.05, 
+        y = f_of_x(0) + 0.5,
+    arrow=arrow(length = unit(0.25, "cm"))
+  ) +
+  annotate("label", x = 0.5, y = 3.5, label = "inferior point!") +
+  labs(
+    title = "Objective function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-2.75,2) +
+  theme_bw()
+```
+
+# Simulated annealing example
+
+# Bayesian optimisation
+
+## Gaussian processes: Non-linear regression
+
+Given $n$ data points $\{x_i, y_i\}_{i=1}^n \xrightarrow{\text{Predict}} (x_{\texttt{new}}, y_{\texttt{new}})$
+
+## Gaussian processes: Non-linear regression
 
 Given $n$ data points $\{x_i, y_i\}_{i=1}^n \xrightarrow{\text{Predict}} (x_{\texttt{new}}, y_{\texttt{new}})$
 
@@ -232,7 +512,7 @@ ggplot() +
   theme_bw()
 ```
 
-## Non-linear regression
+## Gaussian processes: Non-linear regression
 
 Given $n$ data points $\{x_i, y_i\}_{i=1}^n \xrightarrow{\text{Predict}} (x_{\texttt{new}}, y_{\texttt{new}})$
 
@@ -257,6 +537,60 @@ ggplot() +
   theme_bw()
 ```
 
+## Gaussian processes: Non-linear regression
+
+<div style="float: left; width: 73.47%;">
+
+Given $n$ data points $\{x_i, y_i\}_{i=1}^n \xrightarrow{\text{Predict}} (x_{\texttt{new}}, y_{\texttt{new}})$
+
+```{r}
+x <- seq(from = 0, to = 2*pi + 0.2, length.out = 50)
+y <- sin(x) 
+
+x2 <- seq(from = 0, to = 2*pi + 0.2, length.out = 500)
+y2 <- sin(x2) 
+
+gp <- gp_init(  
+  # A squared exponential (aka Gaussian aka RBF) kernel
+  cfs = cf_sexp(),  
+  
+  # Assume Gaussian distributed errors
+  lik = lik_gaussian(), 
+  
+  # Use the full covariance (i.e., do not approximate)
+  method = method_full() )
+
+fit <- gp_optim(gp, x = x[c(2, 10, 14, 33, 45)], y = y[c(2,10,14,33, 45)],
+                verbose = FALSE)
+
+preds <- gp_pred(fit, xnew = x2, var = TRUE)
+
+mean <- preds$mean
+var <- preds$var
+
+ggplot() +
+  geom_line(aes(x = x2, y = mean), color = "darkorange", linewidth = 1) +
+  geom_ribbon(aes(x = x2, ymin = mean+10*var, ymax = mean-10*var), 
+              fill = "darkorange",
+              alpha = 0.3) +
+  geom_point(mapping = aes(x = x[c(2, 10, 14, 33, 45)], y = y[c(2,10,14,33, 45)]), 
+             color = "purple",
+             size = 2.5) +
+  labs(
+    title = "Nonlinear function",
+    x = expression(x),
+    y = expression(y)
+  ) +
+  xlim(-0.1,6.5) +  
+  ylim(-1.2,1.2) +  
+  theme_bw()
+```
+
+</div>
+
+<div style="float: right; width: 25%;">
+</div>
+
 ## Non-linear regression
 
 <div style="float: left; width: 73.47%;">
@@ -308,61 +642,7 @@ ggplot() +
 
 </div>
 
-<div class="centered blue" style="float: right; width: 25%;">
-</div>
-
-## Non-linear regression
-
-<div style="float: left; width: 73.47%;">
-
-Given $n$ data points $\{x_i, y_i\}_{i=1}^n \xrightarrow{\text{Predict}} (x_{\texttt{new}}, y_{\texttt{new}})$
-
-```{r}
-x <- seq(from = 0, to = 2*pi + 0.2, length.out = 50)
-y <- sin(x) 
-
-x2 <- seq(from = 0, to = 2*pi + 0.2, length.out = 500)
-y2 <- sin(x2) 
-
-gp <- gp_init(  
-  # A squared exponential (aka Gaussian aka RBF) kernel
-  cfs = cf_sexp(),  
-  
-  # Assume Gaussian distributed errors
-  lik = lik_gaussian(), 
-  
-  # Use the full covariance (i.e., do not approximate)
-  method = method_full() )
-
-fit <- gp_optim(gp, x = x[c(2, 10, 14, 33, 45)], y = y[c(2,10,14,33, 45)],
-                verbose = FALSE)
-
-preds <- gp_pred(fit, xnew = x2, var = TRUE)
-
-mean <- preds$mean
-var <- preds$var
-
-ggplot() +
-  geom_line(aes(x = x2, y = mean), color = "darkorange", linewidth = 1) +
-  geom_ribbon(aes(x = x2, ymin = mean+10*var, ymax = mean-10*var), 
-              fill = "darkorange",
-              alpha = 0.3) +
-  geom_point(mapping = aes(x = x[c(2, 10, 14, 33, 45)], y = y[c(2,10,14,33, 45)]), 
-             color = "purple",
-             size = 2.5) +
-  labs(
-    title = "Nonlinear function",
-    x = expression(x),
-    y = expression(y)
-  ) +
-  xlim(-0.1,6.5) +  
-  ylim(-1.2,1.2) +  
-  theme_bw()
-```
-
-</div>
-
-<div class="centered blue" style="float: right; width: 25%;">
+<div class="centered" style="float: right; width: 25%;">
 <b> Can all be done with Gaussian distributions! </b>
 </div>
 
@@ -1408,38 +1688,7 @@ Repeat until some termination policy (e.g., convergence or exhaustion of resourc
 2. Fit/update **Gaussian process** model with the data.
 3. Optimize an acquisition function to select the next sampling point.
 
-## Example of Bayesian Optimization in action
-
-```{r, out.width = '100%'}
-knitr::include_graphics("images/bo1.jpg")
-```
-
-## Example of Bayesian Optimization in action
-
-```{r, out.width = '100%'}
-knitr::include_graphics("images/bo2.jpg")
-```
-
-
-## Example of Bayesian Optimization in action
-
-```{r, out.width = '100%'}
-knitr::include_graphics("images/bo3.jpg")
-```
-
-
-## Example of Bayesian Optimization in action
-
-```{r, out.width = '100%'}
-knitr::include_graphics("images/bo4.jpg")
-```
-
-
-## Example of Bayesian Optimization in action
-
-```{r, out.width = '100%'}
-knitr::include_graphics("images/bo5.jpg")
-```
+# Bayesian Optimization in action
 
 # Using Bayesian optimisation for boundary selection
 
@@ -1464,6 +1713,8 @@ n
 \end{bmatrix}
 $$
 
+Recall, $\mathbf{u}=\{u_1,\dots,u_K\}$ and $\mathbf{\ell}=\{\ell_1,\dots,\ell_K\}$ for $K$-stage design.
+
 ## Basic algorithm
 
 Repeat until termination policy is reached:
@@ -1473,13 +1724,6 @@ Repeat until termination policy is reached:
 Repeat until termination policy is reached:
 
 1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
-
-## Basic algorithm
-
-Repeat until termination policy is reached:
-
-1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
-2. Obtain the corresponding set of characteristics, $\mathbf{T} = \{T_1, \dots, T_j\}$.
 
 ## Basic algorithm
 
@@ -1487,7 +1731,6 @@ Repeat until termination policy is reached:
 
 1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
 2. Obtain the corresponding set of characteristics, $\mathbf{T} = \{T_1, \dots, T_j\}$.
-3. Fit a Gaussian process regression model to estimate the function $f:D\rightarrow T$
 
 ## Basic algorithm
 
@@ -1495,7 +1738,15 @@ Repeat until termination policy is reached:
 
 1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
 2. Obtain the corresponding set of characteristics, $\mathbf{T} = \{T_1, \dots, T_j\}$.
-3. Fit a Gaussian process regression model to estimate the function $f:D\rightarrow T$
+3. Fit a Gaussian process regression model to estimate the function $f:D\mapsto T$
+
+## Basic algorithm
+
+Repeat until termination policy is reached:
+
+1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
+2. Obtain the corresponding set of characteristics, $\mathbf{T} = \{T_1, \dots, T_j\}$.
+3. Fit a Gaussian process regression model to estimate the function $f:D\mapsto T$
 4. Perform a step of Bayesian optimisation to find the next trial design, $D_i$.
 
 ## Basic algorithm
@@ -1504,7 +1755,7 @@ Repeat until termination policy is reached:
 
 1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
 2. Obtain the corresponding set of characteristics, $\mathbf{T} = \{T_1, \dots, T_j\}$.
-3. Fit a Gaussian process regression model to estimate the function $f:D\rightarrow T$
+3. Fit a Gaussian process regression model to estimate the function $f:D\mapsto T$
 4. Perform a step of Bayesian optimisation to find the next trial design, $D_i$.
 5. Obtain the corresponding characteristics, $T_i$.
 
@@ -1514,7 +1765,7 @@ Repeat until termination policy is reached:
 
 1. Generate a set of feasible trial designs, $\mathbf{D} = \{D_1, \dots, D_j\}$.
 2. Obtain the corresponding set of characteristics, $\mathbf{T} = \{T_1, \dots, T_j\}$.
-3. Fit a Gaussian process regression model to estimate the function $f:D\rightarrow T$
+3. Fit a Gaussian process regression model to estimate the function $f:D\mapsto T$
 4. Perform a step of Bayesian optimisation to find the next trial design, $D_i$.
 5. Obtain the corresponding characteristics, $T_i$.
 6. Refit the GP model on the new data $n$-tuples, $\{(\mathbf{D},\mathbf{T}),(D_i,T_i)\}$.
@@ -1620,486 +1871,79 @@ where:
 - $\alpha$ is the target type I error.
 - $\beta$ is the target type II error.
 - $\mathbb{E}[N \, | \, \boldsymbol{\delta}]$ defined previously.
-  
-# Results of several Bayes opt runs
 
-## The following are set during Bayes opt runs  
+## Parameterisation of model
 
-- 3 initial, valid bounds are given: Pocock, O'Brien-Fleming, and triangular
+- Monotonicity was challenging to ensure while modeling the bounds directly.
 
-## The following are set during Bayes opt runs  
 
-- 3 initial, valid bounds are given: Pocock, O'Brien-Fleming, and triangular
-- The loss function, $\mathcal{L}$
+## Parameterisation of model
 
-## The following are set during Bayes opt runs  
+- Monotonicity was challenging to ensure while modeling the bounds directly.
+- Reparameterise the space in terms of the final boundary meeting point.
 
-- 3 initial, valid bounds are given: Pocock, O'Brien-Fleming, and triangular
-- The loss function, $\mathcal{L}$
-- GP regression kernel, e.g., squared exponential, Matérn
+$$
+c = u_K = \ell_K
+$$
 
-## The following are set during Bayes opt runs  
+## Parameterisation of model
 
-- 3 initial, valid bounds are given: Pocock, O'Brien-Fleming, and triangular
-- The loss function, $\mathcal{L}$
-- GP regression kernel, e.g., squared exponential, Matérn
-- Acquisition function, e.g., expected improvement
+- Monotonicity was challenging to ensure while modeling the bounds directly.
+- Reparameterise the space in terms of the final boundary meeting point.
 
-## The following are set during Bayes opt runs  
+$$
+c = u_K = \ell_K
+$$
 
-- 3 initial, valid bounds are given: Pocock, O'Brien-Fleming, and triangular
-- The loss function, $\mathcal{L}$
-- GP regression kernel, e.g., squared exponential, Matérn
-- Acquisition function, e.g., expected improvement
-- Search space (see next slide)
+We then model **non-negative boundary increments**, $\Delta u_k$ and $\Delta \ell_k$. For $K$ stages,
 
-## Seach space example
+$$
+u_k=c+\sum_{j=k}^{K-1} \Delta u_j \qquad\qquad \ell_k=c-\sum_{j=k}^{K-1} \Delta \ell_j
+$$
+
+## Parameterisation of model
+
+- Monotonicity was challenging to ensure while modeling the bounds directly.
+- Reparameterise the space in terms of the final boundary meeting point.
+
+$$
+c = u_K = \ell_K
+$$
+
+We then model **non-negative boundary increments**, $\Delta u_k$ and $\Delta \ell_k$. For $K$ stages,
+
+$$
+u_k=c+\sum_{j=k}^{K-1} \Delta u_j \qquad\qquad \ell_k=c-\sum_{j=k}^{K-1} \Delta \ell_j
+$$
+
+Thus, the Bayes opt parameter vector then becomes
+$$
+D^\star=\{n,c,\Delta u_{K-1},\Delta\ell_{K-1},\dots,\Delta u_1, \Delta \ell_1\}.
+$$
+
+# Results
+
+## Seach space 
 
 Taking a three-stage design as an example, the design parameters are
 
 $$
-D = \begin{bmatrix}
-u_1\\
-u_2\\
-u_3\\
-\ell_1\\
-\ell_2\\
+D^\star = \begin{bmatrix}
+c &
+\Delta u_1&
+\Delta u_2&
+\Delta \ell_1&
+\Delta \ell_2&
 n
 \end{bmatrix}
 $$
 
-and our search space could be defined as
-```
-# design params  u_1  u_2  u_3  l_1  l_2  n
-upper_bounds = [ 6,   6,   6,   6,   6,   60 ]
-lower_bounds = [-6,  -6,  -6,  -6,  -6,    2 ]
-```
-
-## Reference loss function values
-
-For reference, the loss function values $\mathcal{L}(T_i, \lambda)$ for the given Pocock, O'Brien-Fleming, and triangular boundaries are:
-
-| Boundary        | Loss function value |
-|-----------------|---------------------|
-| Pocock          | 0.372               |
-| O’Brien-Fleming | 0.337               |
-| Triangular      | 0.271               |
-
-## "Big box" search space | Settings
-
-- The loss function = $\mathcal{L}(T_i, \lambda)$
-- GP regression kernel = Matérn 5/2
-- Acquisition function = expected improvement
-
-Search space:
-```
-# design params  u_1  u_2  u_3  l_1  l_2  n
-upper_bounds = [ 6,   6,   6,   6,   6,   60 ]
-lower_bounds = [-6,  -6,  -6,  -6,  -6,    2 ]
-```
-
-## "Big box" search space | Results
-
-```{r}
-check_monotonicity <- function(df) {
-  # the last upper and lower bound must be equal
-  df$lower3 <- df$upper3
-  
-  # identify and sort columns to ensure logical order (1 -> 2 -> 3)
-  u_cols <- sort(grep("^upper", names(df), value = TRUE))
-  l_cols <- sort(grep("^lower", names(df), value = TRUE))
-  
-  # check upper > lower (for all 3 pairs)
-  # only check the pairs before the last one (upper1 > lower1, upper2 > lower2)
-  # because we know upper3 == lower3.
-  independent_indices <- 1:(length(u_cols) - 1)
-  upper_gt_lower <- rowSums(
-    df[u_cols[independent_indices]] > df[l_cols[independent_indices]]
-  ) == length(independent_indices)
-  
-  # check upper bounds monotonic (upper1 >= upper2 >= upper3)
-  upper_decreasing <- apply(df[u_cols], 1, function(x) all(diff(x) <= 0))
-  
-  # check lower bounds monotonic (lower1 <= lower2 <= lower3)
-  lower_increasing <- apply(df[l_cols], 1, function(x) all(diff(x) >= 0))
-  
-  # return TRUE if all conditions are met
-  return(upper_gt_lower & upper_decreasing & lower_increasing)
-}
-```
-
-```{r}
-big_box1 <- read.csv(
-  "./data/box6-6-2-60_boundaries.csv", 
-  colClasses = c("NULL", NA, NA, NA, NA, NA, NA),
-  col.names = c("skip", "upper1","upper2","upper3","lower1","lower2","n")
-)
-
-big_box2 <- read.csv(
-  "./data/box6-6-2-60_penalty.csv",
-  colClasses = c("NULL", NA),
-  col.names = c("skip", "obj_f")
-)
-
-big_box <- cbind(big_box1, big_box2)
-```
-
-```{r}
-big_box$valid <- check_monotonicity(big_box)
-```
-
-
-```{r, results='hide'}
-# how many valid study designs are there?
-# subtract 3 because there are 3 given bounds before bayes opt algo stars
-sum(big_box$valid) - 3
-```
-
-```{r, results='hide'}
-# what is the percent of runs that were valid?
-round((sum(big_box$valid)-3)/(nrow(big_box)-3) * 100, 2)
-```
-
-```{r, results='hide'}
-# what was the smallest loss function value for the "best" bounds?
-min(big_box[-c(1:3),][big_box[-c(1:3),]$valid,]$obj_f)
-```
-
-```{r, results='hide'}
-# what are the boundaries?
-big_box[big_box$obj_f < 1.64 & big_box$valid, ]
-```
-
-
-- Of 1,000, 11 were valid study designs giving a "success" percentage of 1.1%
-
-```{r}
-plot_bounds <- function(boundaries, obj_f, label_x, label_y) {
-  
-  tri_lower = boundaries[,1]
-  tri_upper = boundaries[,2]
-  best_bounds_lower = boundaries[,3]
-  best_bounds_upper = boundaries[,4]
-
-  ggplot(data = boundaries) +
-    
-    geom_line(aes(x = k_analysis, y = tri_lower, color = "Triangular")) +
-    geom_line(aes(x = k_analysis, y = tri_upper, color = "Triangular")) +
-    
-    geom_point(aes(x = k_analysis, y = tri_lower, color = "Triangular")) +
-    geom_point(aes(x = k_analysis, y = tri_upper, color = "Triangular")) +
-    
-    geom_line(aes(x = k_analysis, y = best_bounds_lower, color = "Bayes opt best")) +
-    geom_line(aes(x = k_analysis, y = best_bounds_upper, color = "Bayes opt best")) +
-    
-    geom_point(aes(x = k_analysis, y = best_bounds_lower, color = "Bayes opt best")) +
-    geom_point(aes(x = k_analysis, y = best_bounds_upper, color = "Bayes opt best")) +
-    
-    geom_label(aes(x=k_analysis, y=best_bounds_upper, label=best_bounds_upper)) +
-    geom_label(aes(x=k_analysis, y=best_bounds_lower, label=best_bounds_lower)) +
-    
-    labs(
-      title = "Best boundary",
-      x = "Analysis number, k",
-      y = "Test statistic, Z"
-    ) +
-    
-    scale_color_manual(name="Designs",
-                     breaks=c("Triangular", "Bayes opt best"),
-                     values=c("Triangular"="purple", "Bayes opt best"="darkorange")) +
-    
-    coord_cartesian(ylim = c(-4.5, 4.5)) +
-    
-    annotate("label", x = label_x, y = label_y, label = paste0("loss = ", as.character(obj_f))) +
-    
-    theme_bw()
-  
-}
-```
-
-
-```{r, fig.width=10, fig.height=4.5}
-boundaries <- data.frame(
-  tri_lower = c(0, 1.12, 1.84),
-  tri_upper = c(2.12, 1.87, 1.84),
-  best_big_lower = c(-3.69,	1.01, 2.73),
-  best_big_upper = c(4.37,	3.6,	2.73),
-  k_analysis = c(1, 2, 3)
-)
-
-plot_bounds(boundaries, 1.64, label_x = 1.5, label_y = -3)
-```
-
-## "Big box" search space | Results
-
-- Selected sample size per stage: 40
-- Maximum expected sample size: 98
-- $\alpha$ = 0.0032 (target 0.05)
-- $1-\beta$ = 0.96 (target 0.90)
-
-## Enforce monotonicity with search space | Settings
-
-- The loss function = $\mathcal{L}(T_i, \lambda)$
-- GP regression kernel = Matérn 5/2
-- Acquisition function = expected improvement
-
-Search space:
-```
-# design params  u_1  u_2  u_3  l_1  l_2  n
-upper_bounds = [ 3,   3,   3,   0,   0,   30 ]
-lower_bounds = [ 0,   0,   0,  -3,  -3,   10 ]
-```
-
-## Enforce monotonicity with search space | Results
-
-```{r}
-mono_box <- read.csv("./data/separate_upper_lower_box_monotonic.csv")
-names(mono_box)[names(mono_box) == "penalty"] <- "obj_f"
-```
-
-```{r}
-mono_box$valid <- check_monotonicity(mono_box)
-```
-
-```{r, results='hide'}
-nrow(mono_box)-3
-```
-
-
-```{r, results='hide'}
-# how many valid study designs are there?
-# subtract 3 because there are 3 given bounds before bayes opt algo stars
-sum(mono_box$valid) - 3
-```
-
-```{r, results='hide'}
-# what is the percent of runs that were valid?
-round((sum(mono_box$valid)-3)/(nrow(mono_box)-3) * 100, 2)
-```
-
-```{r, results='hide'}
-# what was the smallest loss function value for the "best" bounds?
-min(mono_box[-c(1:3),][mono_box[-c(1:3),]$valid,]$obj_f)
-```
-
-```{r, results='hide'}
-# what are the boundaries?
-mono_box[mono_box$obj_f < 0.36 & mono_box$valid, ]
-```
-
-- Of 1,500, 121 were valid study designs giving a "success" percentage of 8.1%
-
-```{r, fig.width=10, fig.height=4.5}
-boundaries <- data.frame(
-  tri_lower = c(0, 1.12, 1.84),
-  tri_upper = c(2.12, 1.87, 1.84),
-  best_lower = c(-1.39,	-0.46, 1.52),
-  best_upper = c(2.99,	2.51,	1.52),
-  k_analysis = c(1, 2, 3)
-)
-
-plot_bounds(boundaries, 0.351, label_x = 1.5, label_y = -1.8)
-```
-
-## Enforce monotonicity with search space | Results
-
-- Selected sample size per stage: 14
-- Maximum expected sample size: 36
-- $\alpha$ = 0.065 (target 0.05)
-- $1-\beta$ = 0.87 (target 0.90)
-
-## Penalize non-monotonicity + triangular search space | Settings
-
-Loss function:
-$$
-\mathcal{L}(T_i, \lambda) = \begin{cases}
-(\alpha'-\alpha)^2\lambda+(\beta'-\beta)^2\lambda+\frac{\max(\mathbb{E}[N\,|\,\mathbf{\delta}])}{\lambda}&\text{if monotonic}\\
-25& \text{otherwise}
-\end{cases}
-$$
-
-- GP regression kernel = Matérn 5/2
-- Acquisition function = expected improvement
-
-Search space:
-```
-# design params  u_1   u_2   u_3    l_1   l_2   n
-upper_bounds = [ 2.38, 2.14, 2.10,  0.26, 1.39, 30 ]
-lower_bounds = [ 1.86, 1.61, 1.57, -0.26, 0.86, 10 ]
-```
-
-## Penalize non-monotonicity + triangular search space | Results
-
-```{r}
-triang <- read.csv("./data/triang_monotonicity.csv")
-names(triang)[names(triang) == "penalty"] <- "obj_f"
-```
-
-```{r}
-triang$valid <- check_monotonicity(triang)
-```
-
-```{r, results='hide'}
-nrow(triang)-3
-```
-
-
-```{r, results='hide'}
-# how many valid study designs are there?
-# subtract 3 because there are 3 given bounds before bayes opt algo stars
-sum(triang$valid) - 3
-```
-
-```{r, results='hide'}
-# what is the percent of runs that were valid?
-round((sum(triang$valid)-3)/(nrow(triang)-3) * 100, 2)
-```
-
-```{r, results='hide'}
-# what was the smallest loss function value for the "best" bounds?
-min(triang[-c(1:3),][triang[-c(1:3),]$valid,]$obj_f)
-```
-
-```{r, results='hide'}
-# what are the boundaries?
-triang[triang$obj_f < 0.27 & triang$valid, ]
-```
-
-- Of 700, 327 were valid study designs giving a "success" percentage of 46.7%
-
-```{r, fig.width=10, fig.height=4.5}
-boundaries <- data.frame(
-  tri_lower = c(0, 1.12, 1.84),
-  tri_upper = c(2.12, 1.87, 1.84),
-  best_lower = c(0.036, 1.28, 1.78),
-  best_upper = c(1.93, 1.92, 1.78),
-  k_analysis = c(1, 2, 3)
-)
-
-plot_bounds(boundaries, 0.2696, label_x = 1.5, label_y = -0.6)
-```
-
-## Penalize non-monotonicity + triangular search space | Results
-
-- Selected sample size per stage: 22
-- Maximum expected sample size: 35
-- $\alpha$ = 0.056 (target 0.05)
-- $1-\beta$ = 0.899 (target 0.90)
-
-## Bayes opt with failure region | Settings
-
-- The loss function = $\mathcal{L}(T_i, \lambda)$
-- Variational GP kernel = squared exponential, Bernoulli likelihood
-- GP regression kernel = Matérn 5/2, Gaussian likelihood
-- Acquisition function =  product of expected improvement for GPR and probability of validity for the VGP
-
-Search space:
-```
-# design params  u_1  u_2  u_3  l_1  l_2  n
-upper_bounds = [ 3,   3,   3,   3,   3,   30 ]
-lower_bounds = [-3,  -3,  -3,  -3,  -3,   10 ]
-```
-
-## Bayes opt with failure region | Results
-
-```{r}
-fail <- read.csv("./data/failure_bounds_run1.csv")
-fail_penalty <- read.csv("./data/failure_region_bounds_run1.csv")
-```
-
-```{r, results='hide'}
-(nrow(fail)-3)
-```
-
-
-```{r, results='hide'}
-# because we have a check for the VGP optimizer, we can sum the output of this
-# check to get the monotonic bounds; again remove 3 because of the given bounds
-sum(fail$output)-3
-```
-
-```{r, results='hide'}
-# what is the percent of runs that were valid?
-round((sum(fail$output)-3)/(nrow(fail)-3) * 100, 2)
-```
-
-```{r, results='hide'}
-# what was the smallest loss function value for the "best" bounds?
-min(fail_penalty[-c(1:3),]$penalty)
-```
-
-```{r, results='hide'}
-# what are the boundaries?
-fail_penalty[fail_penalty$penalty < 0.33, ]
-```
-
-- Of 434, 17 were valid study designs giving a "success" percentage of 3.9%
-
-```{r, fig.width=10, fig.height=4.5}
-boundaries <- data.frame(
-  tri_lower = c(0, 1.12, 1.84),
-  tri_upper = c(2.12, 1.87, 1.84),
-  best_lower = c(0.437, 0.987, 1.74),
-  best_upper = c(2.36, 2.31, 1.74),
-  k_analysis = c(1, 2, 3)
-)
-
-plot_bounds(boundaries, 0.327, label_x = 1.5, label_y = -0.6)
-```
-
-## Bayes opt with failure region | Results
-
-- Selected sample size per stage: 22
-- Maximum expected sample size: 41
-- $\alpha$ = 0.039 (target 0.05)
-- $1-\beta$ = 0.89 (target 0.90)
-
-
-## Future directions
-
-- Monotonicity has been challenging to ensure while modeling the bounds directly.
-
-
-## Future directions
-
-- Monotonicity has been challenging to ensure while modeling the bounds directly.
-- Next step will be to reparameterise the space in terms of the final boundary meeting point.
-
-$$
-c = u_K = \ell_K
-$$
-
-## Future directions
-
-- Monotonicity has been challenging to ensure while modeling the bounds directly.
-- Next step will be to reparameterise the space in terms of the final boundary meeting point.
-
-$$
-c = u_K = \ell_K
-$$
-
-We then model **non-negative boundary increments**, $\Delta u_k$ and $\Delta \ell_k$. For $K$ stages,
-
-$$
-u_k = c + \sum^K_{j=k+1} \Delta u_j, \quad \ell_k = c - \sum^K_{j=k+1} \Delta \ell_j
-$$
-
-## Future directions
-
-- Monotonicity has been challenging to ensure while modeling the bounds directly.
-- Next step will be to reparameterise the space in terms of the final boundary meeting point.
-
-$$
-c = u_K = \ell_K
-$$
-
-We then model **non-negative boundary increments**, $\Delta u_k$ and $\Delta \ell_k$. For $K$ stages,
-
-$$
-u_k = c + \sum^K_{j=k+1} \Delta u_j, \quad \ell_k = c - \sum^K_{j=k+1} \Delta \ell_j
-$$
-
-Thus, the Bayes opt parameter vector then becomes $D=\{n, c, \Delta u_2, \Delta \ell_2, \dots, \Delta u_K, \Delta \ell_K\}$.
+| Bounds | **n** | $c$ | $\Delta u_2$ | $\Delta \ell_2$ | $\Delta u_1$ | $\Delta \ell_1$ |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Lower | 20 | $c_0 - 3$ | 0 | 0 | 0 | 0 |
+| Upper | 160 | $c_0 + 3$ | 4 | 4 | 4 | 4 |
+<br>
+where $c_0 \approx 1.84$ is the triangular design meeting point.
 
 ## Acknowledgements
 
