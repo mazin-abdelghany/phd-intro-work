@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.8"
 app = marimo.App(width="medium")
 
 
@@ -239,9 +239,9 @@ def _(mo):
 
 
 @app.cell
-def _(np, seed_for_runs):
+def _(n_experiments, np, seed_for_runs):
     rng = np.random.default_rng(seed=seed_for_runs.value)
-    runs_to_compare = rng.integers(low=1, high=11, size=9)
+    runs_to_compare = rng.integers(low=1, high=n_experiments.value+1.0, size=9)
     return (runs_to_compare,)
 
 
@@ -293,7 +293,6 @@ def _(column_runs_compare, datasets, pd):
             table_data, 
             index=["alpha_prime","beta_prime","sample_size","max_ess","loss"]
         )
-
     return (summaries,)
 
 
@@ -330,7 +329,6 @@ def _(datasets, n_experiments, n_loops, np):
                 "mean_best_idx": np.mean(best_idx_list) + 1,
                 "median_best_idx": np.median(best_idx_list) + 1
             }
-
     return (best_indices_metrics,)
 
 
