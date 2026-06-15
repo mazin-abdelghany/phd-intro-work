@@ -43,19 +43,19 @@ def obj_func(x):
 
 @app.cell
 def _(mo):
-    x_old = mo.ui.slider(-2.75, 2, 0.01, label="Old x")
+    x_old = mo.ui.slider(-2.75, 2, 0.01, label="Old x", value=-0.45)
     return (x_old,)
 
 
 @app.cell
 def _(mo):
-    x_new = mo.ui.slider(-2.75, 2, 0.01, label="New x: ")
+    x_new = mo.ui.slider(-2.75, 2, 0.01, label="New x: ", value=1.55)
     return (x_new,)
 
 
 @app.cell
 def _(mo):
-    temp = mo.ui.slider(0.1, 50, 0.1, label="Temp")
+    temp = mo.ui.slider(0.1, 50, 0.1, label="Temp", value=50)
     return (temp,)
 
 
@@ -82,8 +82,8 @@ def _(np):
 def _(accept_prob, np, plt, temp, x_new, x_old, xx, yy):
     fig, ax = plt.subplots(figsize=(12,6))
 
-    ax.scatter(x_old.value, obj_func(x_old.value), zorder=3, label = "old point", color = "purple")
-    ax.scatter(x_new.value, obj_func(x_new.value), zorder=3, label = "new point", color = "darkorange")
+    ax.scatter(x_old.value, obj_func(x_old.value), zorder=3, label = "old point", color = "purple", s=100)
+    ax.scatter(x_new.value, obj_func(x_new.value), zorder=3, label = "new point", color = "darkorange", s=100)
     ax.text(0, 10, "Temp: " + str(temp.value))
     ax.text(0, 9, "P(accept): " + str(
         np.round(accept_prob(f_new=obj_func(x_new.value), f_old=obj_func(x_old.value), temp=temp.value),3)
@@ -172,7 +172,7 @@ def _(iteration, plt, x, xx, y, yy):
 
     _ax.plot(xx, yy, color = "darkblue")
     _ax.vlines(x[iteration.value],-6,y[iteration.value], color = "purple")
-    _ax.scatter(x[iteration.value], y[iteration.value], color = "purple", zorder=3)
+    _ax.scatter(x[iteration.value], y[iteration.value], color = "purple", zorder=3, s=80)
     _ax.set_xlim(-2.75 , 2)
     _ax.set_ylim(-6,15)
 
@@ -189,7 +189,7 @@ def _(iteration, plt, x):
     _fig, _ax = plt.subplots(figsize=(12,6), dpi=80)
 
     _ax.plot(x, label = "simulated annealing path")
-    _ax.scatter(iteration.value, x[iteration.value], color = "purple", zorder=3)
+    _ax.scatter(iteration.value, x[iteration.value], color = "purple", zorder=3, s=80)
     _ax.axhline(-1.6558, color = "darkorange", label = "global optimum")
     _ax.axhline(0.905, color = "purple", label = "local optimum")
     _ax.legend(loc = "lower right")
