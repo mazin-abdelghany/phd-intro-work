@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.8"
 app = marimo.App(width="medium")
 
 
@@ -16,8 +16,9 @@ def _():
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
+    import matplotlib.lines as mlines
 
-    return np, pd, plt
+    return mlines, np, pd, plt
 
 
 @app.cell
@@ -229,7 +230,7 @@ def _(datasets, runs):
     for label, df in datasets.items():
         if len(df) == len(runs):
             df["runs"] = runs
-    return (label,)
+    return
 
 
 @app.cell
@@ -251,8 +252,8 @@ def _(np, seed_for_runs):
 
 
 @app.cell
-def _(rng):
-    runs_to_compare = rng.integers(low=1, high=11, size=6)
+def _(n_experiments, rng):
+    runs_to_compare = rng.integers(low=1, high=n_experiments.value, size=6)
     return (runs_to_compare,)
 
 
@@ -380,7 +381,7 @@ def _(best_bound_getter, datasets, plt, stages, tri):
         _b.legend(loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle("Best boundary", y=1.05)
+    _fig.suptitle("Best boundary", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
@@ -431,7 +432,7 @@ def _(best_constrained_bound_getter, datasets, plt, stages, tri):
         _b.legend(loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle("Best constrained boundary", y=1.05)
+    _fig.suptitle("Best constrained boundary", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
@@ -455,16 +456,7 @@ def _(np):
 
 
 @app.cell
-def _(
-    column_runs_compare,
-    datasets,
-    label,
-    mo,
-    plt,
-    rand_bound_getter,
-    stages,
-    tri,
-):
+def _(column_runs_compare, datasets, mo, plt, rand_bound_getter, stages, tri):
     # Dynamically loops through files and builds a grid of random selected run plots
     if not datasets or len(column_runs_compare) < 2:
         mo.md("")
@@ -479,7 +471,7 @@ def _(
         _upper, _lower, _obj_f, _alpha, _power = rand_bound_getter(_data, run_str)
         _b = _ax[_idx]
 
-        _b.set_title(f"{label} ({run_str})")
+        _b.set_title(f"{_label} ({run_str})")
         _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
         _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
@@ -497,7 +489,62 @@ def _(
         _b.legend(loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle("Best boundary -- Random runs overview", y=1.05)
+    _fig.suptitle("Best boundary -- Random runs overview", y=0.96)
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell
+def _(datasets):
+    datasets["Random"]
+    return
+
+
+@app.cell
+def _(
+    best_constrained_bound_getter,
+    column_runs_compare,
+    datasets,
+    mlines,
+    mo,
+    np,
+    plt,
+    runs,
+    stages,
+    tri,
+):
+    if not datasets or len(column_runs_compare) < 2:
+        mo.md("")
+
+    _num_plots = len(datasets)
+    _fig, _ax = plt.subplots(1, _num_plots, figsize=(6 * _num_plots, 3.5), sharey=True, squeeze=False)
+    _ax = _ax.flatten()
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+        for _run_idx, run in enumerate(np.unique(runs)):
+            run_data = _data[_data["runs"] == run]
+            _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(run_data)
+
+            _b = _ax[_idx]
+
+            _b.set_title(_label)
+            _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+
+            _b.plot(stages, _upper, color="purple", alpha = 0.15)
+            _b.plot(stages, _lower, color="purple", alpha = 0.15)
+
+        # draw triangular bounds
+        _b.plot(stages, tri[0], color="darkorange", zorder = 3)
+        _b.plot(stages, tri[1], color="darkorange", zorder = 3)
+    
+        # custom legend
+        best_bound_label = mlines.Line2D([], [], color='purple', label = "Best bounds")
+        tri_bound_label = mlines.Line2D([], [], color ="darkorange", label = "Tri bounds")
+        _b.legend(handles = [best_bound_label, tri_bound_label], loc="lower right")
+
+    _ax[0].set_ylabel("$Z_k$ values")
+    _fig.suptitle("Top 50 constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
