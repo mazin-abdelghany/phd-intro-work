@@ -1921,11 +1921,44 @@ $$
 D^\star=\{n,c,\Delta u_{K-1},\Delta\ell_{K-1},\dots,\Delta u_1, \Delta \ell_1\}.
 $$
 
+## Group sequential design plot reminder
+
+```{r}
+boundaries <- data.frame(
+  x = c(5, 3, 2, 1.5, 1),
+  y = c(-2, -1, 0, 0.5, 1),
+  k_analysis = c(1, 2, 3, 4, 5)
+)
+
+ggplot(data = boundaries) +
+  geom_ribbon(aes(x = k_analysis, ymin = x, ymax = Inf), fill = "red", alpha = 0.1) +
+  geom_ribbon(aes(x = k_analysis, ymin = y, ymax = -Inf), fill = "red", alpha = 0.1) +
+  geom_ribbon(aes(x = k_analysis, ymin = x, ymax = y), fill = "darkgreen", alpha = 0.2) +
+  
+  geom_line(aes(x = k_analysis, y = y), color = "red") +
+  geom_line(aes(x = k_analysis, y = x), color = "blue") +
+  
+  geom_point(aes(x = k_analysis, y = y)) +
+  geom_point(aes(x = k_analysis, y = x)) +
+  
+  annotate("label", x = 2, y = 1, label = "Continue trial") +
+  annotate("label", x = 3, y = 4, label = "Stop for efficacy (reject null)") +
+  annotate("label", x = 3, y = -1.5, label = "Stop for futility (fail to reject null)") +
+  
+  ylab("Test statistic, Z") +
+  xlab("Analysis number, k") +
+  
+  scale_x_continuous(limits = c(0.5,5.3), breaks = c(1, 2, 3, 4, 5)) +
+  scale_y_continuous(limits = c(-3, 6)) + 
+  
+  theme_bw()
+```
+
 # Results
 
 ## Seach space 
 
-Taking a three-stage design as an example, the design parameters are
+Starting with three-stage trials, the design parameters are
 
 $$
 D^\star = \begin{bmatrix}
@@ -1945,12 +1978,104 @@ $$
 <br>
 where $c_0 \approx 1.84$ is the triangular design meeting point.
 
+This parameter space was searched with (1) random uniform search, (2) simulated annealing, and (3) Bayesian optimisation by running 50 experiments of 500 loops (25,000 total searches).
+
+## Random search: Tabular summary
+
+| <img width=220/> | $\alpha'$ | $\beta'$ | Sample size, $n$ | Max ESS | $\mathcal{L}$ |
+|---|---|---|---|---|---|
+| Grand mean | 0.204 | 0.773 | 90.1 | 251.9 | 35.1 |
+| Run 5, mean | 0.18 | 0.762 | 92.2 | 257.7 | 33.9 |
+| Run 39, mean | 0.230 | 0.804 | 90.5 | 252.1 | 33.6 |
+| Best design | 0.063 | 0.884 | 55.5 | 113.9 | 0.801 |
+| Best constrained design | 0.045 | 0.891 | 53.2 | 138.2 | 0.914 |
+
+## Simulated annealing: Tabular summary
+
+| <img width=220/> | $\alpha'$ | $\beta'$ | Sample size, $n$ | Max ESS | $\mathcal{L}$ |
+|---|---|---|---|---|---|
+| Grand mean | 0.136 | 0.839 | 96.7 | 269.3 | 19.3 |
+| Run 5, mean | 0.174 | 0.789 | 96.6 | 264.5 | 28.4 |
+| Run 39, mean | 0.134 | 0.801 | 102.8 | 283.0 | 25.5 |
+| Best design | 0.058 | 0.891 | 61.6 | 124.9 | 0.832 |
+| Best constrained design | 0.047 | 0.899 | 52.6 | 142.4 | 0.925 |
+
+## Bayesian optimisation: Tabular summary
+
+| <img width=220/> | $\alpha'$ | $\beta'$ | Sample size, $n$ | Max ESS | $\mathcal{L}$ |
+|---|---|---|---|---|---|
+| Grand mean | 0.052 | 0.903 | 72.4 | 190.6 | 1.581 |
+| Run 5, mean | 0.051 | 0.904 | 73.1 | 190.9 | 1.582 |
+| Run 39, mean | 0.054 | 0.906 | 72.2 | 190.3 | 1.569 |
+| Best design | 0.065 | 0.887 | 47.4 | 100.1 | 0.708 |
+| Best constrained design | 0.049 | 0.89 | 52.8 | 111.8 | 0.740 |
+
+## When is the best design found?
+
+|  | Min best index | Max best index | Mean best index | Median best index |
+|---|---|---|---|---|
+| Random | 10 | 496 | 271 | 262 |
+| Sim. annealing | 14 | 500 | 284 | 281 |
+| Bayes. opt. | 11 | 499 | 410 | 448 |
+
+## What about study design feasibility?
+
+Define feasibility:
+
+$$
+\alpha' \le \alpha + \epsilon_1 \qquad\text{and}\qquad \beta' \le \beta + \epsilon_2
+$$
+
+Define strict feasibility:
+
+$$
+\alpha - \epsilon_1 \le \alpha' \le \alpha + \epsilon_1 \qquad\text{and}\qquad \beta-\epsilon_2 \le \beta' \le \beta + \epsilon_2
+$$
+
+
+For $\epsilon_1 = 0.01$ and $\epsilon_2 = 0.02$,  
+- Feasibility: $\alpha' \le 0.06$ and $(1 - \beta') \ge 0.88$  
+- Strict feasibility: $0.04 \le \alpha' \le 0.06$ and $0.88 \le (1 - \beta') \le 0.91$  
+
+|  | Random | Sim. annealing | Bayes. opt. |
+|---|---|---|---|
+| Mean feasibility (%) | 16.1 | 25.9 | 49.3 |
+| Mean strict feasibility (%) | 0.14 | 0.375 | 18.8 |
+
+## Distributions of $\alpha'$ and $1-\beta'$
+
+```{r, out.width="100%"}
+knitr::include_graphics("images/alpha_beta_dist.png")
+```
+
+## Distributions of $n$, max ESS, and $\mathcal{L}$
+
+```{r, out.width="100%"}
+knitr::include_graphics("images/n_maxEss_loss_dist.png")
+```
+
+## What do these design boundaries look like?
+
+```{r, out.width="100%"}
+knitr::include_graphics(
+  c("images/50_bounds.png", "images/best_constrained_bound.png")
+)
+```
+
+## Future directions
+
+- Exclude sample size from search space.
+- Modify the objective function to weigh each constraint differently.
+- Expand the search from 3-stage to higher stage (e.g., 5-stage) designs.
+- Bayesian optimisation with failure region.
+- Application to multiarm, multistage trials.
+
 ## Acknowledgements
 
-- Primary advisor: David Robertson
-- Secondary advisor: Paul Kirk
+- Primary advisor: Dr. David Robertson
+- Secondary advisor: Dr. Paul Kirk
 - MRC BSU for its support and kindness!
-- The Cambridge Trust
+- Funding: The Cambridge Trust
 
 
 <div class="centered blue"><b>Thank you!</b></div>
@@ -1959,9 +2084,7 @@ where $c_0 \approx 1.84$ is the triangular design meeting point.
   
 Mathematics/derivations: @williams2006gaussian
   
-Inspiration for some of the visualizations: @turner2016machine, @gramacy2022surr, and @gramacy2022surrPart2  
-  
-Bayesian optimization visualization: @farina2024lecture  
+Inspiration for some of the visualizations: @turner2016machine, @farina2024lecture, @gramacy2022surr, and @gramacy2022surrPart2  
 
 Machine learning for trial design: @wason2012optimal
 
