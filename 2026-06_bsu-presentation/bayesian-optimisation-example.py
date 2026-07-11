@@ -4,14 +4,6 @@ __generated_with = "0.23.8"
 app = marimo.App(width="medium")
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Setup
-    """)
-    return
-
-
 @app.cell
 def _():
     import marimo as mo
