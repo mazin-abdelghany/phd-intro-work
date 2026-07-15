@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.8"
 app = marimo.App(width="medium")
 
 
@@ -375,7 +375,7 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 50
+    n_experiments = 100
     n_loops = 500
 
     # generate labels for data frame
@@ -537,7 +537,7 @@ def _(mo):
 
 @app.cell
 def _(pd, random_search_large_box):
-    pd.DataFrame(random_search_large_box).to_csv("/tf/experiments_rand_simann_bo/random_search_experiments/large_box_10by10k.csv")
+    pd.DataFrame(random_search_large_box).to_csv("/tf/first_year_assessment/first_year_assessment_final_data/rand_large_box_100by500.csv")
     return
 
 
