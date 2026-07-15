@@ -704,5 +704,20 @@ def _(reverse_to_boundaries):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Classical boundaries and their losses
+
+    Go to `/tf/first_year_assessment/classical_bounds_compare.py` for that figure
+    """)
+    return
+
+
+@app.cell
+def _():
+    return
+
+
 if __name__ == "__main__":
     app.run()
