@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -496,12 +496,6 @@ def _(column_runs_compare, datasets, mo, plt, rand_bound_getter, stages, tri):
 
 
 @app.cell
-def _(datasets):
-    datasets["Random"]
-    return
-
-
-@app.cell
 def _(
     best_constrained_bound_getter,
     column_runs_compare,
@@ -514,6 +508,8 @@ def _(
     stages,
     tri,
 ):
+    n_over_5 = 0
+
     if not datasets or len(column_runs_compare) < 2:
         mo.md("")
 
@@ -525,7 +521,7 @@ def _(
         for _run_idx, run in enumerate(np.unique(runs)):
             run_data = _data[_data["runs"] == run]
             _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(run_data)
-
+            if _upper[0] >= 5: n_over_5 +=1
             _b = _ax[_idx]
 
             _b.set_title(_label)
@@ -537,16 +533,27 @@ def _(
         # draw triangular bounds
         _b.plot(stages, tri[0], color="darkorange", zorder = 3)
         _b.plot(stages, tri[1], color="darkorange", zorder = 3)
-    
+
         # custom legend
         best_bound_label = mlines.Line2D([], [], color='purple', label = "Best bounds")
         tri_bound_label = mlines.Line2D([], [], color ="darkorange", label = "Tri bounds")
         _b.legend(handles = [best_bound_label, tri_bound_label], loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle("Top 50 constrained boundaries", y=0.96)
+    _fig.suptitle(f"Top {len(np.unique(runs))} constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
+    return (n_over_5,)
+
+
+@app.cell(hide_code=True)
+def _(mo, n_over_5):
+    mo.Html(f"{n_over_5}")
+    return
+
+
+@app.cell
+def _():
     return
 
 
