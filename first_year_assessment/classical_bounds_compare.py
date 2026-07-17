@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -58,9 +58,9 @@ def _(ss):
     a null hypothesis of           {delta0},
     an alternative hypothesis of   {delta1},
     and an assumed variance of     {sigma2}\n""")
-      
+
     print(f"Single-stage sample size mu = {mu:.2f}")
-    return delta0, delta1, num_analyses, sigma2, target_alpha, target_power
+    return delta0, delta1, mu, num_analyses, sigma2, target_alpha, target_power
 
 
 @app.cell
@@ -133,6 +133,7 @@ def _(
     delta0,
     delta1,
     fmt_bd,
+    mu,
     np,
     num_analyses,
     obj_f,
@@ -157,7 +158,7 @@ def _(
     )[0]
 
     poc_alpha, poc_power, poc_max_ess, poc_obj = obj_f(
-        mu = 154,
+        mu = mu,
         upper_bounds = poc[0],
         lower_bounds = poc[1],
         n_analyses = num_analyses,
@@ -203,6 +204,7 @@ def _(
     delta0,
     delta1,
     fmt_bd,
+    mu,
     np,
     num_analyses,
     obj_f,
@@ -227,7 +229,7 @@ def _(
     )[0]
 
     obf_alpha, obf_power, obf_max_ess, obf_obj = obj_f(
-        mu = 154,
+        mu = mu,
         upper_bounds = obf[0],
         lower_bounds = obf[1],
         n_analyses = num_analyses,
@@ -273,6 +275,7 @@ def _(
     delta0,
     delta1,
     fmt_bd,
+    mu,
     np,
     num_analyses,
     obj_f,
@@ -298,7 +301,7 @@ def _(
     )[0]
 
     tri_alpha, tri_power, tri_max_ess, tri_obj = obj_f(
-        mu = 154,
+        mu = mu,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
         n_analyses = num_analyses,
@@ -330,12 +333,120 @@ def _(
     return tri, tri_max_ess, tri_obj
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # OptGS bounds
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## R code and output
+
+    // Find optimal asymmetric trial configuration
+    // J=3 stages, alpha=0.025, power=0.9, delta=0.3
+    optimal_design <- optgs(
+    J = 3,
+      alpha = 0.05,
+      power = 0.9,
+      delta1 = 1,
+      sigma = 3,
+      weights = c(0, 0, 1, 0)
+    )
+
+    print(optimal_design)
+
+    Groupsize:  65
+    Futility boundaries  0.15 1.1 1.79
+    Efficacy boundaries  2.14 1.91 1.79
+    ESS at null:     98.2
+    ESS at CRD:      109.7
+    Maximum ESS:     126
+    Max sample-size: 195
+    """)
+    return
+
+
+@app.cell
+def _(
+    delta0,
+    delta1,
+    fmt_bd,
+    mu,
+    np,
+    num_analyses,
+    obj_f,
+    sigma2,
+    ss,
+    target_alpha,
+    target_power,
+):
+    optgs = [
+        [2.14, 1.91, 1.79],
+        [0.15, 1.1, 1.79]
+    ]
+
+    optgs_n_patients = ss.find_sample_size(
+        power_target = target_power,
+        n_analyses = num_analyses,
+        upper_bounds = optgs[0],
+        lower_bounds = optgs[1],
+        null_hypothesis = delta0,
+        alt_hypothesis = delta1,
+        variance = sigma2
+    )[0]
+
+    optgs_alpha, optgs_power, optgs_max_ess, optgs_obj = obj_f(
+        mu = mu,
+        upper_bounds = optgs[0],
+        lower_bounds = optgs[1],
+        n_analyses = num_analyses,
+        n_patients = optgs_n_patients,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+
+    optgs_params = fmt_bd.boundaries_to_reverse(
+        upper_bounds = optgs[0],
+        lower_bounds = optgs[1]
+    )
+
+    optgs_c0 = optgs_params[0]
+
+    print(f"Original trriangular params:        {np.round(np.concatenate((optgs[0], optgs[1])), 4)}")
+    print(f"Reparameterized triangular params:  {np.round(optgs_params, 4)}")
+    print(f"Meeting point c0 =                  {optgs_c0:.4f}\n")
+    print(f"Triangular benchmark objective:     {optgs_obj:.4f}")
+    print(f"Triangular alpha:                   {optgs_alpha:.4f}")
+    print(f"Triangular delta alpha:             {abs(0.05-optgs_alpha):.4f}")
+    print(f"Triangular power:                   {optgs_power:.4f}")
+    print(f"Triangular delta beta:              {abs(0.9-optgs_power):.4f}")
+    print(f"Triangular sample size:             {optgs_n_patients:.1f}")
+    print(f"Triangular max ESS:                 {optgs_max_ess:.1f}")
+    return (optgs,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Draw the bounds
+    """)
+    return
+
+
 @app.cell
 def _(
     num_analyses,
     obf,
     obf_max_ess,
     obf_obj,
+    optgs,
     plt,
     poc,
     poc_max_ess,
@@ -358,10 +469,17 @@ def _(
     _ax[1].scatter(stages, obf[0], color = "black", s=25, zorder=2)
     _ax[1].scatter(stages, obf[1], color = "black", s=25, zorder=2)
 
-    _ax[2].plot(stages, tri[0], color = "purple")
+    _ax[2].plot(stages, tri[0], color = "purple", label = "Triangular")
     _ax[2].plot(stages, tri[1], color = "purple")
     _ax[2].scatter(stages, tri[0], color = "black", s=25, zorder=2)
     _ax[2].scatter(stages, tri[1], color = "black", s=25, zorder=2)
+
+    _ax[2].plot(stages, optgs[0], color = "darkorange", label = "OptGS")
+    _ax[2].plot(stages, optgs[1], color = "darkorange")
+    _ax[2].scatter(stages, optgs[0], color = "black", s=25, zorder=2)
+    _ax[2].scatter(stages, optgs[1], color = "black", s=25, zorder=2)
+
+    _ax[2].legend(loc="lower left")
 
     _ax[0].set_ylabel("Standardised $Z_k$")
     _ax[0].set_ylim(-4, 4)
@@ -376,7 +494,7 @@ def _(
     _ax[1].text(2.1, -3.3, f"max ESS = {obf_max_ess:.1f}")
 
     _ax[2].set_xticks(stages)
-    _ax[2].set_title("Triangular boundaries")
+    _ax[2].set_title("Triangular and OptGS boundaries")
     _ax[2].text(2.1, -2.8, "$\mathcal{L}$ = " + f"{tri_obj:.4f}")
     _ax[2].text(2.1, -3.3, f"max ESS = {tri_max_ess:.1f}")
 
