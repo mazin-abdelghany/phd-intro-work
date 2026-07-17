@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -154,7 +154,7 @@ def _(fn_min, fp, sim, ss):
             alpha_prime = alpha_prime
         )
 
-        f_val = fn_min.function_to_minimize(max_ess_val = max_ess, penalty = penalty)
+        f_val = fn_min.function_to_minimize(max_ess_val = max_ess/mu, penalty = penalty)
 
         return (
             alpha_prime,
@@ -398,8 +398,8 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 10
-    n_loops = 500
+    n_experiments = 15
+    n_loops = 1000
     return n_experiments, n_loops
 
 
@@ -798,7 +798,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_full-max-ess-penalty.csv"
+        "/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_15x1000.csv"
     )
     return
 
