@@ -391,8 +391,8 @@ def _(mo):
     # Neighbour functions
 
     There are two options for the neighbour functions:
-    1. We generate the bounds from the box as is.
-    2. We modify the current bounds with some small perturbation.
+    1. We generate the bounds from the box as is (`rand_neighbour()`).
+    2. We modify the current bounds with some small perturbation (`norm_neighbour()`).
     """)
     return
 
@@ -403,10 +403,18 @@ def _(np):
     return (rngt,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Random uniform neighbour
+    """)
+    return
+
+
 @app.cell
 def _(current_lower, current_upper):
     # the neighbour function
-    def neighbour(params, K, rng):
+    def rand_neighbour(params, K, rng):
 
         modifying_params = params.copy()
 
@@ -420,29 +428,122 @@ def _(current_lower, current_upper):
 
         return modifying_params
 
-    return (neighbour,)
+    return (rand_neighbour,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Normal distribution neighbour
+    """)
+    return
+
+
+@app.cell
+def _(np):
+    # because the perturbations could land the parameters outside of the bounds
+    # a function is created to assess if the new bounds are within the boundaries
+    def within_search_space(params, lower_search_bounds, upper_search_bounds):
+
+        within_search_space = (params >= lower_search_bounds) & (params <= upper_search_bounds)
+
+        return np.all(within_search_space)
+
+    return (within_search_space,)
+
+
+@app.cell
+def _(within_search_space):
+    def norm_neighbour(params, K, rng, sigma_vector, lower_search_bounds, upper_search_bounds):
+
+        modifying_params = params.copy()
+
+        # generates discrete uniform values from 0 to 5
+        idx_to_change = rng.integers(low=0, high=6)
+
+        # make a first change
+        # generate normal(0, 1) perturbation and multiply by correct sigma
+        perturbation = rng.normal() * sigma_vector[idx_to_change]
+        modifying_params[idx_to_change] = params[idx_to_change] + perturbation
+
+        while not within_search_space(modifying_params, lower_search_bounds, upper_search_bounds):
+            # try another perturbation
+            perturbation = rng.normal() * sigma_vector[idx_to_change]
+            modifying_params[idx_to_change] = params[idx_to_change] + perturbation
+
+        return modifying_params
+
+    return (norm_neighbour,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Testing the neighbour functions
+    """)
+    return
 
 
 @app.cell
 def _(np, tri_params):
-    np.concatenate((tri_params, [20]))
+    parameter_test = np.concatenate((tri_params, [20]))
+    return (parameter_test,)
+
+
+@app.cell
+def _(parameter_test):
+    parameter_test
     return
 
 
 @app.cell
-def _(neighbour, np, rngt, tri_params):
-    neighbour(np.concatenate((tri_params, [20])), 3, rng = rngt)
+def _(num_analyses, parameter_test, rand_neighbour, rngt):
+    rand_neighbour(parameter_test, num_analyses, rng = rngt)
     return
 
 
 @app.cell
-def _(neighbour, np, rngt, tri_params):
+def _():
+    # empirically selected sigma values that will decrease over time
+    sigma_vector = [2, 2, 2, 2, 2, 25]
+    return (sigma_vector,)
+
+
+@app.cell
+def _(
+    current_lower,
+    current_upper,
+    norm_neighbour,
+    num_analyses,
+    parameter_test,
+    rngt,
+    sigma_vector,
+):
+    norm_neighbour(parameter_test, 
+                   num_analyses, 
+                   rng = rngt, 
+                   sigma_vector = sigma_vector, 
+                   lower_search_bounds = current_lower,
+                   upper_search_bounds = current_upper)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Random uniform neighbour
+    """)
+    return
+
+
+@app.cell
+def _(np, rand_neighbour, rngt, tri_params):
     bounds_collector = []
     sample_size_collector = []
     num_tests = 2000
     tmp = np.concatenate((tri_params, [20]))
     for _i in range(num_tests):
-        tmp = neighbour(tmp, 3, rng = rngt)
+        tmp = rand_neighbour(tmp, 3, rng = rngt)
         bound = tmp[0:5]
         sample_size_collector.append(tmp[5])
         bounds_collector.append(bound.tolist())
@@ -457,6 +558,64 @@ def _(bounds_collector, fmt_bd, num_analyses, num_tests, plt, tri):
 
     for _i in range(num_tests):
         _bounds = fmt_bd.reverse_to_boundaries(bounds_collector[_i], K=3)
+        _ax.plot(analyses, _bounds[0], color = "purple", alpha = 0.1)
+        _ax.plot(analyses, _bounds[1], color = "purple", alpha = 0.1)
+
+    _ax.plot(analyses, tri[0], color = "red", lw = 2)
+    _ax.plot(analyses, tri[1], color = "red", lw = 2)
+
+    _fig
+    return (analyses,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Random normal perturbation
+    """)
+    return
+
+
+@app.cell
+def _(
+    current_lower,
+    current_upper,
+    norm_neighbour,
+    np,
+    num_analyses,
+    num_tests,
+    rngt,
+    sigma_vector,
+    tri_params,
+):
+    bounds_collector1 = []
+    sample_size_collector1 = []
+
+    tmp1 = np.concatenate((tri_params, [20]))
+
+    for _i in range(num_tests):
+
+        tmp1 = norm_neighbour(
+            tmp1,
+            num_analyses,
+            rng = rngt,
+            sigma_vector = sigma_vector,
+            lower_search_bounds = current_lower,
+            upper_search_bounds = current_upper
+        )
+
+        bound1 = tmp1[0:5]
+        sample_size_collector1.append(tmp1[5])
+        bounds_collector1.append(bound1.tolist())
+    return (bounds_collector1,)
+
+
+@app.cell
+def _(analyses, bounds_collector1, fmt_bd, num_tests, plt, tri):
+    _fig, _ax = plt.subplots()
+
+    for _i in range(num_tests):
+        _bounds = fmt_bd.reverse_to_boundaries(bounds_collector1[_i], K=3)
         _ax.plot(analyses, _bounds[0], color = "purple", alpha = 0.1)
         _ax.plot(analyses, _bounds[1], color = "purple", alpha = 0.1)
 
@@ -511,16 +670,7 @@ def _(num_analyses):
 
 
 @app.cell
-def _(labels):
-    # to save the best design and f_min values
-    keys = ["index"] + labels + ["best_n", "f_min"]
-
-    best_values = {key: [] for key in keys}
-    return (best_values,)
-
-
-@app.cell
-def _(best_values, box_values_collection, label_range, n_experiments, n_loops):
+def _(box_values_collection, label_range, n_experiments, n_loops):
     # generate the indices using the pattern described above
     index_list = [
         i 
@@ -529,7 +679,6 @@ def _(best_values, box_values_collection, label_range, n_experiments, n_loops):
     ]
 
     box_values_collection["index"] = index_list
-    best_values["index"] = index_list
     return
 
 
@@ -559,8 +708,19 @@ def _(mo):
 
 
 @app.cell
+def _(mo):
+    norm_neighbour_on = mo.ui.switch(label="norm_neighbour( )")
+    return (norm_neighbour_on,)
+
+
+@app.cell
+def _(mo, norm_neighbour_on):
+    mo.vstack([norm_neighbour_on, mo.md(f"Has value: {norm_neighbour_on.value}")])
+    return
+
+
+@app.cell
 def _(
-    best_values,
     box_values_collection,
     current_lower,
     current_upper,
@@ -571,10 +731,12 @@ def _(
     mu,
     n_experiments,
     n_loops,
-    neighbour,
+    norm_neighbour,
+    norm_neighbour_on,
     np,
     num_analyses,
     obj_f,
+    rand_neighbour,
     short_seed_list,
     sigma2,
     target_alpha,
@@ -600,7 +762,9 @@ def _(
 
         f_value = tri_obj.copy()
 
+        # initial values for temperature and standard deviations
         temperature_start = 100
+        sigma_vector_start = np.array([2, 2, 2, 2, 2, 25])
 
         f_min = f_value.copy()
         best_design = initial_params.copy()
@@ -611,8 +775,21 @@ def _(
         # there are n_loops number of reverse_bounds to iterate through
         for j in range(n_loops):
 
+            # reduce the sigma vector values
+            sigma_vector_use = sigma_vector_start * (1 - (j/n_loops))
+
             # generate a new design with neighbour
-            candidate_design = neighbour(params = current_design, K = num_analyses, rng = rng)
+            if norm_neighbour_on.value:
+                candidate_design = norm_neighbour(
+                    params = current_design,
+                    K = num_analyses,
+                    rng = rng,
+                    sigma_vector = sigma_vector_use,
+                    lower_search_bounds = current_lower,
+                    upper_search_bounds = current_upper
+                )
+            else:
+                candidate_design = rand_neighbour(params = current_design, K = num_analyses, rng = rng)
 
             # get its characteristics and calculate its penalty
             candidate_bounds = fmt_bd.reverse_to_boundaries(params = candidate_design[0:5], K = num_analyses)
@@ -632,7 +809,7 @@ def _(
                 variance = sigma2
             )
 
-            # change the temperature
+            # reduce the temperature
             temperature = temperature_start * (1 - (j/n_loops))
 
             uniform_selector = rng.uniform(size = 1)
@@ -665,12 +842,6 @@ def _(
             best_bounds_list = np.concatenate( (best_bounds[0], best_bounds[1][0:2]) )
             best_n = best_design[5]
 
-            for _i in range(len(best_bounds_list)):
-                best_values[labels[_i]].extend([best_bounds_list[_i]])
-
-            best_values["best_n"].extend([best_n])
-            best_values["f_min"].extend([f_min])
-
             if j % 25 == 0:
                 print(".", end = "")
 
@@ -697,40 +868,21 @@ def _(mo):
 
 
 @app.cell
-def _(best_values, pd):
-    best_values_df = pd.DataFrame(best_values)
-    return (best_values_df,)
-
-
-@app.cell
-def _(best_values_df, np):
-    np.unique(best_values_df["f_min"])[0]
-    return
-
-
-@app.cell
-def _(best_values_df, np):
-    best_values_df[best_values_df["f_min"] == np.unique(best_values_df["f_min"])[0]].iloc[0, :]
-    return
-
-
-@app.cell
 def _(box_values_collection, pd):
     box_collections_df = pd.DataFrame(box_values_collection)
     return (box_collections_df,)
 
 
 @app.cell
-def _(best_values_df):
-    best_values_df.to_csv(
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triang_box_t100_best_journey.csv")
+def _(box_collections_df):
+    box_collections_df
     return
 
 
 @app.cell
 def _(box_collections_df):
     box_collections_df.to_csv(
-        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/triang_box_t100_results.csv")
+        "/workspace/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_rnorm_results.csv")
     return
 
 
