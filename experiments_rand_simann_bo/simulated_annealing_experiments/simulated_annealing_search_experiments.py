@@ -763,8 +763,14 @@ def _(
         f_value = tri_obj.copy()
 
         # initial values for temperature and standard deviations
-        temperature_start = 100
+        temperature_start = 50
         sigma_vector_start = np.array([2, 2, 2, 2, 2, 25])
+
+        # small sigma test:
+        # sigma_vector_start = np.array([1.5, 1.5, 1.5, 1.5, 1.5, 15])
+    
+        # start-end test:
+        # sigma_vector_end = np.array([0.01, 0.01, 0.01, 0.01, 0.01, 2])
 
         f_min = f_value.copy()
         best_design = initial_params.copy()
@@ -776,7 +782,10 @@ def _(
         for j in range(n_loops):
 
             # reduce the sigma vector values
+            # this is a linear decay
             sigma_vector_use = sigma_vector_start * (1 - (j/n_loops))
+            # below is an exponential decay
+            # sigma_vector_use = sigma_vector_start * (sigma_vector_end/sigma_vector_start)**(j/n_loops)
 
             # generate a new design with neighbour
             if norm_neighbour_on.value:
@@ -882,7 +891,7 @@ def _(box_collections_df):
 @app.cell
 def _(box_collections_df):
     box_collections_df.to_csv(
-        "/workspace/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t100_rnorm_results.csv")
+        "/workspace/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t50_rnorm_small-sigma_results.csv")
     return
 
 
