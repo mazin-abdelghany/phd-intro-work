@@ -540,20 +540,51 @@ def _(mo):
 
 
 @app.cell
+def _(datasets, labels):
+    # empty dictionaries to fill with sorted constrained data
+    _constrained_data = dict()
+    sorted_constrained_data = dict()
+
+    for _i, _label_ui in enumerate(labels.elements):
+        # get the labels for the sorted constrained data dictionary
+        _label_value = _label_ui.value if _label_ui.value else f"Method_{_i+1}"
+
+        # get rows only where alpha <= 0.05
+        _constrained_data[_label_value] = datasets[_label_value][datasets[_label_value]["alpha"] <= 0.05]
+
+        # group by the run, get the index of the minimum value for the objective function, then sort
+        # reset the index, so indexing can start from 0
+        # save this in the dictionary position for the corresponding label
+        idx = (
+            _constrained_data[_label_value]
+            .groupby("runs")["obj_func"]
+            .idxmin()
+        )
+    
+        sorted_constrained_data[_label_value] = (
+            _constrained_data[_label_value]
+            .loc[idx]
+            .sort_values("obj_func")
+            .reset_index(drop=True)
+        )
+    return (sorted_constrained_data,)
+
+
+@app.cell
 def _(
-    best_constrained_bound_getter,
     column_runs_compare,
     datasets,
+    lower_boundary_value_labels,
     mlines,
     mo,
     np,
     plt,
     runs,
+    sorted_constrained_data,
     stages,
     tri,
+    upper_boundary_value_labels,
 ):
-    n_over_5 = 0
-
     if not datasets or len(column_runs_compare) < 2:
         mo.md("")
 
@@ -562,20 +593,20 @@ def _(
     _ax = _ax.flatten()
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-        for _run_idx, _run in enumerate(np.unique(runs)):
-            run_data = _data[_data["runs"] == _run]
-            _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(run_data)
-        
-            # count number of first upper bounds over 5
-            if _upper[0] >= 5: n_over_5 +=1
+        for _run_idx in range(len(np.unique(runs))):
         
             _b = _ax[_idx]
 
             _b.set_title(_label)
             _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
-            _b.plot(stages, _upper, color="purple", alpha = 0.15)
-            _b.plot(stages, _lower, color="purple", alpha = 0.15)
+            _b.plot(stages, 
+                    sorted_constrained_data[_label].loc[_run_idx, upper_boundary_value_labels], 
+                    color="purple", alpha = 0.15)
+        
+            _b.plot(stages, 
+                    sorted_constrained_data[_label].loc[_run_idx, lower_boundary_value_labels], 
+                    color="purple", alpha = 0.15)
 
         # draw triangular bounds
         _b.plot(stages, tri[0], color="darkorange", zorder = 3)
@@ -590,12 +621,105 @@ def _(
     _fig.suptitle(f"Top {len(np.unique(runs))} constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
-    return (n_over_5,)
+    return
 
 
 @app.cell(hide_code=True)
-def _(mo, n_over_5):
-    mo.Html(f"There are {n_over_5} first upper bounds that are greater than 5.")
+def _(mo):
+    mo.md(r"""
+    ## Top sorted, constrained boundaries with slider
+    """)
+    return
+
+
+@app.cell
+def _(mo, n_experiments):
+    slider = mo.ui.slider(start=0, stop=n_experiments.value-1)
+    return (slider,)
+
+
+@app.cell
+def _(mo, slider):
+    mo.vstack([slider, mo.md(f"Has value: {slider.value}")])
+    return
+
+
+@app.cell
+def _(
+    column_runs_compare,
+    datasets,
+    lower_boundary_value_labels,
+    mlines,
+    mo,
+    np,
+    plt,
+    runs,
+    slider,
+    sorted_constrained_data,
+    stages,
+    tri,
+    upper_boundary_value_labels,
+):
+    if not datasets or len(column_runs_compare) < 2:
+        mo.md("")
+
+    _num_plots = len(datasets)
+    _fig, _ax = plt.subplots(1, _num_plots, figsize=(6 * _num_plots, 3.5), sharey=True, squeeze=False)
+    _ax = _ax.flatten()
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+
+        _b = _ax[_idx]
+        _b.set_ylim(-8, 8)
+
+        _b.set_title(_label)
+        _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+
+        _b.plot(stages, 
+                sorted_constrained_data[_label].loc[slider.value, upper_boundary_value_labels], 
+                color="purple")
+    
+        _b.plot(stages, 
+                sorted_constrained_data[_label].loc[slider.value, lower_boundary_value_labels], 
+                color="purple")
+
+        _b.text(1.5, -4, 
+                "$\\alpha$ = " + str(sorted_constrained_data[_label].loc[slider.value, "alpha"].round(4)))
+
+        _b.text(1.4, -5.5, 
+                "$1-\\beta$ = " + str(sorted_constrained_data[_label].loc[slider.value, "power"].round(4)))
+
+        _b.text(1.87, -4, 
+                "n = " + str(sorted_constrained_data[_label].loc[slider.value, "sample_size"].round()))   
+
+        _b.text(1.87, -5.5, 
+                "Max ESS = " + str(sorted_constrained_data[_label].loc[slider.value, "max_ess"].round()))
+    
+        _b.text(1, -4, 
+                "$\mathcal{L = }$" + str(sorted_constrained_data[_label].loc[slider.value, "obj_func"].round(4)))
+
+
+        # draw triangular bounds
+        _b.plot(stages, tri[0], color="darkorange", zorder = 3)
+        _b.plot(stages, tri[1], color="darkorange", zorder = 3)
+
+        # custom legend
+        _best_bound_label = mlines.Line2D([], [], color='purple', label = "Best bounds")
+        _tri_bound_label = mlines.Line2D([], [], color ="darkorange", label = "Tri bounds")
+        _b.legend(handles = [_best_bound_label, _tri_bound_label], loc="lower right")
+
+    _ax[0].set_ylabel("$Z_k$ values")
+    _fig.suptitle(f"Top {len(np.unique(runs))} constrained boundaries, sorted by loss", y=0.96)
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Empirical CDF
+    """)
     return
 
 
@@ -642,16 +766,6 @@ def _(
 
     plt.tight_layout()
     plt.gca()
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
     return
 
 
