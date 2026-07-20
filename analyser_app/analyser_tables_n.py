@@ -308,34 +308,34 @@ def _(column_runs_compare, datasets, pd):
 
     for _label, _df in datasets.items():
         table_data = {
-            "grand_mean" : _df[["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy(),
-            "grand_std" : _df[["alpha","power","sample_size","max_ess","obj_func"]].std().to_numpy()
+            "grand_mean" : _df[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].mean().to_numpy(),
+            "grand_std" : _df[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].std().to_numpy()
         }
 
         # Safely extract comparing slice runs dynamically
         for idx, col_run in enumerate(column_runs_compare[:3]): 
             run_data = _df[_df["runs"] == col_run]
             if not run_data.empty:
-                table_data[col_run] = run_data[["alpha","power","sample_size","max_ess","obj_func"]].mean().to_numpy()
+                table_data[col_run] = run_data[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].mean().to_numpy()
             else:
-                table_data[col_run] = [0.0] * 5
+                table_data[col_run] = [0.0] * 6
 
         # Best structures
         best_bounds = _df[_df["obj_func"] == _df["obj_func"].min()]
         if not best_bounds.empty:
-            table_data["best_design"] = best_bounds[["alpha","power","sample_size","max_ess","obj_func"]].to_numpy().flatten()[:5]
+            table_data["best_design"] = best_bounds[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].to_numpy().flatten()[:6]
 
         constrained = _df[_df["alpha"] <= 0.05]
         if not constrained.empty:
             best_constrained = constrained[constrained["obj_func"] == constrained["obj_func"].min()]
-            table_data["best_constrained_design"] = best_constrained[["alpha","power","sample_size","max_ess","obj_func"]].to_numpy().flatten()[:5]
+            table_data["best_constrained_design"] = best_constrained[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].to_numpy().flatten()[:6]
         else:
-            table_data["best_constrained_design"] = [0.0] * 5
+            table_data["best_constrained_design"] = [0.0] * 6
 
         # Reconstruct structured frame
         summaries[_label] = pd.DataFrame(
             table_data, 
-            index=["alpha_prime","beta_prime","sample_size","max_ess","loss"]
+            index=["alpha_prime","beta_prime","sample_size","max_ess","loss", "execute_time"]
         )
     return (summaries,)
 
