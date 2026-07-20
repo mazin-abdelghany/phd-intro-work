@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -196,7 +196,7 @@ def _(mo, num_methods):
     ])
 
     file_browser = mo.ui.file_browser(
-        initial_path = "/tf/experiments_rand_simann_bo/",
+        initial_path = "/workspace/experiments_rand_simann_bo/",
         label = "Select files in the order of the methods."
     )
 
@@ -334,23 +334,43 @@ def _(mo):
 
 
 @app.cell
-def _(np):
+def _(num_analyses):
+    stages = [i+1 for i in range(num_analyses)]
+    return (stages,)
+
+
+@app.cell
+def _(num_analyses):
+    lower_boundary_value_labels = ["lower" + f"{i+1}" for i in range(num_analyses-1)] + ["upper" + f"{num_analyses}"]
+    return (lower_boundary_value_labels,)
+
+
+@app.cell
+def _(num_analyses):
+    upper_boundary_value_labels = ["upper" + f"{i+1}" for i in range(num_analyses)]
+    return (upper_boundary_value_labels,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Best boundary
+    """)
+    return
+
+
+@app.cell
+def _(lower_boundary_value_labels, np, upper_boundary_value_labels):
     def best_bound_getter(data):
         min_idx = data["obj_func"].idxmin()
-        lower = data.loc[min_idx, ["upper1", "upper2", "upper3"]].tolist()
-        upper = data.loc[min_idx, ["lower1", "lower2", "upper3"]].tolist()
+        lower = data.loc[min_idx, upper_boundary_value_labels].tolist()
+        upper = data.loc[min_idx, lower_boundary_value_labels].tolist()
         obj_f = np.round(data.loc[min_idx, "obj_func"], decimals=4)
         alpha = np.round(data.loc[min_idx, "alpha"], decimals=4)
         power = np.round(data.loc[min_idx, "power"], decimals=4)
         return lower, upper, obj_f, alpha, power
 
     return (best_bound_getter,)
-
-
-@app.cell
-def _(num_analyses):
-    stages = [i+1 for i in range(num_analyses)]
-    return (stages,)
 
 
 @app.cell
@@ -387,15 +407,23 @@ def _(best_bound_getter, datasets, plt, stages, tri):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Best constrained boundary
+    """)
+    return
+
+
 @app.cell
-def _(np):
+def _(lower_boundary_value_labels, np, upper_boundary_value_labels):
     def best_constrained_bound_getter(data):
         constrained_data = data[data["alpha"] <= 0.05]
         if constrained_data.empty:
             constrained_data = data # fallback
         min_idx = constrained_data["obj_func"].idxmin()
-        lower = constrained_data.loc[min_idx, ["upper1", "upper2", "upper3"]].tolist()
-        upper = constrained_data.loc[min_idx, ["lower1", "lower2", "upper3"]].tolist()
+        lower = constrained_data.loc[min_idx, upper_boundary_value_labels].tolist()
+        upper = constrained_data.loc[min_idx, lower_boundary_value_labels].tolist()
         obj_f = np.round(constrained_data.loc[min_idx, "obj_func"], decimals=4)
         alpha = np.round(constrained_data.loc[min_idx, "alpha"], decimals=4)
         power = np.round(constrained_data.loc[min_idx, "power"], decimals=4)
@@ -438,15 +466,23 @@ def _(best_constrained_bound_getter, datasets, plt, stages, tri):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Random run assessment
+    """)
+    return
+
+
 @app.cell
-def _(np):
+def _(lower_boundary_value_labels, np, upper_boundary_value_labels):
     def rand_bound_getter(data, run):
         run_data = data[data["runs"] == run]
         if run_data.empty:
             return [0,0,0], [0,0,0], 0, 0, 0
         min_idx = run_data["obj_func"].idxmin()
-        lower = run_data.loc[min_idx, ["upper1", "upper2", "upper3"]].tolist()
-        upper = run_data.loc[min_idx, ["lower1", "lower2", "upper3"]].tolist()
+        lower = run_data.loc[min_idx, upper_boundary_value_labels].tolist()
+        upper = run_data.loc[min_idx, lower_boundary_value_labels].tolist()
         obj_f = np.round(run_data.loc[min_idx, "obj_func"], decimals=4)
         alpha = np.round(run_data.loc[min_idx, "alpha"], decimals=4)
         power = np.round(run_data.loc[min_idx, "power"], decimals=4)
@@ -495,6 +531,14 @@ def _(column_runs_compare, datasets, mo, plt, rand_bound_getter, stages, tri):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Top constrained boundaries
+    """)
+    return
+
+
 @app.cell
 def _(
     best_constrained_bound_getter,
@@ -518,10 +562,13 @@ def _(
     _ax = _ax.flatten()
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-        for _run_idx, run in enumerate(np.unique(runs)):
-            run_data = _data[_data["runs"] == run]
+        for _run_idx, _run in enumerate(np.unique(runs)):
+            run_data = _data[_data["runs"] == _run]
             _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(run_data)
+        
+            # count number of first upper bounds over 5
             if _upper[0] >= 5: n_over_5 +=1
+        
             _b = _ax[_idx]
 
             _b.set_title(_label)
@@ -548,7 +595,58 @@ def _(
 
 @app.cell(hide_code=True)
 def _(mo, n_over_5):
-    mo.Html(f"{n_over_5}")
+    mo.Html(f"There are {n_over_5} first upper bounds that are greater than 5.")
+    return
+
+
+@app.cell
+def _(
+    datasets,
+    lower_boundary_value_labels,
+    np,
+    num_analyses,
+    plt,
+    runs,
+    upper_boundary_value_labels,
+):
+    _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses, figsize=(11,4), sharey=True)
+
+    _upper = {key: [] for key in upper_boundary_value_labels}
+    _lower = {key: [] for key in lower_boundary_value_labels}
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+        for _run_idx, _run in enumerate(np.unique(runs)):
+            _run_data = _data[_data["runs"] == _run]
+
+            _constrained_data = _run_data[_run_data["alpha"] <= 0.05]
+        
+            _min_idx = _constrained_data["obj_func"].idxmin()
+
+            # get the upper bound values
+            for _key in _upper:
+                _upper[_key].append(_constrained_data.loc[_min_idx, _key])
+
+            # get the lower bound values
+            for _key in _lower:
+                _lower[_key].append(_constrained_data.loc[_min_idx, _key])
+        
+        for colu, key in enumerate(upper_boundary_value_labels):
+            _ax[0, colu].ecdf(_upper[key], label=_label)
+            _ax[0, colu].set_title(key)
+            _ax[0, colu].legend()
+    
+        for colu, key in enumerate(lower_boundary_value_labels):
+            _ax[1, colu].ecdf(_lower[key], label=_label)
+            _ax[1, colu].set_title(key)
+            _ax[1, colu].legend()
+
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell
+def _():
     return
 
 
