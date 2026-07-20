@@ -172,12 +172,10 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    n_experiments = mo.ui.number(label="No. experiments = ", value=1)
-    n_loops = mo.ui.number(label="Number of loops = ", value=1)
     num_methods = mo.ui.number(label="Number of methods/files to compare = ", value=2, start=1)
 
-    mo.vstack([n_experiments, n_loops, num_methods])
-    return n_experiments, n_loops, num_methods
+    mo.vstack([num_methods])
+    return (num_methods,)
 
 
 @app.cell(hide_code=True)
@@ -220,16 +218,57 @@ def _(file_browser, labels, pd):
 
 
 @app.cell
-def _(n_experiments, n_loops, np):
-    runs = np.concatenate([np.repeat(f"Run_{i+1}", n_loops.value) for i in range(n_experiments.value)])
-    return (runs,)
+def _(datasets):
+    n_experiments_dict = dict()
+    n_loops_dict = dict()
+
+    # the last index contains the total number of experiments and loops
+    # e.g., 10500 = 10 experiments, 500 loops
+    # !! this would if there were >99 experiments !!
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+        # pull the last index and then index it on the place where
+        # experiments and loops are encoded
+        n_experiments_dict[_label] = int(float(str(_data.iloc[-1]["index"])[0:2]))
+        n_loops_dict[_label] = int(float(str(_data.iloc[-1]["index"])[2:]))
+    return n_experiments_dict, n_loops_dict
 
 
 @app.cell
-def _(datasets, runs):
+def _(mo, n_experiments_dict):
+    mo.Html("<br>".join(
+        f"There are {n_experiments_dict[key]} experiments in {key}"
+        for key in n_experiments_dict
+    ))
+    return
+
+
+@app.cell
+def _(mo, n_loops_dict):
+    mo.Html("<br>".join(
+        f"There are {n_loops_dict[key]} experiments in {key}"
+        for key in n_loops_dict
+    ))
+    return
+
+
+@app.cell
+def _(n_experiments_dict, n_loops_dict, np):
+    runs_dict = dict()
+
+    for _key in n_experiments_dict:
+        run_labels = [
+            np.repeat(f"Run_{i + 1}", n_loops_dict[_key])
+            for i in range(n_experiments_dict[_key])
+        ]
+
+        runs_dict[_key] = np.concatenate(run_labels)
+    return (runs_dict,)
+
+
+@app.cell
+def _(datasets, runs_dict):
     for label, df in datasets.items():
-        if len(df) == len(runs):
-            df["runs"] = runs
+        df["runs"] = runs_dict[label]
     return
 
 
@@ -252,8 +291,9 @@ def _(np, seed_for_runs):
 
 
 @app.cell
-def _(n_experiments, rng):
-    runs_to_compare = rng.integers(low=1, high=n_experiments.value, size=6)
+def _(n_experiments_dict, rng):
+    # compare runs with the high of the rng at the min of number of experiments in methods
+    runs_to_compare = rng.integers(low=1, high=min(n_experiments_dict.values()), size=6)
     return (runs_to_compare,)
 
 
@@ -560,7 +600,7 @@ def _(datasets, labels):
             .groupby("runs")["obj_func"]
             .idxmin()
         )
-    
+
         sorted_constrained_data[_label_value] = (
             _constrained_data[_label_value]
             .loc[idx]
@@ -577,9 +617,8 @@ def _(
     lower_boundary_value_labels,
     mlines,
     mo,
-    np,
+    n_experiments_dict,
     plt,
-    runs,
     sorted_constrained_data,
     stages,
     tri,
@@ -593,17 +632,17 @@ def _(
     _ax = _ax.flatten()
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-        for _run_idx in range(len(np.unique(runs))):
-        
+        for _run_idx in range(n_experiments_dict[_label]):
+
             _b = _ax[_idx]
 
-            _b.set_title(_label)
+            _b.set_title(_label + f", top {n_experiments_dict[_label]} bounds")
             _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
             _b.plot(stages, 
                     sorted_constrained_data[_label].loc[_run_idx, upper_boundary_value_labels], 
                     color="purple", alpha = 0.15)
-        
+
             _b.plot(stages, 
                     sorted_constrained_data[_label].loc[_run_idx, lower_boundary_value_labels], 
                     color="purple", alpha = 0.15)
@@ -618,7 +657,7 @@ def _(
         _b.legend(handles = [best_bound_label, tri_bound_label], loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle(f"Top {len(np.unique(runs))} constrained boundaries", y=0.96)
+    _fig.suptitle(f"Top $x$ constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
@@ -633,8 +672,8 @@ def _(mo):
 
 
 @app.cell
-def _(mo, n_experiments):
-    slider = mo.ui.slider(start=0, stop=n_experiments.value-1)
+def _(mo, n_experiments_dict):
+    slider = mo.ui.slider(start=0, stop=min(n_experiments_dict.values())-1)
     return (slider,)
 
 
@@ -651,9 +690,8 @@ def _(
     lower_boundary_value_labels,
     mlines,
     mo,
-    np,
+    n_experiments_dict,
     plt,
-    runs,
     slider,
     sorted_constrained_data,
     stages,
@@ -672,13 +710,13 @@ def _(
         _b = _ax[_idx]
         _b.set_ylim(-8, 8)
 
-        _b.set_title(_label)
+        _b.set_title(_label + f", top {n_experiments_dict[_label]} bounds")
         _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
         _b.plot(stages, 
                 sorted_constrained_data[_label].loc[slider.value, upper_boundary_value_labels], 
                 color="purple")
-    
+
         _b.plot(stages, 
                 sorted_constrained_data[_label].loc[slider.value, lower_boundary_value_labels], 
                 color="purple")
@@ -694,7 +732,7 @@ def _(
 
         _b.text(1.87, -5.5, 
                 "Max ESS = " + str(sorted_constrained_data[_label].loc[slider.value, "max_ess"].round()))
-    
+
         _b.text(1, -4, 
                 "$\mathcal{L = }$" + str(sorted_constrained_data[_label].loc[slider.value, "obj_func"].round(4)))
 
@@ -709,7 +747,7 @@ def _(
         _b.legend(handles = [_best_bound_label, _tri_bound_label], loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle(f"Top {len(np.unique(runs))} constrained boundaries, sorted by loss", y=0.96)
+    _fig.suptitle(f"Top $x$ constrained boundaries, sorted by loss", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
@@ -718,7 +756,7 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # Empirical CDF
+    # Empirical CDF of top constrained bounds
     """)
     return
 
@@ -730,20 +768,21 @@ def _(
     np,
     num_analyses,
     plt,
-    runs,
+    runs_dict,
     upper_boundary_value_labels,
 ):
-    _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses, figsize=(11,4), sharey=True)
-
-    _upper = {key: [] for key in upper_boundary_value_labels}
-    _lower = {key: [] for key in lower_boundary_value_labels}
+    _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses, figsize=(11,5), sharey=True)
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-        for _run_idx, _run in enumerate(np.unique(runs)):
+    
+        _upper = {key: [] for key in upper_boundary_value_labels}
+        _lower = {key: [] for key in lower_boundary_value_labels}
+    
+        for _run_idx, _run in enumerate(np.unique(runs_dict[_label])):
             _run_data = _data[_data["runs"] == _run]
 
             _constrained_data = _run_data[_run_data["alpha"] <= 0.05]
-        
+
             _min_idx = _constrained_data["obj_func"].idxmin()
 
             # get the upper bound values
@@ -753,18 +792,142 @@ def _(
             # get the lower bound values
             for _key in _lower:
                 _lower[_key].append(_constrained_data.loc[_min_idx, _key])
-        
+
         for colu, key in enumerate(upper_boundary_value_labels):
             _ax[0, colu].ecdf(_upper[key], label=_label)
             _ax[0, colu].set_title(key)
             _ax[0, colu].legend()
-    
+
         for colu, key in enumerate(lower_boundary_value_labels):
             _ax[1, colu].ecdf(_lower[key], label=_label)
             _ax[1, colu].set_title(key)
             _ax[1, colu].legend()
 
+    _fig.suptitle(f"ECDF of top $x$ constrained boundaries", y=0.96)
     plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Box plots of bounds
+    """)
+    return
+
+
+@app.cell
+def _(
+    best_constrained_bound_getter,
+    datasets,
+    lower_boundary_value_labels,
+    np,
+    num_analyses,
+    plt,
+    stages,
+    upper_boundary_value_labels,
+):
+    _fig, _ax = plt.subplots()
+
+    _num_plots = len(datasets)
+    _fig, _ax = plt.subplots(1, _num_plots, figsize=(4 * _num_plots, 5), sharey=True, squeeze=False)
+    _ax = _ax.flatten()
+
+    colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:purple"]
+
+    color_idx = 0
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+        _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(_data)
+        for stage in range(num_analyses):
+
+            _b = _ax[_idx]
+
+            # title and xlabel
+            _b.set_title(_label + f", distribution of bounds")
+            _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+
+            # best constrained boundaries
+            _b.scatter(stages, _upper, color="white", zorder=4)
+            _b.scatter(stages, _lower, color="white", zorder=4)
+
+            # upper bound plots       
+            _b.violinplot(_data[upper_boundary_value_labels[stage]], positions=[stage+1],
+                           showmeans=False, 
+                           showmedians=False,
+                           showextrema=False)
+
+            # calculate the median and quartiles
+            q1_upper, median_upper, q3_upper = np.percentile(_data[upper_boundary_value_labels[stage]], 
+                                                             [25, 50, 75])
+
+            _b.vlines(stage+1, q1_upper, q3_upper, color=colors[color_idx], linestyle='-', lw=5)
+            _b.hlines(median_upper, stage+1-0.07, stage+1+0.07, color=colors[color_idx], zorder=3)
+
+            # lower bound plots
+            _b.violinplot(_data[lower_boundary_value_labels[stage]], positions=[stage+1],
+                           showmeans=False, 
+                           showmedians=False,
+                           showextrema=False)
+
+            # calculate the median and quartiles
+            q1_lower, median_lower, q3_lower = np.percentile(_data[lower_boundary_value_labels[stage]], 
+                                                             [25, 50, 75])
+
+            _b.vlines(stage+1, q1_lower, q3_lower, color=colors[color_idx+1], linestyle='-', lw=5)
+            _b.hlines(median_lower, stage+1-0.07, stage+1+0.07, color=colors[color_idx+1], zorder=3)
+
+            color_idx += 2
+        color_idx = 0
+
+    _ax[0].set_ylabel("$Z_k$ values")
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Loss improvement over iterations
+    """)
+    return
+
+
+@app.cell
+def _(mo, n_experiments_dict):
+    slider2 = mo.ui.slider(start=0, stop=min(n_experiments_dict.values())-1)
+    return (slider2,)
+
+
+@app.cell
+def _(mo, slider2):
+    mo.vstack([slider2, mo.md(f"Has value: {slider2.value}")])
+    return
+
+
+@app.cell
+def _(datasets, np, plt, runs_dict, slider2):
+    _fig, _ax = plt.subplots(figsize=(12,5))
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+    
+        run_to_assess = np.unique(runs_dict[_label])[slider2.value]
+        data_to_assess = _data[_data["runs"] == run_to_assess]
+    
+        obj_func_vals = data_to_assess["obj_func"].to_numpy()
+        x_plot = np.arange(len(obj_func_vals))
+
+        running_min = np.minimum.accumulate(obj_func_vals)
+
+        _ax.step(x_plot, running_min, label = _label)
+
+    _ax.set_title(f"Minimum objective function value over iteration, {run_to_assess}")
+    _ax.set_xlabel("Iteration number")
+    _ax.set_ylabel("Objective function, $\mathcal{L}$")
+
+    _ax.legend()
     plt.gca()
     return
 
