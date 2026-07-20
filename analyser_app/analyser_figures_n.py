@@ -824,7 +824,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Distribution of all 25,000 bounds
+    ## Distribution of all bounds
     """)
     return
 
@@ -902,7 +902,7 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Distribution of 50 best constrained bounds
+    ## Distribution of best constrained bounds
     """)
     return
 
