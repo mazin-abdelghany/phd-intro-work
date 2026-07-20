@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -165,12 +165,10 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    n_experiments = mo.ui.number(label="No. experiments = ", value=1)
-    n_loops = mo.ui.number(label="Number of loops = ", value=1)
     num_methods = mo.ui.number(label="Number of methods/files to compare = ", value=2, start=1)
 
-    mo.vstack([n_experiments, n_loops, num_methods])
-    return n_experiments, n_loops, num_methods
+    mo.vstack([num_methods])
+    return (num_methods,)
 
 
 @app.cell(hide_code=True)
@@ -190,7 +188,7 @@ def _(mo, num_methods):
     ])
 
     file_browser = mo.ui.file_browser(
-        initial_path = "/tf/experiments_rand_simann_bo/",
+        initial_path = "/workspace/experiments_rand_simann_bo/",
         label = "Select files in the order of the methods."
     )
 
@@ -216,17 +214,57 @@ def _(file_browser, labels, pd):
 
 
 @app.cell
-def _(n_experiments, n_loops, np):
-    runs = np.concatenate([np.repeat(f"Run_{i+1}", n_loops.value) for i in range(n_experiments.value)])
-    return (runs,)
+def _(datasets):
+    n_experiments_dict = dict()
+    n_loops_dict = dict()
+
+    # the last index contains the total number of experiments and loops
+    # e.g., 10500 = 10 experiments, 500 loops
+    # !! this would if there were >99 experiments !!
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+        # pull the last index and then index it on the place where
+        # experiments and loops are encoded
+        n_experiments_dict[_label] = int(float(str(_data.iloc[-1]["index"])[0:2]))
+        n_loops_dict[_label] = int(float(str(_data.iloc[-1]["index"])[2:]))
+    return n_experiments_dict, n_loops_dict
 
 
 @app.cell
-def _(datasets, runs):
-    # Append runs tracking array to all loaded data frames dynamically
+def _(mo, n_experiments_dict):
+    mo.Html("<br>".join(
+        f"There are {n_experiments_dict[key]} experiments in {key}"
+        for key in n_experiments_dict
+    ))
+    return
+
+
+@app.cell
+def _(mo, n_loops_dict):
+    mo.Html("<br>".join(
+        f"There are {n_loops_dict[key]} experiments in {key}"
+        for key in n_loops_dict
+    ))
+    return
+
+
+@app.cell
+def _(n_experiments_dict, n_loops_dict, np):
+    runs_dict = dict()
+
+    for _key in n_experiments_dict:
+        run_labels = [
+            np.repeat(f"Run_{i + 1}", n_loops_dict[_key])
+            for i in range(n_experiments_dict[_key])
+        ]
+
+        runs_dict[_key] = np.concatenate(run_labels)
+    return (runs_dict,)
+
+
+@app.cell
+def _(datasets, runs_dict):
     for _label, _df in datasets.items():
-        if len(_df) == len(runs):
-            _df["runs"] = runs
+        _df["runs"] = runs_dict[_label]
     return
 
 
@@ -239,9 +277,15 @@ def _(mo):
 
 
 @app.cell
-def _(n_experiments, np, seed_for_runs):
+def _(np, seed_for_runs):
     rng = np.random.default_rng(seed=seed_for_runs.value)
-    runs_to_compare = rng.integers(low=1, high=n_experiments.value+1.0, size=9)
+    return (rng,)
+
+
+@app.cell
+def _(n_experiments_dict, rng):
+    # compare runs with the high of the rng at the min of number of experiments in methods
+    runs_to_compare = rng.integers(low=1, high=min(n_experiments_dict.values()), size=9)
     return (runs_to_compare,)
 
 
@@ -309,15 +353,15 @@ def _(mo, round_to, summaries):
 
 
 @app.cell
-def _(datasets, n_experiments, n_loops, np):
+def _(datasets, n_experiments_dict, n_loops_dict, np):
     # Dynamic calculations of best indices
     best_indices_metrics = {}
 
     for _label, _df in datasets.items():
         best_idx_list = []
-        for _i in range(n_experiments.value):
-            _start_idx = _i * n_loops.value
-            _stop_idx = _start_idx + n_loops.value
+        for _i in range(n_experiments_dict[_label]):
+            _start_idx = _i * n_loops_dict[_label]
+            _stop_idx = _start_idx + n_loops_dict[_label]
             _analysis_set = _df.loc[_start_idx:_stop_idx]
             if not _analysis_set.empty:
                 best_idx_list.append(np.argmin(_analysis_set["obj_func"]))
@@ -354,8 +398,8 @@ def _(
     datasets,
     epsilon1,
     epsilon2,
-    n_experiments,
-    n_loops,
+    n_experiments_dict,
+    n_loops_dict,
     np,
     target_alpha,
     target_power,
@@ -366,9 +410,9 @@ def _(
         feas_list = []
         strict_feas_list = []
 
-        for j in range(n_experiments.value):
-            _start_idx = j * n_loops.value
-            _stop_idx = _start_idx + n_loops.value
+        for j in range(n_experiments_dict[_label]):
+            _start_idx = j * n_loops_dict[_label]
+            _stop_idx = _start_idx + n_loops_dict[_label]
             _analysis_set = _df.loc[_start_idx:_stop_idx]
 
             if not _analysis_set.empty:
@@ -404,7 +448,15 @@ def _(feasibility_summary, mo, pd, round_to):
 
 
 @app.cell
-def _(datasets, n_experiments, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
+def _(
+    datasets,
+    n_experiments_dict,
+    n_loops_dict,
+    np,
+    tri_alpha,
+    tri_max_ess,
+    tri_obj,
+):
     tri_diff = abs(0.05 - tri_alpha)
     tri_comparisons = {}
 
@@ -413,9 +465,9 @@ def _(datasets, n_experiments, n_loops, np, tri_alpha, tri_max_ess, tri_obj):
         n_ess_less = []
         n_loss_less = []
 
-        for k in range(n_experiments.value):
-            start_idx = k * n_loops.value
-            stop_idx = start_idx + n_loops.value
+        for k in range(n_experiments_dict[label]):
+            start_idx = k * n_loops_dict[label]
+            stop_idx = start_idx + n_loops_dict[label]
             analysis_set = _df.loc[start_idx:stop_idx]
 
             if not analysis_set.empty:
