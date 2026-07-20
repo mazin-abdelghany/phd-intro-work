@@ -206,8 +206,8 @@ def _(file_browser, labels, pd):
             # Safely fetch the file from index if path exists
             filepath = file_browser.path(index=i)
             if filepath:
-                df = pd.read_csv(filepath)
-                datasets[label_value] = df.iloc[:, 1:] # drop first column
+                _df = pd.read_csv(filepath)
+                datasets[label_value] = _df.iloc[:, 1:] # drop first column
         except IndexError:
             pass
     return (datasets,)
@@ -263,8 +263,8 @@ def _(n_experiments_dict, n_loops_dict, np):
 
 @app.cell
 def _(datasets, runs_dict):
-    for _label, _df in datasets.items():
-        _df["runs"] = runs_dict[_label]
+    for label, df in datasets.items():
+        df["runs"] = runs_dict[label]
     return
 
 
@@ -460,14 +460,14 @@ def _(
     tri_diff = abs(0.05 - tri_alpha)
     tri_comparisons = {}
 
-    for label, _df in datasets.items():
+    for _label, _df in datasets.items():
         n_diff_less = []
         n_ess_less = []
         n_loss_less = []
 
-        for k in range(n_experiments_dict[label]):
-            start_idx = k * n_loops_dict[label]
-            stop_idx = start_idx + n_loops_dict[label]
+        for k in range(n_experiments_dict[_label]):
+            start_idx = k * n_loops_dict[_label]
+            stop_idx = start_idx + n_loops_dict[_label]
             analysis_set = _df.loc[start_idx:stop_idx]
 
             if not analysis_set.empty:
@@ -476,7 +476,7 @@ def _(
                 n_loss_less.append(np.sum(analysis_set["obj_func"] < tri_obj))
 
         if n_diff_less:
-            tri_comparisons[label] = {
+            tri_comparisons[_label] = {
                 "median_n_alpha_closer": np.median(n_diff_less),
                 "median_n_ess_closer": np.median(n_ess_less),
                 "max_n_loss_closer": np.max(n_loss_less)
