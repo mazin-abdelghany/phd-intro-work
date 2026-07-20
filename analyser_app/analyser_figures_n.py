@@ -628,7 +628,7 @@ def _(
         mo.md("")
 
     _num_plots = len(datasets)
-    _fig, _ax = plt.subplots(1, _num_plots, figsize=(6 * _num_plots, 3.5), sharey=True, squeeze=False)
+    _fig, _ax = plt.subplots(1, _num_plots, figsize=(5 * _num_plots, 6), sharey=True, squeeze=False)
     _ax = _ax.flatten()
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
@@ -769,15 +769,17 @@ def _(
     num_analyses,
     plt,
     runs_dict,
+    stages,
     upper_boundary_value_labels,
 ):
     _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses, figsize=(11,5), sharey=True)
+    _ax[1, stages[-1] - 1].axis("off")
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-    
+
         _upper = {key: [] for key in upper_boundary_value_labels}
         _lower = {key: [] for key in lower_boundary_value_labels}
-    
+
         for _run_idx, _run in enumerate(np.unique(runs_dict[_label])):
             _run_data = _data[_data["runs"] == _run]
 
@@ -795,13 +797,15 @@ def _(
 
         for colu, key in enumerate(upper_boundary_value_labels):
             _ax[0, colu].ecdf(_upper[key], label=_label)
-            _ax[0, colu].set_title(key)
-            _ax[0, colu].legend()
+            _ax[0, colu].set_title(key[0:5] + " bound " + key[5])
+            if colu == stages[-1] - 1:
+                _ax[0, colu].legend()
 
         for colu, key in enumerate(lower_boundary_value_labels):
+            if colu == stages[-1] - 1: break
             _ax[1, colu].ecdf(_lower[key], label=_label)
-            _ax[1, colu].set_title(key)
-            _ax[1, colu].legend()
+            _ax[1, colu].set_title(key[0:5] + " bound " + key[5])
+            #_ax[1, colu].legend()
 
     _fig.suptitle(f"ECDF of top $x$ constrained boundaries", y=0.96)
     plt.tight_layout()
@@ -813,6 +817,14 @@ def _(
 def _(mo):
     mo.md(r"""
     # Box plots of bounds
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Distribution of all 25,000 bounds
     """)
     return
 
@@ -890,6 +902,92 @@ def _(
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Distribution of 50 best constrained bounds
+    """)
+    return
+
+
+@app.cell
+def _(
+    best_constrained_bound_getter,
+    datasets,
+    lower_boundary_value_labels,
+    np,
+    num_analyses,
+    plt,
+    runs_dict,
+    stages,
+    upper_boundary_value_labels,
+):
+    _fig, _ax = plt.subplots()
+
+    _num_plots = len(datasets)
+    _fig, _ax = plt.subplots(1, _num_plots, figsize=(4 * _num_plots, 5), sharey=True, squeeze=False)
+    _ax = _ax.flatten()
+
+    _colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:purple"]
+
+    _color_idx = 0
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+    
+        _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(_data)
+    
+        for _run_idx, _run in enumerate(np.unique(runs_dict[_label])):
+            _run_data = _data[_data["runs"] == _run]
+    
+            _constrained_data = _run_data[_run_data["alpha"] <= 0.05]
+    
+        for _stage in range(num_analyses):
+
+            _b = _ax[_idx]
+
+            # title and xlabel
+            _b.set_title(_label + f", distribution of bounds")
+            _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+
+            # best constrained boundaries
+            _b.scatter(stages, _upper, color="black", zorder=4)
+            _b.scatter(stages, _lower, color="black", zorder=4)
+
+            # upper bound plots       
+            _b.violinplot(_constrained_data[upper_boundary_value_labels[_stage]], positions=[_stage+1],
+                           showmeans=False, 
+                           showmedians=False,
+                           showextrema=False)
+
+            # calculate the median and quartiles
+            _q1_upper, _median_upper, _q3_upper = np.percentile(_constrained_data[upper_boundary_value_labels[_stage]], 
+                                                             [25, 50, 75])
+
+            _b.vlines(_stage+1, _q1_upper, _q3_upper, color=_colors[_color_idx], linestyle='-', lw=5)
+            _b.hlines(_median_upper, _stage+1-0.07, _stage+1+0.07, color=_colors[_color_idx], zorder=3)
+
+            # lower bound plots
+            _b.violinplot(_constrained_data[lower_boundary_value_labels[_stage]], positions=[_stage+1],
+                           showmeans=False, 
+                           showmedians=False,
+                           showextrema=False)
+
+            # calculate the median and quartiles
+            _q1_lower, _median_lower, _q3_lower = np.percentile(_constrained_data[lower_boundary_value_labels[_stage]], 
+                                                             [25, 50, 75])
+
+            _b.vlines(_stage+1, _q1_lower, _q3_lower, color=_colors[_color_idx+1], linestyle='-', lw=5)
+            _b.hlines(_median_lower, _stage+1-0.07, _stage+1+0.07, color=_colors[_color_idx+1], zorder=3)
+
+            _color_idx += 2
+        _color_idx = 0
+
+    _ax[0].set_ylabel("$Z_k$ values")
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     # Loss improvement over iterations
     """)
     return
@@ -912,10 +1010,10 @@ def _(datasets, np, plt, runs_dict, slider2):
     _fig, _ax = plt.subplots(figsize=(12,5))
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-    
+
         run_to_assess = np.unique(runs_dict[_label])[slider2.value]
         data_to_assess = _data[_data["runs"] == run_to_assess]
-    
+
         obj_func_vals = data_to_assess["obj_func"].to_numpy()
         x_plot = np.arange(len(obj_func_vals))
 
