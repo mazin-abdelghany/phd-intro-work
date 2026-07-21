@@ -214,6 +214,42 @@ def _(file_browser, labels, pd):
 
 
 @app.cell
+def _(mo):
+    wason_included = mo.ui.switch(label="Wason data included")
+    return (wason_included,)
+
+
+@app.cell
+def _(mo, wason_included):
+    mo.vstack([wason_included, mo.md(f"Has value: {wason_included.value}")])
+    return
+
+
+@app.cell
+def _(datasets, np, wason_included):
+    if wason_included.value:
+        n_experiments = 10
+        n_loops = 10000
+
+        # generate labels for data frame
+        # if we have experiments <1000, then we need 3 spaces 
+        # to fill. this is the length of the string and then
+        # we raise 10 to this number to obtain the labels
+        space_needed_for_label = len(str(n_loops))
+        label_range = 10**(space_needed_for_label)
+
+        index_wason = [
+            i 
+            for start in range(label_range, (n_experiments+1)*label_range, label_range) 
+            for i in range(start + 1, start + (n_loops+1))
+        ]
+
+
+        datasets["Wason"]["index"] = np.array(index_wason)
+    return
+
+
+@app.cell
 def _(datasets):
     n_experiments_dict = dict()
     n_loops_dict = dict()
@@ -302,42 +338,49 @@ def _(mo, runs_to_compare):
 
 
 @app.cell
-def _(column_runs_compare, datasets, pd):
+def _(column_runs_compare, datasets, pd, wason_included):
+    if wason_included.value:
+        summary_columns = ["alpha","power","sample_size","max_ess","obj_func"]
+        index_for_table = ["alpha_prime","beta_prime","sample_size","max_ess","loss"]
+    else:
+        summary_columns = ["alpha","power","sample_size","max_ess","obj_func", "execute_time"]
+        index_for_table = ["alpha_prime","beta_prime","sample_size","max_ess","loss", "execute_time"]
+
     # Process an arbitrary dictionary of summaries
     summaries = {}
 
     for _label, _df in datasets.items():
         table_data = {
-            "grand_mean" : _df[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].mean().to_numpy(),
-            "grand_std" : _df[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].std().to_numpy()
+            "grand_mean" : _df[summary_columns].mean().to_numpy(),
+            "grand_std" : _df[summary_columns].std().to_numpy()
         }
 
         # Safely extract comparing slice runs dynamically
         for idx, col_run in enumerate(column_runs_compare[:3]): 
             run_data = _df[_df["runs"] == col_run]
             if not run_data.empty:
-                table_data[col_run] = run_data[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].mean().to_numpy()
+                table_data[col_run] = run_data[summary_columns].mean().to_numpy()
             else:
                 table_data[col_run] = [0.0] * 6
 
         # Best structures
         best_bounds = _df[_df["obj_func"] == _df["obj_func"].min()]
         if not best_bounds.empty:
-            table_data["best_design"] = best_bounds[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].to_numpy().flatten()[:6]
+            table_data["best_design"] = best_bounds[summary_columns].iloc[0].to_numpy()
 
         constrained = _df[_df["alpha"] <= 0.05]
         if not constrained.empty:
             best_constrained = constrained[constrained["obj_func"] == constrained["obj_func"].min()]
-            table_data["best_constrained_design"] = best_constrained[["alpha","power","sample_size","max_ess","obj_func", "execute_time"]].to_numpy().flatten()[:6]
+            table_data["best_constrained_design"] = best_constrained[summary_columns].iloc[0].to_numpy()
         else:
             table_data["best_constrained_design"] = [0.0] * 6
 
         # Reconstruct structured frame
         summaries[_label] = pd.DataFrame(
             table_data, 
-            index=["alpha_prime","beta_prime","sample_size","max_ess","loss", "execute_time"]
+            index=index_for_table
         )
-    return (summaries,)
+    return index_for_table, summaries, summary_columns
 
 
 @app.cell
@@ -349,6 +392,48 @@ def _(mo, round_to, summaries):
         outputs.append(summary_df.transpose().round(round_to.value))
 
     mo.vstack(outputs)
+    return
+
+
+@app.cell
+def _(datasets, index_for_table, pd, summary_columns):
+    # Process an arbitrary dictionary of summaries
+    constrained_summaries = {}
+
+    for _label, _df in datasets.items():
+
+        _min_obj_func_idx = _df.groupby("runs")["obj_func"].idxmin()
+        _constrained_df = _df.loc[_min_obj_func_idx]
+
+        constr_table_data = {
+            "grand_mean" : ( 
+                _constrained_df[summary_columns]
+                    .mean()
+                    .to_numpy()
+             ),
+            "grand_std" : (
+                _constrained_df[summary_columns]
+                    .std()
+                    .to_numpy()
+             )
+        }
+
+        constrained_summaries[_label] = pd.DataFrame(
+            constr_table_data,
+            index=index_for_table
+        )
+    return (constrained_summaries,)
+
+
+@app.cell
+def _(constrained_summaries, mo, round_to):
+    # Renders an arbitrary list of summary blocks markdown grids dynamically 
+    _outputs = []
+    for _label, _summary_df in constrained_summaries.items():
+        _outputs.append(mo.md(f"### Summary Table of Designs with lowest loss: **{_label}**"))
+        _outputs.append(_summary_df.transpose().round(round_to.value))
+
+    mo.vstack(_outputs)
     return
 
 
