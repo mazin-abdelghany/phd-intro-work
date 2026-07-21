@@ -218,6 +218,42 @@ def _(file_browser, labels, pd):
 
 
 @app.cell
+def _(mo):
+    wason_included = mo.ui.switch(label="Wason data included")
+    return (wason_included,)
+
+
+@app.cell
+def _(mo, wason_included):
+    mo.vstack([wason_included, mo.md(f"Has value: {wason_included.value}")])
+    return
+
+
+@app.cell
+def _(datasets, np, wason_included):
+    if wason_included.value:
+        n_experiments = 10
+        n_loops = 10000
+
+        # generate labels for data frame
+        # if we have experiments <1000, then we need 3 spaces 
+        # to fill. this is the length of the string and then
+        # we raise 10 to this number to obtain the labels
+        space_needed_for_label = len(str(n_loops))
+        label_range = 10**(space_needed_for_label)
+
+        index_wason = [
+            i 
+            for start in range(label_range, (n_experiments+1)*label_range, label_range) 
+            for i in range(start + 1, start + (n_loops+1))
+        ]
+
+
+        datasets["Wason"]["index"] = np.array(index_wason)
+    return
+
+
+@app.cell
 def _(datasets):
     n_experiments_dict = dict()
     n_loops_dict = dict()
@@ -932,7 +968,7 @@ def _(
     _color_idx = 0
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
-    
+
         _upper = {key: [] for key in upper_boundary_value_labels}
         _lower = {key: [] for key in lower_boundary_value_labels}
 
@@ -947,13 +983,13 @@ def _(
             # get the upper bound values
             for _key in _upper:
                 _upper[_key].append(_constrained_data.loc[_min_idx, _key])
-    
+
             # get the lower bound values
             for _key in _lower:
                 _lower[_key].append(_constrained_data.loc[_min_idx, _key])
 
         for _colu, _key in enumerate(upper_boundary_value_labels):
-    
+
             _b = _ax[_idx]
 
             # title and labels
@@ -978,7 +1014,7 @@ def _(
 
         for _colu, _key in enumerate(lower_boundary_value_labels):
             _b = _ax[_idx]
-        
+
             # lower bound plots
             _b.violinplot(_lower[_key], positions=[_colu+1],
                            showmeans=False, 
