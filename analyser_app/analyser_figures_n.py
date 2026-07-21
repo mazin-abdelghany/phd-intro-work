@@ -834,6 +834,8 @@ def _(
     best_constrained_bound_getter,
     datasets,
     lower_boundary_value_labels,
+    n_experiments_dict,
+    n_loops_dict,
     np,
     num_analyses,
     plt,
@@ -857,7 +859,7 @@ def _(
             _b = _ax[_idx]
 
             # title and xlabel
-            _b.set_title(_label + f", distribution of bounds")
+            _b.set_title(_label + f", distribution of all {n_experiments_dict[_label] * n_loops_dict[_label]} bounds")
             _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
             # best constrained boundaries
@@ -912,8 +914,8 @@ def _(
     best_constrained_bound_getter,
     datasets,
     lower_boundary_value_labels,
+    n_experiments_dict,
     np,
-    num_analyses,
     plt,
     runs_dict,
     stages,
@@ -931,55 +933,70 @@ def _(
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
     
-        _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(_data)
-    
+        _upper = {key: [] for key in upper_boundary_value_labels}
+        _lower = {key: [] for key in lower_boundary_value_labels}
+
+        _upper1, _lower1, _obj_f, _alpha, _power = best_constrained_bound_getter(_data)
+
         for _run_idx, _run in enumerate(np.unique(runs_dict[_label])):
             _run_data = _data[_data["runs"] == _run]
-    
-            _constrained_data = _run_data[_run_data["alpha"] <= 0.05]
-    
-        for _stage in range(num_analyses):
 
+            _constrained_data = _run_data[_run_data["alpha"] <= 0.05]
+            _min_idx = _constrained_data["obj_func"].idxmin()
+
+            # get the upper bound values
+            for _key in _upper:
+                _upper[_key].append(_constrained_data.loc[_min_idx, _key])
+    
+            # get the lower bound values
+            for _key in _lower:
+                _lower[_key].append(_constrained_data.loc[_min_idx, _key])
+
+        for _colu, _key in enumerate(upper_boundary_value_labels):
+    
             _b = _ax[_idx]
 
-            # title and xlabel
-            _b.set_title(_label + f", distribution of bounds")
+            # title and labels
+            _b.set_title(_label + f", distribution of {n_experiments_dict[_label]} best bounds")
             _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
             # best constrained boundaries
-            _b.scatter(stages, _upper, color="black", zorder=4)
-            _b.scatter(stages, _lower, color="black", zorder=4)
+            _b.scatter(stages, _upper1, color="black", zorder=4)
+            _b.scatter(stages, _lower1, color="black", zorder=4)
 
             # upper bound plots       
-            _b.violinplot(_constrained_data[upper_boundary_value_labels[_stage]], positions=[_stage+1],
+            _b.violinplot(_upper[_key], positions=[_colu+1],
                            showmeans=False, 
                            showmedians=False,
                            showextrema=False)
 
             # calculate the median and quartiles
-            _q1_upper, _median_upper, _q3_upper = np.percentile(_constrained_data[upper_boundary_value_labels[_stage]], 
-                                                             [25, 50, 75])
+            _q1_upper, _median_upper, _q3_upper = np.percentile(_upper[_key], [25, 50, 75])
 
-            _b.vlines(_stage+1, _q1_upper, _q3_upper, color=_colors[_color_idx], linestyle='-', lw=5)
-            _b.hlines(_median_upper, _stage+1-0.07, _stage+1+0.07, color=_colors[_color_idx], zorder=3)
+            _b.vlines(_colu+1, _q1_upper, _q3_upper, color=_colors[_color_idx], linestyle='-', lw=5)
+            _b.hlines(_median_upper, _colu+1-0.07, _colu+1+0.07, color=_colors[_color_idx], zorder=3)
 
+        for _colu, _key in enumerate(lower_boundary_value_labels):
+            _b = _ax[_idx]
+        
             # lower bound plots
-            _b.violinplot(_constrained_data[lower_boundary_value_labels[_stage]], positions=[_stage+1],
+            _b.violinplot(_lower[_key], positions=[_colu+1],
                            showmeans=False, 
                            showmedians=False,
                            showextrema=False)
 
             # calculate the median and quartiles
-            _q1_lower, _median_lower, _q3_lower = np.percentile(_constrained_data[lower_boundary_value_labels[_stage]], 
-                                                             [25, 50, 75])
+            _q1_lower, _median_lower, _q3_lower = np.percentile(_lower[_key], [25, 50, 75])
 
-            _b.vlines(_stage+1, _q1_lower, _q3_lower, color=_colors[_color_idx+1], linestyle='-', lw=5)
-            _b.hlines(_median_lower, _stage+1-0.07, _stage+1+0.07, color=_colors[_color_idx+1], zorder=3)
+            _b.vlines(_colu+1, _q1_lower, _q3_lower, color=_colors[_color_idx+1], linestyle='-', lw=5)
+            _b.hlines(_median_lower, _colu+1-0.07, _colu+1+0.07, color=_colors[_color_idx+1], zorder=3)
 
             _color_idx += 2
         _color_idx = 0
 
+
     _ax[0].set_ylabel("$Z_k$ values")
+
     plt.tight_layout()
     plt.gca()
     return
@@ -1009,6 +1026,8 @@ def _(mo, slider2):
 def _(datasets, np, plt, runs_dict, slider2):
     _fig, _ax = plt.subplots(figsize=(12,5))
 
+    style = ["-", "--", ":", "-."]
+
     for _idx, (_label, _data) in enumerate(datasets.items()):
 
         run_to_assess = np.unique(runs_dict[_label])[slider2.value]
@@ -1018,8 +1037,7 @@ def _(datasets, np, plt, runs_dict, slider2):
         x_plot = np.arange(len(obj_func_vals))
 
         running_min = np.minimum.accumulate(obj_func_vals)
-
-        _ax.step(x_plot, running_min, label = _label)
+        _ax.step(x_plot, running_min, label = _label, linestyle=style[_idx])
 
     _ax.set_title(f"Minimum objective function value over iteration, {run_to_assess}")
     _ax.set_xlabel("Iteration number")
@@ -1027,6 +1045,11 @@ def _(datasets, np, plt, runs_dict, slider2):
 
     _ax.legend()
     plt.gca()
+    return
+
+
+@app.cell
+def _():
     return
 
 
