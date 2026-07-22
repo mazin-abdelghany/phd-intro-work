@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -54,7 +54,7 @@ def _(mo):
 
 @app.cell
 def _(ss):
-    num_analyses = 3
+    num_analyses = 5
     target_alpha = 0.05
     target_power = 0.9
     delta0 = 0.
@@ -320,13 +320,21 @@ def _(mo):
 @app.cell
 def _():
     # commentary on selection above
-    lower_sample_size = 20
-    upper_sample_size = 160
+    lower_sample_size = 20.
+    upper_sample_size = 160.
     return lower_sample_size, upper_sample_size
 
 
 @app.cell
-def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
+def _(
+    c0,
+    lower_sample_size,
+    mo,
+    np,
+    num_analyses,
+    tri_params,
+    upper_sample_size,
+):
     # create a single dropdown
     space_dropdown = mo.ui.dropdown(
         options=['large_box', 'small_box', 'triang_box'],
@@ -334,18 +342,48 @@ def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
         label="Choose search space:"
     )
 
-    # lookups for lower and upper spaces based on the selected key
-    lower_spaces = {
-        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
-        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
-        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [lower_sample_size])
-    }
+    search_space_boxes = ['large_box', 'small_box', 'triang_box']
 
-    upper_spaces = {
-        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, upper_sample_size]),
-        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, upper_sample_size]),
-        'triang_box' : np.array([param + 0.4 for param in tri_params] + [upper_sample_size])
-    }
+    lower_spaces = {}
+    upper_spaces = {}
+
+    for key in search_space_boxes:
+        if key == "triang_box":
+            lower_spaces[key] = np.array([max(0, p - 0.4) for p in tri_params] + [lower_sample_size])
+            upper_spaces[key] = np.array([p + 0.4 for p in tri_params] + [upper_sample_size])
+            continue
+
+        n = num_analyses * 2
+        lower = np.zeros(n)
+        upper = np.ones(n)
+
+        if key == "large_box":
+            upper = upper * 4
+            lower[0] = c0 - 3.0
+            upper[0] = c0 + 3.0
+        elif key == "small_box":
+            lower[0] = c0 - 1.0
+            upper[0] = c0 + 1.0
+            upper[2] = 4.0
+
+        lower[-1] = lower_sample_size
+        upper[-1] = upper_sample_size
+
+        lower_spaces[key] = lower
+        upper_spaces[key] = upper
+
+    # lookups for lower and upper spaces based on the selected key
+    #lower_spaces = {
+    #    'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
+    #    'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
+    #    'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [lower_sample_size])
+    #}
+
+    #upper_spaces = {
+    #    'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, upper_sample_size]),
+    #    'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, upper_sample_size]),
+    #    'triang_box' : np.array([param + 0.4 for param in tri_params] + [upper_sample_size])
+    #}
     return lower_spaces, space_dropdown, upper_spaces
 
 
@@ -375,7 +413,7 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 100
+    n_experiments = 50
     n_loops = 500
 
     # generate labels for data frame
@@ -475,8 +513,8 @@ def _(
         # generate n_loops # of reverse bounds, array shape is (n_loops x 5)
         parameters = rng.uniform(current_lower, current_upper, size = (n_loops, len(current_lower)))
 
-        reverse_bounds = parameters[:, 0:5]
-        sample_size = parameters[:, 5]
+        reverse_bounds = parameters[:, 0:len(parameters[0])-1]
+        sample_size = parameters[:, len(parameters[0])-1]
 
         start_time = time.time()
 
@@ -484,7 +522,7 @@ def _(
         for j, boundaries in enumerate(reverse_bounds):
 
             bounds = fmt_bd.reverse_to_boundaries(params = boundaries, K = num_analyses)
-            bounds_list = np.concatenate( (bounds[0], bounds[1][0:2]) )
+            bounds_list = np.concatenate( (bounds[0], bounds[1][0:num_analyses-1]) )
 
             alpha, power, max_ess, obj = obj_f(
                 mu = mu,
@@ -537,7 +575,15 @@ def _(mo):
 
 @app.cell
 def _(pd, random_search_large_box):
-    pd.DataFrame(random_search_large_box).to_csv("/tf/first_year_assessment/first_year_assessment_final_data/rand_large_box_100by500.csv")
+    pd.DataFrame(random_search_large_box)
+    return
+
+
+@app.cell
+def _(pd, random_search_large_box):
+    pd.DataFrame(random_search_large_box).to_csv(
+        "/tf/experiments_rand_simann_bo/random_search_experiments/large_box_50x500.csv"
+    )
     return
 
 
