@@ -737,6 +737,7 @@ def _(
     mlines,
     mo,
     n_experiments_dict,
+    num_analyses,
     plt,
     slider,
     sorted_constrained_data,
@@ -754,7 +755,11 @@ def _(
     for _idx, (_label, _data) in enumerate(datasets.items()):
 
         _b = _ax[_idx]
-        _b.set_ylim(-8, 8)
+
+        if num_analyses.value > 3:
+            _b.set_ylim(-15, 15)
+        else:
+            _b.set_ylim(-8, 8)
 
         _b.set_title(_label + f", top {n_experiments_dict[_label]} bounds")
         _b.set(xlabel="Trial stages", xticks=stages)
@@ -1035,7 +1040,7 @@ def _(
 
         # reset index to 0 so upper and lower plots are paired
         _color_idx = 0
-    
+
         for _colu, _key in enumerate(lower_boundary_value_labels):
             _b = _ax[_idx]
 
