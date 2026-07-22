@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -17,8 +17,9 @@ def _():
     import pandas as pd
     import matplotlib.pyplot as plt
     import matplotlib.lines as mlines
+    import matplotlib as mpl
 
-    return mlines, np, pd, plt
+    return mlines, mpl, np, pd, plt
 
 
 @app.cell
@@ -39,6 +40,22 @@ def _():
     return bd, fn_min, fp, sim, ss
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Experimental Setup
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    num_analyses = mo.ui.number(label="Number of analyses = ", value=3, start=1)
+
+    mo.vstack([num_analyses])
+    return (num_analyses,)
+
+
 @app.cell
 def _(ss):
     ##############
@@ -46,7 +63,6 @@ def _(ss):
     ##############
 
     # design settings
-    num_analyses = 3
     target_alpha = 0.05
     target_power = 0.9
     delta0 = 0.
@@ -60,7 +76,7 @@ def _(ss):
         alpha=target_alpha,
         delta=delta1
     )
-    return delta0, delta1, mu, num_analyses, sigma2, target_alpha, target_power
+    return delta0, delta1, mu, sigma2, target_alpha, target_power
 
 
 @app.cell
@@ -133,13 +149,13 @@ def _(
     target_power,
 ):
     tri = bd.calculate_triangular_boundaries(
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         alpha = target_alpha
     )
 
     tri_n_patients = ss.find_sample_size(
         power_target = target_power,
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
         null_hypothesis = delta0,
@@ -151,7 +167,7 @@ def _(
         mu = mu,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         n_patients = tri_n_patients,
         target_power = target_power,
         target_alpha = target_alpha,
@@ -160,14 +176,6 @@ def _(
         variance = sigma2
     )
     return (tri,)
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Experimental Setup
-    """)
-    return
 
 
 @app.cell
@@ -194,7 +202,7 @@ def _(mo, num_methods):
     ])
 
     file_browser = mo.ui.file_browser(
-        initial_path = "/workspace/experiments_rand_simann_bo/",
+        initial_path = "/tf/experiments_rand_simann_bo/",
         label = "Select files in the order of the methods."
     )
 
@@ -411,19 +419,21 @@ def _(mo):
 
 @app.cell
 def _(num_analyses):
-    stages = [i+1 for i in range(num_analyses)]
+    stages = [i+1 for i in range(num_analyses.value)]
     return (stages,)
 
 
 @app.cell
 def _(num_analyses):
-    lower_boundary_value_labels = ["lower" + f"{i+1}" for i in range(num_analyses-1)] + ["upper" + f"{num_analyses}"]
+    lower_boundary_value_labels = (
+        ["lower" + f"{i+1}" for i in range(num_analyses.value-1)] + ["upper" + f"{num_analyses.value}"]
+    )
     return (lower_boundary_value_labels,)
 
 
 @app.cell
 def _(num_analyses):
-    upper_boundary_value_labels = ["upper" + f"{i+1}" for i in range(num_analyses)]
+    upper_boundary_value_labels = ["upper" + f"{i+1}" for i in range(num_analyses.value)]
     return (upper_boundary_value_labels,)
 
 
@@ -460,7 +470,7 @@ def _(best_bound_getter, datasets, plt, stages, tri):
         _b = _ax[_idx]
 
         _b.set_title(_label)
-        _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+        _b.set(xlabel="Trial stages", xticks=stages)
 
         _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
         _b.plot(stages, tri[1], color="darkorange")
@@ -519,7 +529,7 @@ def _(best_constrained_bound_getter, datasets, plt, stages, tri):
         _b = _ax[_idx]
 
         _b.set_title(_label)
-        _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+        _b.set(xlabel="Trial stages", xticks=stages)
 
         _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
         _b.plot(stages, tri[1], color="darkorange")
@@ -584,7 +594,7 @@ def _(column_runs_compare, datasets, mo, plt, rand_bound_getter, stages, tri):
         _b = _ax[_idx]
 
         _b.set_title(f"{_label} ({run_str})")
-        _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+        _b.set(xlabel="Trial stages", xticks=stages)
 
         _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
         _b.plot(stages, tri[1], color="darkorange")
@@ -673,7 +683,7 @@ def _(
             _b = _ax[_idx]
 
             _b.set_title(_label + f", top {n_experiments_dict[_label]} bounds")
-            _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+            _b.set(xlabel="Trial stages", xticks=stages)
 
             _b.plot(stages, 
                     sorted_constrained_data[_label].loc[_run_idx, upper_boundary_value_labels], 
@@ -747,7 +757,7 @@ def _(
         _b.set_ylim(-8, 8)
 
         _b.set_title(_label + f", top {n_experiments_dict[_label]} bounds")
-        _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
+        _b.set(xlabel="Trial stages", xticks=stages)
 
         _b.plot(stages, 
                 sorted_constrained_data[_label].loc[slider.value, upper_boundary_value_labels], 
@@ -757,19 +767,19 @@ def _(
                 sorted_constrained_data[_label].loc[slider.value, lower_boundary_value_labels], 
                 color="purple")
 
-        _b.text(1.5, -4, 
+        _b.text(stages[1]-0.2, -4, 
                 "$\\alpha$ = " + str(sorted_constrained_data[_label].loc[slider.value, "alpha"].round(4)))
 
-        _b.text(1.4, -5.5, 
+        _b.text(stages[1]-0.2, -5.5, 
                 "$1-\\beta$ = " + str(sorted_constrained_data[_label].loc[slider.value, "power"].round(4)))
 
-        _b.text(1.87, -4, 
+        _b.text(stages[2]-0.2, -4, 
                 "n = " + str(sorted_constrained_data[_label].loc[slider.value, "sample_size"].round()))   
 
-        _b.text(1.87, -5.5, 
+        _b.text(stages[2]-0.2, -5.5, 
                 "Max ESS = " + str(sorted_constrained_data[_label].loc[slider.value, "max_ess"].round()))
 
-        _b.text(1, -4, 
+        _b.text(stages[3]-0.2, -4, 
                 "$\mathcal{L = }$" + str(sorted_constrained_data[_label].loc[slider.value, "obj_func"].round(4)))
 
 
@@ -798,6 +808,13 @@ def _(mo):
 
 
 @app.cell
+def _(mpl):
+    # get colors to use
+    colors = mpl.color_sequences["tab20"]
+    return (colors,)
+
+
+@app.cell
 def _(
     datasets,
     lower_boundary_value_labels,
@@ -808,7 +825,7 @@ def _(
     stages,
     upper_boundary_value_labels,
 ):
-    _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses, figsize=(11,5), sharey=True)
+    _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses.value, figsize=(11,5), sharey=True)
     _ax[1, stages[-1] - 1].axis("off")
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
@@ -868,6 +885,7 @@ def _(mo):
 @app.cell
 def _(
     best_constrained_bound_getter,
+    colors,
     datasets,
     lower_boundary_value_labels,
     n_experiments_dict,
@@ -884,13 +902,11 @@ def _(
     _fig, _ax = plt.subplots(1, _num_plots, figsize=(4 * _num_plots, 5), sharey=True, squeeze=False)
     _ax = _ax.flatten()
 
-    colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:purple"]
-
     color_idx = 0
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
         _upper, _lower, _obj_f, _alpha, _power = best_constrained_bound_getter(_data)
-        for stage in range(num_analyses):
+        for stage in range(num_analyses.value):
 
             _b = _ax[_idx]
 
@@ -899,14 +915,15 @@ def _(
             _b.set(xlabel="Trial stages", xticks=[1, 2, 3])
 
             # best constrained boundaries
-            _b.scatter(stages, _upper, color="white", zorder=4)
-            _b.scatter(stages, _lower, color="white", zorder=4)
+            _b.scatter(stages, _upper, color="black", zorder=4)
+            _b.scatter(stages, _lower, color="black", zorder=4)
 
             # upper bound plots       
             _b.violinplot(_data[upper_boundary_value_labels[stage]], positions=[stage+1],
                            showmeans=False, 
                            showmedians=False,
-                           showextrema=False)
+                           showextrema=False,
+                           facecolor=(colors[color_idx], 0.3))
 
             # calculate the median and quartiles
             q1_upper, median_upper, q3_upper = np.percentile(_data[upper_boundary_value_labels[stage]], 
@@ -919,16 +936,18 @@ def _(
             _b.violinplot(_data[lower_boundary_value_labels[stage]], positions=[stage+1],
                            showmeans=False, 
                            showmedians=False,
-                           showextrema=False)
+                           showextrema=False,
+                           facecolor=(colors[color_idx], 0.3))
 
             # calculate the median and quartiles
             q1_lower, median_lower, q3_lower = np.percentile(_data[lower_boundary_value_labels[stage]], 
                                                              [25, 50, 75])
 
-            _b.vlines(stage+1, q1_lower, q3_lower, color=colors[color_idx+1], linestyle='-', lw=5)
-            _b.hlines(median_lower, stage+1-0.07, stage+1+0.07, color=colors[color_idx+1], zorder=3)
+            _b.vlines(stage+1, q1_lower, q3_lower, color=colors[color_idx], linestyle='-', lw=5)
+            _b.hlines(median_lower, stage+1-0.07, stage+1+0.07, color=colors[color_idx], zorder=3)
 
-            color_idx += 2
+            color_idx += 1
+        # reset index to 0 so upper and lower plots are paired
         color_idx = 0
 
     _ax[0].set_ylabel("$Z_k$ values")
@@ -948,6 +967,7 @@ def _(mo):
 @app.cell
 def _(
     best_constrained_bound_getter,
+    colors,
     datasets,
     lower_boundary_value_labels,
     n_experiments_dict,
@@ -962,8 +982,6 @@ def _(
     _num_plots = len(datasets)
     _fig, _ax = plt.subplots(1, _num_plots, figsize=(4 * _num_plots, 5), sharey=True, squeeze=False)
     _ax = _ax.flatten()
-
-    _colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:purple"]
 
     _color_idx = 0
 
@@ -1004,14 +1022,20 @@ def _(
             _b.violinplot(_upper[_key], positions=[_colu+1],
                            showmeans=False, 
                            showmedians=False,
-                           showextrema=False)
+                           showextrema=False,
+                           facecolor=(colors[_color_idx], 0.3))
 
             # calculate the median and quartiles
             _q1_upper, _median_upper, _q3_upper = np.percentile(_upper[_key], [25, 50, 75])
 
-            _b.vlines(_colu+1, _q1_upper, _q3_upper, color=_colors[_color_idx], linestyle='-', lw=5)
-            _b.hlines(_median_upper, _colu+1-0.07, _colu+1+0.07, color=_colors[_color_idx], zorder=3)
+            _b.vlines(_colu+1, _q1_upper, _q3_upper, color=colors[_color_idx], linestyle='-', lw=5)
+            _b.hlines(_median_upper, _colu+1-0.07, _colu+1+0.07, color=colors[_color_idx], zorder=3)
 
+            _color_idx += 1
+
+        # reset index to 0 so upper and lower plots are paired
+        _color_idx = 0
+    
         for _colu, _key in enumerate(lower_boundary_value_labels):
             _b = _ax[_idx]
 
@@ -1019,15 +1043,17 @@ def _(
             _b.violinplot(_lower[_key], positions=[_colu+1],
                            showmeans=False, 
                            showmedians=False,
-                           showextrema=False)
+                           showextrema=False,
+                           facecolor=(colors[_color_idx], 0.3))
 
             # calculate the median and quartiles
             _q1_lower, _median_lower, _q3_lower = np.percentile(_lower[_key], [25, 50, 75])
 
-            _b.vlines(_colu+1, _q1_lower, _q3_lower, color=_colors[_color_idx+1], linestyle='-', lw=5)
-            _b.hlines(_median_lower, _colu+1-0.07, _colu+1+0.07, color=_colors[_color_idx+1], zorder=3)
+            _b.vlines(_colu+1, _q1_lower, _q3_lower, color=colors[_color_idx], linestyle='-', lw=5)
+            _b.hlines(_median_lower, _colu+1-0.07, _colu+1+0.07, color=colors[_color_idx], zorder=3)
 
-            _color_idx += 2
+            _color_idx += 1
+        # reset index to 0 so upper and lower plots are paired
         _color_idx = 0
 
 
