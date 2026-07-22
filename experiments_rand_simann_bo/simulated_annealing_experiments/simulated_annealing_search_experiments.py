@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -52,8 +52,15 @@ def _(mo):
 
 
 @app.cell
-def _(ss):
-    num_analyses = 3
+def _(mo):
+    num_analyses = mo.ui.number(label="Number of analyses = ", value=3, start=1)
+
+    mo.vstack([num_analyses])
+    return (num_analyses,)
+
+
+@app.cell
+def _(num_analyses, ss):
     target_alpha = 0.05
     target_power = 0.9
     delta0 = 0.
@@ -68,9 +75,9 @@ def _(ss):
         delta=delta1
     )
 
-    print(f"We are running an experiment with a trial design with {num_analyses} stages, with:\na target alpha of {target_alpha},\na target power of {target_power},\na null hypothesis of {delta0},\nan alternative hypothesis of {delta1},\nand an assumed variance of {sigma2}\n")
+    print(f"We are running an experiment with a trial design with {num_analyses.value} stages, with:\na target alpha of {target_alpha},\na target power of {target_power},\na null hypothesis of {delta0},\nan alternative hypothesis of {delta1},\nand an assumed variance of {sigma2}\n")
     print(f"Single-stage sample size mu = {mu:.2f}")
-    return delta0, delta1, mu, num_analyses, sigma2, target_alpha, target_power
+    return delta0, delta1, mu, sigma2, target_alpha, target_power
 
 
 @app.cell(hide_code=True)
@@ -169,14 +176,14 @@ def _(
     target_power,
 ):
     tri = bd.calculate_triangular_boundaries(
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         alpha = target_alpha,
         delta = delta1
     )
 
     tri_n_patients = ss.find_sample_size(
         power_target = target_power,
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
         null_hypothesis = delta0,
@@ -188,7 +195,7 @@ def _(
         mu = mu,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         n_patients = tri_n_patients,
         target_power = target_power,
         target_alpha = target_alpha,
@@ -325,7 +332,15 @@ def _():
 
 
 @app.cell
-def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
+def _(
+    c0,
+    lower_sample_size,
+    mo,
+    np,
+    num_analyses,
+    tri_params,
+    upper_sample_size,
+):
     # create a single dropdown
     space_dropdown = mo.ui.dropdown(
         options=['large_box', 'small_box', 'triang_box'],
@@ -333,18 +348,35 @@ def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
         label="Choose search space:"
     )
 
-    # lookups for lower and upper spaces based on the selected key
-    lower_spaces = {
-        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
-        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
-        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [lower_sample_size])
-    }
+    search_space_boxes = ['large_box', 'small_box', 'triang_box']
 
-    upper_spaces = {
-        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, upper_sample_size]),
-        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, upper_sample_size]),
-        'triang_box' : np.array([param + 0.4 for param in tri_params] + [upper_sample_size])
-    }
+    lower_spaces = {}
+    upper_spaces = {}
+
+    for key in search_space_boxes:
+        if key == "triang_box":
+            lower_spaces[key] = np.array([max(0, p - 0.4) for p in tri_params] + [lower_sample_size])
+            upper_spaces[key] = np.array([p + 0.4 for p in tri_params] + [upper_sample_size])
+            continue
+
+        n = num_analyses.value * 2
+        lower = np.zeros(n)
+        upper = np.ones(n)
+
+        if key == "large_box":
+            upper = upper * 4
+            lower[0] = c0 - 3.0
+            upper[0] = c0 + 3.0
+        elif key == "small_box":
+            lower[0] = c0 - 1.0
+            upper[0] = c0 + 1.0
+            upper[2] = 4.0
+
+        lower[-1] = lower_sample_size
+        upper[-1] = upper_sample_size
+
+        lower_spaces[key] = lower
+        upper_spaces[key] = upper
     return lower_spaces, space_dropdown, upper_spaces
 
 
@@ -412,14 +444,14 @@ def _(mo):
 
 
 @app.cell
-def _(current_lower, current_upper):
+def _(current_lower, current_upper, num_analyses):
     # the neighbour function
     def rand_neighbour(params, K, rng):
 
         modifying_params = params.copy()
 
-        # generates discrete uniform values from 0 to 5
-        idx_to_change = rng.integers(low=0, high=6)
+        # generates discrete uniform values from 0 to num_analyses
+        idx_to_change = rng.integers(low=0, high=(num_analyses.value*2))
 
         modifying_params[idx_to_change] = rng.uniform(
             low = current_lower[idx_to_change], 
@@ -453,13 +485,13 @@ def _(np):
 
 
 @app.cell
-def _(within_search_space):
+def _(num_analyses, within_search_space):
     def norm_neighbour(params, K, rng, sigma_vector, lower_search_bounds, upper_search_bounds):
 
         modifying_params = params.copy()
 
-        # generates discrete uniform values from 0 to 5
-        idx_to_change = rng.integers(low=0, high=6)
+        # generates discrete uniform values from 0 to num_analyses
+        idx_to_change = rng.integers(low=0, high=(num_analyses.value*2))
 
         # make a first change
         # generate normal(0, 1) perturbation and multiply by correct sigma
@@ -498,15 +530,22 @@ def _(parameter_test):
 
 @app.cell
 def _(num_analyses, parameter_test, rand_neighbour, rngt):
-    rand_neighbour(parameter_test, num_analyses, rng = rngt)
+    rand_neighbour(parameter_test, num_analyses.value, rng = rngt)
     return
 
 
 @app.cell
-def _():
+def _(np, num_analyses):
     # empirically selected sigma values that will decrease over time
-    sigma_vector = [2, 2, 2, 2, 2, 25]
+    sigma_vector = np.ones(num_analyses.value*2) * 2
+    sigma_vector[(num_analyses.value*2)-1] = 25
     return (sigma_vector,)
+
+
+@app.cell
+def _(sigma_vector):
+    sigma_vector
+    return
 
 
 @app.cell
@@ -520,7 +559,7 @@ def _(
     sigma_vector,
 ):
     norm_neighbour(parameter_test, 
-                   num_analyses, 
+                   num_analyses.value, 
                    rng = rngt, 
                    sigma_vector = sigma_vector, 
                    lower_search_bounds = current_lower,
@@ -537,15 +576,15 @@ def _(mo):
 
 
 @app.cell
-def _(np, rand_neighbour, rngt, tri_params):
+def _(np, num_analyses, rand_neighbour, rngt, tri_params):
     bounds_collector = []
     sample_size_collector = []
     num_tests = 2000
     tmp = np.concatenate((tri_params, [20]))
     for _i in range(num_tests):
-        tmp = rand_neighbour(tmp, 3, rng = rngt)
-        bound = tmp[0:5]
-        sample_size_collector.append(tmp[5])
+        tmp = rand_neighbour(tmp, num_analyses.value, rng = rngt)
+        bound = tmp[0:(num_analyses.value*2)-1]
+        sample_size_collector.append(tmp[(num_analyses.value*2)-1])
         bounds_collector.append(bound.tolist())
     return bounds_collector, num_tests
 
@@ -554,10 +593,10 @@ def _(np, rand_neighbour, rngt, tri_params):
 def _(bounds_collector, fmt_bd, num_analyses, num_tests, plt, tri):
     _fig, _ax = plt.subplots()
 
-    analyses = [i+1 for i in range(num_analyses)]
+    analyses = [i+1 for i in range(num_analyses.value)]
 
     for _i in range(num_tests):
-        _bounds = fmt_bd.reverse_to_boundaries(bounds_collector[_i], K=3)
+        _bounds = fmt_bd.reverse_to_boundaries(bounds_collector[_i], K=num_analyses.value)
         _ax.plot(analyses, _bounds[0], color = "purple", alpha = 0.1)
         _ax.plot(analyses, _bounds[1], color = "purple", alpha = 0.1)
 
@@ -597,25 +636,25 @@ def _(
 
         tmp1 = norm_neighbour(
             tmp1,
-            num_analyses,
+            num_analyses.value,
             rng = rngt,
             sigma_vector = sigma_vector,
             lower_search_bounds = current_lower,
             upper_search_bounds = current_upper
         )
 
-        bound1 = tmp1[0:5]
-        sample_size_collector1.append(tmp1[5])
+        bound1 = tmp1[0:(num_analyses.value*2)-1]
+        sample_size_collector1.append(tmp1[(num_analyses.value*2)-1])
         bounds_collector1.append(bound1.tolist())
     return (bounds_collector1,)
 
 
 @app.cell
-def _(analyses, bounds_collector1, fmt_bd, num_tests, plt, tri):
+def _(analyses, bounds_collector1, fmt_bd, num_analyses, num_tests, plt, tri):
     _fig, _ax = plt.subplots()
 
     for _i in range(num_tests):
-        _bounds = fmt_bd.reverse_to_boundaries(bounds_collector1[_i], K=3)
+        _bounds = fmt_bd.reverse_to_boundaries(bounds_collector1[_i], K=num_analyses.value)
         _ax.plot(analyses, _bounds[0], color = "purple", alpha = 0.1)
         _ax.plot(analyses, _bounds[1], color = "purple", alpha = 0.1)
 
@@ -654,8 +693,8 @@ def _(num_analyses):
     # we will use an empty dictionary for memory efficiency and the convert
 
     # dynamic labels for the bounds
-    upper_labels = [f"upper{i+1}" for i in range(num_analyses)]
-    lower_labels = [f"lower{i+1}" for i in range(num_analyses - 1)]
+    upper_labels = [f"upper{i+1}" for i in range(num_analyses.value)]
+    lower_labels = [f"lower{i+1}" for i in range(num_analyses.value - 1)]
 
     # labels will be used again in the experiment loop
     labels = upper_labels + lower_labels
@@ -739,6 +778,7 @@ def _(
     rand_neighbour,
     short_seed_list,
     sigma2,
+    sigma_vector,
     target_alpha,
     target_power,
     time,
@@ -764,11 +804,11 @@ def _(
 
         # initial values for temperature and standard deviations
         temperature_start = 50
-        sigma_vector_start = np.array([2, 2, 2, 2, 2, 25])
+        sigma_vector_start = sigma_vector.copy()
 
         # small sigma test:
         # sigma_vector_start = np.array([1.5, 1.5, 1.5, 1.5, 1.5, 15])
-    
+
         # start-end test:
         # sigma_vector_end = np.array([0.01, 0.01, 0.01, 0.01, 0.01, 2])
 
@@ -791,25 +831,28 @@ def _(
             if norm_neighbour_on.value:
                 candidate_design = norm_neighbour(
                     params = current_design,
-                    K = num_analyses,
+                    K = num_analyses.value,
                     rng = rng,
                     sigma_vector = sigma_vector_use,
                     lower_search_bounds = current_lower,
                     upper_search_bounds = current_upper
                 )
             else:
-                candidate_design = rand_neighbour(params = current_design, K = num_analyses, rng = rng)
+                candidate_design = rand_neighbour(params = current_design, K = num_analyses.value, rng = rng)
 
             # get its characteristics and calculate its penalty
-            candidate_bounds = fmt_bd.reverse_to_boundaries(params = candidate_design[0:5], K = num_analyses)
-            candidate_n = candidate_design[5]
+            candidate_bounds = fmt_bd.reverse_to_boundaries(
+                params = candidate_design[0:(num_analyses.value*2)-1], 
+                K = num_analyses.value
+            )
+            candidate_n = candidate_design[(num_analyses.value*2)-1]
 
             # calculate its new function value
             alpha, power, max_ess, f_new = obj_f(
                 mu = mu,
                 upper_bounds = candidate_bounds[0],
                 lower_bounds = candidate_bounds[1],
-                n_analyses = num_analyses,
+                n_analyses = num_analyses.value,
                 n_patients = candidate_n,
                 target_power = target_power,
                 target_alpha = target_alpha,
@@ -832,7 +875,7 @@ def _(
                     f_min = f_new.copy()
 
             # save the boundaries for analysis
-            bounds_list = np.concatenate( (candidate_bounds[0], candidate_bounds[1][0:2]) )
+            bounds_list = np.concatenate( (candidate_bounds[0], candidate_bounds[1][0:num_analyses.value-1]) )
 
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
@@ -841,15 +884,18 @@ def _(
             # collect the rest of the value of interest
             box_values_collection["alpha"].extend([alpha])
             box_values_collection["power"].extend([power])
-            box_values_collection["sample_size"].extend([current_design[5]])
+            box_values_collection["sample_size"].extend([current_design[(num_analyses.value*2)-1]])
             box_values_collection["max_ess"].extend([max_ess])
             box_values_collection["obj_func"].extend([f_new])
             box_values_collection["temperature"].extend([temperature])
 
             # collect the best design and f_min
-            best_bounds = fmt_bd.reverse_to_boundaries(params = best_design[0:5], K = num_analyses)
-            best_bounds_list = np.concatenate( (best_bounds[0], best_bounds[1][0:2]) )
-            best_n = best_design[5]
+            best_bounds = fmt_bd.reverse_to_boundaries(
+                params = best_design[0:(num_analyses.value*2)-1], 
+                K = num_analyses.value
+            )
+            best_bounds_list = np.concatenate( (best_bounds[0], best_bounds[1][0:num_analyses.value-1]) )
+            best_n = best_design[(num_analyses.value*2)-1]
 
             if j % 25 == 0:
                 print(".", end = "")
@@ -891,7 +937,7 @@ def _(box_collections_df):
 @app.cell
 def _(box_collections_df):
     box_collections_df.to_csv(
-        "/workspace/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t50_rnorm_small-sigma_results.csv")
+        "/tf/experiments_rand_simann_bo/simulated_annealing_experiments/large_box_t50_rnorm_50x500.csv")
     return
 
 
