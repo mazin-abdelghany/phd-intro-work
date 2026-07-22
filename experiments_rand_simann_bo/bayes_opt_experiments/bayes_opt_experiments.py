@@ -65,8 +65,15 @@ def _(mo):
 
 
 @app.cell
-def _(ss):
-    num_analyses = 3
+def _(mo):
+    num_analyses = mo.ui.number(label="Number of analyses = ", value=3, start=1)
+
+    mo.vstack([num_analyses])
+    return (num_analyses,)
+
+
+@app.cell
+def _(num_analyses, ss):
     target_alpha = 0.05
     target_power = 0.9
     delta0 = 0.
@@ -81,9 +88,9 @@ def _(ss):
         delta=delta1
     )
 
-    print(f"We are running an experiment with a trial design with {num_analyses} stages, with:\na target alpha of {target_alpha},\na target power of {target_power},\na null hypothesis of {delta0},\nan alternative hypothesis of {delta1},\nand an assumed variance of {sigma2}\n")
+    print(f"We are running an experiment with a trial design with {num_analyses.value} stages, with:\na target alpha of {target_alpha},\na target power of {target_power},\na null hypothesis of {delta0},\nan alternative hypothesis of {delta1},\nand an assumed variance of {sigma2}\n")
     print(f"Single-stage sample size mu = {mu:.2f}")
-    return delta0, delta1, mu, num_analyses, sigma2, target_alpha, target_power
+    return delta0, delta1, mu, sigma2, target_alpha, target_power
 
 
 @app.cell(hide_code=True)
@@ -182,14 +189,14 @@ def _(
     target_power,
 ):
     tri = bd.calculate_triangular_boundaries(
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         alpha = target_alpha,
         delta = delta1
     )
 
     tri_n_patients = ss.find_sample_size(
         power_target = target_power,
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
         null_hypothesis = delta0,
@@ -201,7 +208,7 @@ def _(
         mu = mu,
         upper_bounds = tri[0],
         lower_bounds = tri[1],
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         n_patients = tri_n_patients,
         target_power = target_power,
         target_alpha = target_alpha,
@@ -338,7 +345,15 @@ def _():
 
 
 @app.cell
-def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
+def _(
+    c0,
+    lower_sample_size,
+    mo,
+    np,
+    num_analyses,
+    tri_params,
+    upper_sample_size,
+):
     # create a single dropdown
     space_dropdown = mo.ui.dropdown(
         options=['large_box', 'small_box', 'triang_box'],
@@ -346,18 +361,35 @@ def _(c0, lower_sample_size, mo, np, tri_params, upper_sample_size):
         label="Choose search space:"
     )
 
-    # lookups for lower and upper spaces based on the selected key
-    lower_spaces = {
-        'large_box' : np.array([c0 - 3.0, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
-        'small_box' : np.array([c0 - 1, 0.0, 0.0, 0.0, 0.0, lower_sample_size]),
-        'triang_box' : np.array([max(0, param - 0.4) for param in tri_params] + [lower_sample_size])
-    }
+    search_space_boxes = ['large_box', 'small_box', 'triang_box']
 
-    upper_spaces = {
-        'large_box' : np.array([c0 + 3.0, 4.0, 4.0, 4.0, 4.0, upper_sample_size]),
-        'small_box' : np.array([c0 + 1, 1.0, 4.0, 1.0, 1.0, upper_sample_size]),
-        'triang_box' : np.array([param + 0.4 for param in tri_params] + [upper_sample_size])
-    }
+    lower_spaces = {}
+    upper_spaces = {}
+
+    for key in search_space_boxes:
+        if key == "triang_box":
+            lower_spaces[key] = np.array([max(0, p - 0.4) for p in tri_params] + [lower_sample_size])
+            upper_spaces[key] = np.array([p + 0.4 for p in tri_params] + [upper_sample_size])
+            continue
+
+        n = num_analyses.value * 2
+        lower = np.zeros(n)
+        upper = np.ones(n)
+
+        if key == "large_box":
+            upper = upper * 4
+            lower[0] = c0 - 3.0
+            upper[0] = c0 + 3.0
+        elif key == "small_box":
+            lower[0] = c0 - 1.0
+            upper[0] = c0 + 1.0
+            upper[2] = 4.0
+
+        lower[-1] = lower_sample_size
+        upper[-1] = upper_sample_size
+
+        lower_spaces[key] = lower
+        upper_spaces[key] = upper
     return lower_spaces, space_dropdown, upper_spaces
 
 
@@ -398,8 +430,8 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 15
-    n_loops = 1000
+    n_experiments = 10
+    n_loops = 10
     return n_experiments, n_loops
 
 
@@ -420,8 +452,8 @@ def _(num_analyses):
     # we will use an empty dictionary for memory efficiency and the convert
 
     # dynamic labels for the bounds
-    upper_labels = [f"upper{i+1}" for i in range(num_analyses)]
-    lower_labels = [f"lower{i+1}" for i in range(num_analyses - 1)]
+    upper_labels = [f"upper{i+1}" for i in range(num_analyses.value)]
+    lower_labels = [f"lower{i+1}" for i in range(num_analyses.value - 1)]
 
     # labels will be used again in the experiment loop
     labels = upper_labels + lower_labels
@@ -498,12 +530,12 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     poc = bd.calculate_pocock_boundaries(
-        n_analyses=num_analyses, alpha=0.05
+        n_analyses=num_analyses.value, alpha=0.05
     )
 
     poc_n = ss.find_sample_size(
         power_target = target_power,
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         upper_bounds = poc[0],
         lower_bounds = poc[1],
         null_hypothesis = delta0,
@@ -522,12 +554,12 @@ def _(mo):
 def _(mo):
     mo.md(r"""
     obf = bd.calculate_of_boundaries(
-        n_analyses=num_analyses, alpha=0.05
+        n_analyses=num_analyses.value, alpha=0.05
     )
 
     obf_n = ss.find_sample_size(
         power_target = target_power,
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         upper_bounds = obf[0],
         lower_bounds = obf[1],
         null_hypothesis = delta0,
@@ -549,7 +581,7 @@ def _(mo):
         mu = mu,
         upper_bounds = poc[0],
         lower_bounds = poc[1],
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         n_patients = poc_n,
         target_power = target_power,
         target_alpha = target_alpha,
@@ -562,7 +594,7 @@ def _(mo):
         mu = mu,
         upper_bounds = obf[0],
         lower_bounds = obf[1],
-        n_analyses = num_analyses,
+        n_analyses = num_analyses.value,
         n_patients = obf_n,
         target_power = target_power,
         target_alpha = target_alpha,
@@ -641,16 +673,16 @@ def _(
 
         for point in initial_x:
 
-            sample_size = point[5,]
+            sample_size = point[(num_analyses.value*2)-1,]
             bounds = point[:-1]
 
-            bounds = fmt_bd.reverse_to_boundaries(params = bounds, K = num_analyses)
+            bounds = fmt_bd.reverse_to_boundaries(params = bounds, K = num_analyses.value)
 
             _, _, _, initial_y_new = obj_f(
                 mu = mu,
                 upper_bounds = bounds[0],
                 lower_bounds = bounds[1],
-                n_analyses = num_analyses,
+                n_analyses = num_analyses.value,
                 n_patients = sample_size.numpy(),
                 target_power = target_power,
                 target_alpha = target_alpha,
@@ -672,7 +704,7 @@ def _(
         # GP regression model #
         #######################
         kernel = gpflow.kernels.Matern52(
-            lengthscales = [1.0] * (num_analyses * 2)
+            lengthscales = [1.0] * (num_analyses.value * 2)
         )
 
         #kernel.lengthscales.prior = tfp.distributions.LogNormal(
@@ -715,17 +747,17 @@ def _(
         for j in range(n_loops):
             x_new = ask_tell.ask()
 
-            x_new_sample_size = x_new[0][5,]
+            x_new_sample_size = x_new[0][(num_analyses.value*2)-1,]
             x_new_bounds = x_new[0][:-1]
 
-            bounds = fmt_bd.reverse_to_boundaries(params = x_new_bounds, K = num_analyses)
-            bounds_list = np.concatenate( (bounds[0], bounds[1][0:2]) )
+            bounds = fmt_bd.reverse_to_boundaries(params = x_new_bounds, K = num_analyses.value)
+            bounds_list = np.concatenate( (bounds[0], bounds[1][0:num_analyses.value-1]) )
 
             alpha, power, max_ess, y_new = obj_f(
                 mu = mu,
                 upper_bounds = bounds[0],
                 lower_bounds = bounds[1],
-                n_analyses = num_analyses,
+                n_analyses = num_analyses.value,
                 n_patients = x_new_sample_size.numpy(),
                 target_power = target_power,
                 target_alpha = target_alpha,
@@ -798,7 +830,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_15x1000.csv"
+        "/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_50x500.csv"
     )
     return
 
