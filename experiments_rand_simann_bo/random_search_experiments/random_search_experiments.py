@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -436,12 +436,12 @@ def _(num_analyses):
         "obj_func", "execute_time", "seed"
     ]
 
-    random_search_large_box = {key: [] for key in ordered_keys}
-    return labels, random_search_large_box
+    random_search_results = {key: [] for key in ordered_keys}
+    return labels, random_search_results
 
 
 @app.cell
-def _(label_range, n_experiments, n_loops, random_search_large_box):
+def _(label_range, n_experiments, n_loops, random_search_results):
     # generate the indices using the pattern described above
     index_list = [
         i 
@@ -449,12 +449,12 @@ def _(label_range, n_experiments, n_loops, random_search_large_box):
         for i in range(start + 1, start + (n_loops+1))
     ]
 
-    random_search_large_box["index"] = index_list
+    random_search_results["index"] = index_list
     return
 
 
 @app.cell
-def _(n_experiments, n_loops, np, random_search_large_box):
+def _(n_experiments, n_loops, np, random_search_results):
     # create a list of seeds to use
     seed_list = [] # for filling the dictionary
     short_seed_list = [] # for using in the loop
@@ -466,7 +466,7 @@ def _(n_experiments, n_loops, np, random_search_large_box):
         seeds = np.repeat(seed, n_loops)
         seed_list += seeds.tolist()
 
-    random_search_large_box["seed"] = seed_list
+    random_search_results["seed"] = seed_list
     return (short_seed_list,)
 
 
@@ -492,7 +492,7 @@ def _(
     np,
     num_analyses,
     obj_f,
-    random_search_large_box,
+    random_search_results,
     short_seed_list,
     sigma2,
     target_alpha,
@@ -533,14 +533,14 @@ def _(
 
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
-                random_search_large_box[labels[_i]].extend([bounds_list[_i]])
+                random_search_results[labels[_i]].append(bounds_list[_i])
 
             # collect the rest of the value of interest
-            random_search_large_box["alpha"].extend([alpha])
-            random_search_large_box["power"].extend([power])
-            random_search_large_box["sample_size"].extend([sample_size[j]])
-            random_search_large_box["max_ess"].extend([max_ess])
-            random_search_large_box["obj_func"].extend([obj])
+            random_search_results["alpha"].append(alpha)
+            random_search_results["power"].append(power)
+            random_search_results["sample_size"].append(sample_size[j])
+            random_search_results["max_ess"].append(max_ess)
+            random_search_results["obj_func"].append(obj)
 
             if j % 25 == 0:
                 print(".", end = "")
@@ -548,9 +548,7 @@ def _(
         stop_time = time.time()
         execute_time = stop_time - start_time
 
-        time_list = np.repeat(execute_time, n_loops)
-        time_list += time_list.tolist()
-        random_search_large_box["execute_time"].extend(time_list)
+        random_search_results["execute_time"].extend([execute_time] * n_loops)
 
         if i % 10 == 0:
             print("\n===========================")
@@ -568,14 +566,14 @@ def _(mo):
 
 
 @app.cell
-def _(pd, random_search_large_box):
-    pd.DataFrame(random_search_large_box)
+def _(pd, random_search_results):
+    pd.DataFrame(random_search_results)
     return
 
 
 @app.cell
-def _(pd, random_search_large_box):
-    pd.DataFrame(random_search_large_box).to_csv(
+def _(pd, random_search_results):
+    pd.DataFrame(random_search_results).to_csv(
         "/tf/experiments_rand_simann_bo/random_search_experiments/large_box_50x500.csv"
     )
     return
