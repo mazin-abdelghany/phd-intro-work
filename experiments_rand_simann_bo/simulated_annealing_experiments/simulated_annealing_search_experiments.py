@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -879,15 +879,15 @@ def _(
 
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
-                box_values_collection[labels[_i]].extend([bounds_list[_i]])
+                box_values_collection[labels[_i]].append(bounds_list[_i])
 
             # collect the rest of the value of interest
-            box_values_collection["alpha"].extend([alpha])
-            box_values_collection["power"].extend([power])
-            box_values_collection["sample_size"].extend([current_design[(num_analyses.value*2)-1]])
-            box_values_collection["max_ess"].extend([max_ess])
-            box_values_collection["obj_func"].extend([f_new])
-            box_values_collection["temperature"].extend([temperature])
+            box_values_collection["alpha"].append(alpha)
+            box_values_collection["power"].append(power)
+            box_values_collection["sample_size"].append(current_design[(num_analyses.value*2)-1])
+            box_values_collection["max_ess"].append(max_ess)
+            box_values_collection["obj_func"].append(f_new)
+            box_values_collection["temperature"].append(temperature)
 
             # collect the best design and f_min
             best_bounds = fmt_bd.reverse_to_boundaries(
@@ -903,9 +903,7 @@ def _(
         stop_time = time.time()
         execute_time = stop_time - start_time
 
-        time_list = np.repeat(execute_time, n_loops)
-        time_list += time_list.tolist()
-        box_values_collection["execute_time"].extend(time_list)
+        box_values_collection["execute_time"].extend([execute_time] * n_loops)
 
         if i % 10 == 0:
             print("\n===========================")
