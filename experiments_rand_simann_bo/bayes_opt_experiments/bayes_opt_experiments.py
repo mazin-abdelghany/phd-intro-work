@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -66,7 +66,7 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    num_analyses = mo.ui.number(label="Number of analyses = ", value=3, start=1)
+    num_analyses = mo.ui.number(label="Number of analyses = ", value=5, start=1)
 
     mo.vstack([num_analyses])
     return (num_analyses,)
@@ -357,7 +357,7 @@ def _(
     # create a single dropdown
     space_dropdown = mo.ui.dropdown(
         options=['large_box', 'small_box', 'triang_box'],
-        value="triang_box",
+        value="large_box",
         label="Choose search space:"
     )
 
@@ -409,17 +409,6 @@ def _(lower_spaces, mo, np, space_dropdown, upper_spaces):
     return current_lower, current_upper
 
 
-@app.cell
-def _(Box, current_lower, current_upper, np):
-    search_space = Box(
-        lower = current_lower, 
-        upper = current_upper
-    )
-    print(f"  lower: {np.round(search_space.lower.numpy(), 3)}")
-    print(f"  upper: {np.round(search_space.upper.numpy(), 3)}")
-    return (search_space,)
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
@@ -431,7 +420,7 @@ def _(mo):
 @app.cell
 def _():
     n_experiments = 10
-    n_loops = 10
+    n_loops = 500
     return n_experiments, n_loops
 
 
@@ -636,15 +625,61 @@ def _(mo):
 
 
 @app.cell
+def _():
+    # ensure all dimensions are [0,1] with min-max scaling
+    # defaults to min and max are set as current upper and lower
+    def min_max_scale(x, min, max):
+        """Transform values to [0, 1]."""
+        return (x - min) / (max - min)
+
+    # defaults to min and max are set as current upper and lower
+    def min_max_unscale(x_scaled, min, max):
+        """Transform normalized [0, 1] values back."""
+        return x_scaled * (max - min) + min
+
+    return (min_max_unscale,)
+
+
+@app.cell
+def _(np):
+    def z_score_scale(x, mu, sigma, axis = 0):
+        """Standardize input array using Z-score scale: (x - mu) / sigma."""
+        return (x - mu) / sigma
+
+
+    def z_score_unscale(x_scaled, mu, sigma, axis = 0):
+        """Restore scaled data back to original space: (x_scaled * sigma) + mu."""
+        return (x_scaled * np.expand_dims(sigma, axis=axis)) + np.expand_dims(mu, axis=axis)
+
+    return (z_score_scale,)
+
+
+@app.cell
+def _(Box, current_lower, current_upper):
+    # because we are min-max scaling, search space will be [0,1]^D
+    search_space = Box(
+        lower = [0.0] * len(current_lower), 
+        upper = [1.0] * len(current_upper)
+    )
+
+    print(search_space.lower)
+    print(search_space.upper)
+    return (search_space,)
+
+
+@app.cell
 def _(
     GaussianProcessRegression,
     bayes_opt_results,
+    current_lower,
+    current_upper,
     delta0,
     delta1,
     fmt_bd,
     gc,
     gpflow,
     labels,
+    min_max_unscale,
     mu,
     n_experiments,
     n_loops,
@@ -659,6 +694,7 @@ def _(
     tf,
     time,
     trieste,
+    z_score_scale,
 ):
     for i in range(n_experiments):
 
@@ -669,11 +705,21 @@ def _(
         # Halton initialisation #
         ########################
         initial_x = search_space.sample_halton(500, seed = short_seed_list[i])
+
+        # search space is [0,1]^D, thus, need to unscale prior to getting y
+        # values for the initial GP fit
+        initial_x_unscaled = min_max_unscale(
+            x_scaled = initial_x.numpy(),
+            min = current_lower,
+            max = current_upper
+        )
+
         initial_y = []
 
-        for point in initial_x:
+        # for each unscaled point
+        for point in initial_x_unscaled:
 
-            sample_size = point[(num_analyses.value*2)-1,]
+            sample_size = point[(num_analyses.value*2)-1]
             bounds = point[:-1]
 
             bounds = fmt_bd.reverse_to_boundaries(params = bounds, K = num_analyses.value)
@@ -683,7 +729,7 @@ def _(
                 upper_bounds = bounds[0],
                 lower_bounds = bounds[1],
                 n_analyses = num_analyses.value,
-                n_patients = sample_size.numpy(),
+                n_patients = sample_size,
                 target_power = target_power,
                 target_alpha = target_alpha,
                 null_hypothesis = delta0,
@@ -693,11 +739,21 @@ def _(
 
             initial_y.append(initial_y_new)
 
-        initial_y_formatted = np.atleast_2d(initial_y).transpose()
+        # turn y into [N,1] column vector
+        initial_y_formatted = np.array(initial_y, dtype=np.float64).reshape(-1, 1)
+
+        # scale y as well
+        y_mu = np.mean(initial_y_formatted)
+        y_sigma = np.std(initial_y_formatted)
+        initial_y_scaled = z_score_scale(
+            initial_y_formatted,
+            mu = y_mu,
+            sigma = y_sigma
+        )
 
         initial_data = trieste.data.Dataset(
             query_points = initial_x,
-            observations = initial_y_formatted
+            observations = initial_y_scaled
         )
 
         #######################
@@ -707,15 +763,25 @@ def _(
             lengthscales = [1.0] * (num_analyses.value * 2)
         )
 
-        #kernel.lengthscales.prior = tfp.distributions.LogNormal(
-        #    gpflow.utilities.to_default_float(0), gpflow.utilities.to_default_float(3)
-        #        )
-        #kernel.variance.prior = tfp.distributions.LogNormal(
-        #    gpflow.utilities.to_default_float(0), gpflow.utilities.to_default_float(3)
-        #)
+        # these priors regularize the lengthscale to have ~99% of its probability
+        # distribution between +/- exp(3*scale)
+        # it sets the same prior on all lengthscales; if a different prior is 
+        # needed for different dimensions, can do:
+        # loc = gpflow.utilities.to_default_float([0.0, 1.0, -0.5])
+        # scale = gpflow.utilities.to_default_float([1.0, 2.0, 0.5])
+        # kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        #     loc=loc,
+        #     scale=scale,
+        # )
+        # kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        #     gpflow.utilities.to_default_float(0), gpflow.utilities.to_default_float(2)
+        # )
+        # kernel.variance.prior = tfp.distributions.LogNormal(
+        #     gpflow.utilities.to_default_float(0), gpflow.utilities.to_default_float(3)
+        # )
 
-        likelihood = gpflow.likelihoods.Gaussian(variance = 1e-1)
-
+        # consider decreasing for K=3?
+        likelihood = gpflow.likelihoods.Gaussian(variance = 1e-3)
         gpflow.set_trainable(likelihood, False)
 
         gpr = gpflow.models.GPR(
@@ -729,12 +795,24 @@ def _(
         ###################
         bayes_opt_model = GaussianProcessRegression(gpr)
 
+        # from the source code for trieste.acquisition.optimizer:
+        # NUM_SAMPLES_MIN = 5000
+        # NUM_SAMPLES_DIM = 1000
+        # NUM_RUNS_DIM = 10
+        # using the Trieste recommendation from their documentation,
+        # num_initial_samples = max(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * D)
+        # where D is the dimensions (K=3 -> D=6; K=5 -> D=10)
+        # num_optimization_runs = NUM_RUNS_DIM * D (10 * D)
         ask_tell = trieste.ask_tell_optimization.AskTellOptimizer(
             search_space     = search_space,
             datasets         = initial_data,
             models           = bayes_opt_model,
             acquisition_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
-                optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer()
+                #optimizer = trieste.acquisition.optimizer.generate_continuous_optimizer(
+                #    num_initial_samples=10000,  # see above for reason
+                #    num_optimization_runs=100,  # see above for reason
+                #    num_recovery_runs=10        # left at default
+                #)
             )
         )
 
@@ -747,8 +825,21 @@ def _(
         for j in range(n_loops):
             x_new = ask_tell.ask()
 
-            x_new_sample_size = x_new[0][(num_analyses.value*2)-1,]
-            x_new_bounds = x_new[0][:-1]
+            # print("new point:", x_new.numpy())
+            # print(ask_tell.to_result().try_get_final_dataset().query_points)
+            # print("cond#:", np.linalg.cond(kernel(ask_tell.to_result().try_get_final_dataset().query_points)))
+            # X = ask_tell.to_result().try_get_final_dataset().query_points.numpy()
+            # d = np.linalg.norm(X - x_new.numpy(), axis=1)
+            # print("dist:", d.min())
+
+            x_new_unscaled = min_max_unscale(
+                x_scaled = x_new.numpy(),
+                min = current_lower,
+                max = current_upper
+            )
+
+            x_new_sample_size = x_new_unscaled[0][(num_analyses.value*2)-1]
+            x_new_bounds = x_new_unscaled[0][:-1]
 
             bounds = fmt_bd.reverse_to_boundaries(params = x_new_bounds, K = num_analyses.value)
             bounds_list = np.concatenate( (bounds[0], bounds[1][0:num_analyses.value-1]) )
@@ -758,7 +849,7 @@ def _(
                 upper_bounds = bounds[0],
                 lower_bounds = bounds[1],
                 n_analyses = num_analyses.value,
-                n_patients = x_new_sample_size.numpy(),
+                n_patients = x_new_sample_size,
                 target_power = target_power,
                 target_alpha = target_alpha,
                 null_hypothesis = delta0,
@@ -766,20 +857,26 @@ def _(
                 variance = sigma2
             )
 
+            y_new_scaled = z_score_scale(
+                y_new,
+                mu = y_mu,
+                sigma = y_sigma
+            )
+
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
-                bayes_opt_results[labels[_i]].extend([bounds_list[_i]])
+                bayes_opt_results[labels[_i]].append(bounds_list[_i])
 
             # collect the rest of the value of interest
-            bayes_opt_results["alpha"].extend([alpha])
-            bayes_opt_results["power"].extend([power])
-            bayes_opt_results["sample_size"].extend([x_new_sample_size.numpy()])
-            bayes_opt_results["max_ess"].extend([max_ess])
-            bayes_opt_results["obj_func"].extend([y_new])
+            bayes_opt_results["alpha"].append(alpha)
+            bayes_opt_results["power"].append(power)
+            bayes_opt_results["sample_size"].append(x_new_sample_size)
+            bayes_opt_results["max_ess"].append(max_ess)
+            bayes_opt_results["obj_func"].append(y_new)
 
             ask_tell.tell(trieste.data.Dataset(
                 query_points = x_new,
-                observations = np.array([[y_new]])
+                observations = np.array([[y_new_scaled]])
             ))
 
             if j % 25 == 0:
@@ -793,9 +890,7 @@ def _(
         stop_time = time.time()
         execute_time = stop_time - start_time
 
-        time_list = np.repeat(execute_time, n_loops)
-        time_list += time_list.tolist()
-        bayes_opt_results["execute_time"].extend(time_list)
+        bayes_opt_results["execute_time"].extend([execute_time] * n_loops)
 
         if i % 1 == 0:
             print("\n===========================")
@@ -830,7 +925,7 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(bayes_opt_results, pd):
     pd.DataFrame(bayes_opt_results).to_csv(
-        "/tf/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_50x500.csv"
+        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_y_z_scaled.csv"
     )
     return
 
