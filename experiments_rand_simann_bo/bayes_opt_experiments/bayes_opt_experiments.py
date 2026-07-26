@@ -337,39 +337,23 @@ def _(mo):
 
 
 @app.cell
-def _():
-    # commentary on selection above
-    lower_sample_size = 20
-    upper_sample_size = 160
-    return lower_sample_size, upper_sample_size
+def _(c0, mo, np, num_analyses, tri_params):
+    search_space_boxes = ['large_box', 'large_box_5_stages', 'small_box', 'triang_box']
 
-
-@app.cell
-def _(
-    c0,
-    lower_sample_size,
-    mo,
-    np,
-    num_analyses,
-    tri_params,
-    upper_sample_size,
-):
     # create a single dropdown
     space_dropdown = mo.ui.dropdown(
-        options=['large_box', 'small_box', 'triang_box'],
+        options=search_space_boxes,
         value="large_box",
         label="Choose search space:"
     )
-
-    search_space_boxes = ['large_box', 'small_box', 'triang_box']
 
     lower_spaces = {}
     upper_spaces = {}
 
     for key in search_space_boxes:
         if key == "triang_box":
-            lower_spaces[key] = np.array([max(0, p - 0.4) for p in tri_params] + [lower_sample_size])
-            upper_spaces[key] = np.array([p + 0.4 for p in tri_params] + [upper_sample_size])
+            lower_spaces[key] = np.array([max(0, p - 0.4) for p in tri_params] + [20])
+            upper_spaces[key] = np.array([p + 0.4 for p in tri_params] + [160])
             continue
 
         n = num_analyses.value * 2
@@ -380,13 +364,26 @@ def _(
             upper = upper * 4
             lower[0] = c0 - 3.0
             upper[0] = c0 + 3.0
+        elif key == "large_box_5_stages":
+            upper = upper * 2
+            lower[0] = c0 - 2.0
+            upper[0] = c0 + 2.0
+            # accounts for the last stage before 
+            # meeting point needs to be a larger 
+            # value to get to $c$ in some cases
+            upper[2] = 4
         elif key == "small_box":
             lower[0] = c0 - 1.0
             upper[0] = c0 + 1.0
             upper[2] = 4.0
 
-        lower[-1] = lower_sample_size
-        upper[-1] = upper_sample_size
+        if key == "large_box":
+            lower[-1] = 20
+            upper[-1] = 160
+        elif key == "large_box_5_stages":
+            lower[-1] = 20
+            upper[-1] = 60
+
 
         lower_spaces[key] = lower
         upper_spaces[key] = upper
@@ -419,7 +416,7 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 10
+    n_experiments = 50
     n_loops = 500
     return n_experiments, n_loops
 
@@ -624,47 +621,136 @@ def _(mo):
     return
 
 
-@app.cell
-def _():
-    # ensure all dimensions are [0,1] with min-max scaling
-    # defaults to min and max are set as current upper and lower
-    def min_max_scale(x, min, max):
-        """Transform values to [0, 1]."""
-        return (x - min) / (max - min)
-
-    # defaults to min and max are set as current upper and lower
-    def min_max_unscale(x_scaled, min, max):
-        """Transform normalized [0, 1] values back."""
-        return x_scaled * (max - min) + min
-
-    return (min_max_unscale,)
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## ============
+    ## Bayes opt setup
+    """)
+    return
 
 
 @app.cell
-def _(np):
-    def z_score_scale(x, mu, sigma, axis = 0):
-        """Standardize input array using Z-score scale: (x - mu) / sigma."""
-        return (x - mu) / sigma
+def _(mo):
+    scale_input = mo.ui.switch(label="Min-max scale inputs")
+    return (scale_input,)
 
 
-    def z_score_unscale(x_scaled, mu, sigma, axis = 0):
-        """Restore scaled data back to original space: (x_scaled * sigma) + mu."""
-        return (x_scaled * np.expand_dims(sigma, axis=axis)) + np.expand_dims(mu, axis=axis)
+@app.cell
+def _(mo, scale_input):
+    mo.vstack([scale_input, mo.md(f"Has value: {scale_input.value}")])
+    return
 
+
+@app.cell
+def _(mo):
+    scale_output = mo.ui.switch(label="Z-scale outputs")
+    return (scale_output,)
+
+
+@app.cell
+def _(mo, scale_output):
+    mo.vstack([scale_output, mo.md(f"Has value: {scale_output.value}")])
+    return
+
+
+@app.cell
+def _(mo):
+    num_haltons = mo.ui.number(label="Number of Halton points = ", value=500, start=100, stop=500, step=100)
+
+    mo.vstack([num_haltons])
+    return (num_haltons,)
+
+
+@app.cell
+def _(mo):
+    do_not_train_error = mo.ui.switch(label="Do not train error")
+    return (do_not_train_error,)
+
+
+@app.cell
+def _(do_not_train_error, mo):
+    mo.vstack([do_not_train_error, mo.md(f"Has value: {do_not_train_error.value}")])
+    return
+
+
+@app.cell
+def _(do_not_train_error, mo):
+    if do_not_train_error.value:
+        radio = mo.ui.radio(
+            options={
+                "1e-1": 1e-1,
+                "1e-2": 1e-2,
+                "1e-3": 1e-3,
+                "1e-4": 1e-4,
+                "1e-5": 1e-5,
+            },
+            value="1e-3",
+            label="Likelihood variance",
+        )
+        radio
+    else:
+        radio = mo.ui.radio(
+            options={1},
+            label="Initial value for likelihood variance",
+        )
+    radio
+    return (radio,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## End Bayes opt setup
+    ## ============
+    """)
+    return
+
+
+@app.cell
+def _(Box, current_lower, current_upper, scale_input):
+    if scale_input.value:
+        # ensure all dimensions are [0,1] with min-max scaling
+        # defaults to min and max are set as current upper and lower
+        def min_max_scale(x, min, max):
+            """Transform values to [0, 1]."""
+            return (x - min) / (max - min)
+
+        # defaults to min and max are set as current upper and lower
+        def min_max_unscale(x_scaled, min, max):
+            """Transform normalized [0, 1] values back."""
+            return x_scaled * (max - min) + min
+
+        # because we are min-max scaling, search space will be [0,1]^D
+        search_space = Box(
+            lower = [0.0] * len(current_lower), 
+            upper = [1.0] * len(current_upper)
+        )
+
+        print(search_space.lower)
+        print(search_space.upper)
+    else:
+        search_space = Box(
+            lower = current_lower,
+            upper = current_upper
+        )
+
+        print(search_space.lower)
+        print(search_space.upper)
+    return min_max_unscale, search_space
+
+
+@app.cell
+def _(np, scale_output):
+    if scale_output.value:
+        def z_score_scale(x, mu, sigma, axis = 0):
+            """Standardize input array using Z-score scale: (x - mu) / sigma."""
+            return (x - mu) / sigma
+
+        def z_score_unscale(x_scaled, mu, sigma, axis = 0):
+            """Restore scaled data back to original space: (x_scaled * sigma) + mu."""
+            return (x_scaled * np.expand_dims(sigma, axis=axis)) + np.expand_dims(mu, axis=axis)
     return (z_score_scale,)
-
-
-@app.cell
-def _(Box, current_lower, current_upper):
-    # because we are min-max scaling, search space will be [0,1]^D
-    search_space = Box(
-        lower = [0.0] * len(current_lower), 
-        upper = [1.0] * len(current_upper)
-    )
-
-    print(search_space.lower)
-    print(search_space.upper)
-    return (search_space,)
 
 
 @app.cell
@@ -675,6 +761,7 @@ def _(
     current_upper,
     delta0,
     delta1,
+    do_not_train_error,
     fmt_bd,
     gc,
     gpflow,
@@ -685,7 +772,11 @@ def _(
     n_loops,
     np,
     num_analyses,
+    num_haltons,
     obj_f,
+    radio,
+    scale_input,
+    scale_output,
     search_space,
     short_seed_list,
     sigma2,
@@ -704,20 +795,25 @@ def _(
         ########################
         # Halton initialisation #
         ########################
-        initial_x = search_space.sample_halton(500, seed = short_seed_list[i])
+        initial_x = search_space.sample_halton(num_haltons.value, seed = short_seed_list[i])
 
         # search space is [0,1]^D, thus, need to unscale prior to getting y
         # values for the initial GP fit
-        initial_x_unscaled = min_max_unscale(
-            x_scaled = initial_x.numpy(),
-            min = current_lower,
-            max = current_upper
-        )
+        if scale_input.value:
+            initial_x_unscaled = min_max_unscale(
+                x_scaled = initial_x.numpy(),
+                min = current_lower,
+                max = current_upper
+            )
+
+            initial_points = initial_x_unscaled
+        else:
+            initial_points = initial_x
 
         initial_y = []
 
-        # for each unscaled point
-        for point in initial_x_unscaled:
+        # for each point
+        for point in initial_points:
 
             sample_size = point[(num_analyses.value*2)-1]
             bounds = point[:-1]
@@ -743,17 +839,18 @@ def _(
         initial_y_formatted = np.array(initial_y, dtype=np.float64).reshape(-1, 1)
 
         # scale y as well
-        y_mu = np.mean(initial_y_formatted)
-        y_sigma = np.std(initial_y_formatted)
-        initial_y_scaled = z_score_scale(
-            initial_y_formatted,
-            mu = y_mu,
-            sigma = y_sigma
-        )
+        if scale_output.value:
+            y_mu = np.mean(initial_y_formatted)
+            y_sigma = np.std(initial_y_formatted)
+            initial_y_formatted = z_score_scale(
+                initial_y_formatted,
+                mu = y_mu,
+                sigma = y_sigma
+            )
 
         initial_data = trieste.data.Dataset(
             query_points = initial_x,
-            observations = initial_y_scaled
+            observations = initial_y_formatted
         )
 
         #######################
@@ -781,8 +878,10 @@ def _(
         # )
 
         # consider decreasing for K=3?
-        likelihood = gpflow.likelihoods.Gaussian(variance = 1e-3)
-        gpflow.set_trainable(likelihood, False)
+        likelihood = gpflow.likelihoods.Gaussian(variance = radio.value)
+
+        if do_not_train_error.value:
+            gpflow.set_trainable(likelihood, False)
 
         gpr = gpflow.models.GPR(
             data      = (initial_x, initial_y_formatted),
@@ -832,14 +931,19 @@ def _(
             # d = np.linalg.norm(X - x_new.numpy(), axis=1)
             # print("dist:", d.min())
 
-            x_new_unscaled = min_max_unscale(
-                x_scaled = x_new.numpy(),
-                min = current_lower,
-                max = current_upper
-            )
+            if scale_input.value:
+                x_new_unscaled = min_max_unscale(
+                    x_scaled = x_new.numpy(),
+                    min = current_lower,
+                    max = current_upper
+                )
 
-            x_new_sample_size = x_new_unscaled[0][(num_analyses.value*2)-1]
-            x_new_bounds = x_new_unscaled[0][:-1]
+            if scale_input.value:
+                x_new_sample_size = x_new_unscaled[0][(num_analyses.value*2)-1]
+                x_new_bounds = x_new_unscaled[0][:-1]
+            else:
+                x_new_sample_size = x_new[0][(num_analyses.value*2)-1]
+                x_new_bounds = x_new[0][:-1]
 
             bounds = fmt_bd.reverse_to_boundaries(params = x_new_bounds, K = num_analyses.value)
             bounds_list = np.concatenate( (bounds[0], bounds[1][0:num_analyses.value-1]) )
@@ -857,12 +961,6 @@ def _(
                 variance = sigma2
             )
 
-            y_new_scaled = z_score_scale(
-                y_new,
-                mu = y_mu,
-                sigma = y_sigma
-            )
-
             # collect the boundaries using the labels
             for _i in range(len(bounds_list)):
                 bayes_opt_results[labels[_i]].append(bounds_list[_i])
@@ -874,10 +972,22 @@ def _(
             bayes_opt_results["max_ess"].append(max_ess)
             bayes_opt_results["obj_func"].append(y_new)
 
-            ask_tell.tell(trieste.data.Dataset(
-                query_points = x_new,
-                observations = np.array([[y_new_scaled]])
-            ))
+            if scale_output.value:
+                y_new_scaled = z_score_scale(
+                    y_new,
+                    mu = y_mu,
+                    sigma = y_sigma
+                )
+
+                ask_tell.tell(trieste.data.Dataset(
+                    query_points = x_new,
+                    observations = np.array([[y_new_scaled]])
+                ))
+            else:
+                ask_tell.tell(trieste.data.Dataset(
+                    query_points = x_new,
+                    observations = np.array([[y_new]])
+                ))
 
             if j % 25 == 0:
                 print(".", end="")
@@ -923,10 +1033,47 @@ def _(bayes_opt_results, pd):
 
 
 @app.cell
-def _(bayes_opt_results, pd):
-    pd.DataFrame(bayes_opt_results).to_csv(
-        "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/large_box_bo_smooth_10x500_y_z_scaled.csv"
-    )
+def _(
+    do_not_train_error,
+    error,
+    n_experiments,
+    n_loops,
+    num_haltons,
+    scale_input,
+    scale_output,
+):
+    file_name = "bo_smooth"
+
+    file_name += "_" + str(n_experiments) + "x" + str(n_loops)
+
+    if scale_input.value:
+        file_name += "_x_min_max"
+    if scale_output.value:
+        file_name += "_y_z_scaled"
+    if do_not_train_error.value:
+        file_name += "_" + str(error)
+
+    file_name += "_" + str(num_haltons.value) + "haltons"
+
+    file_name += ".csv"
+    return (file_name,)
+
+
+@app.cell
+def _(file_name):
+    file_name
+    return
+
+
+@app.cell
+def _(file_name):
+    path = "/workspace/experiments_rand_simann_bo/bayes_opt_experiments/" + file_name
+    return (path,)
+
+
+@app.cell
+def _(bayes_opt_results, path, pd):
+    pd.DataFrame(bayes_opt_results).to_csv(path_or_buf=path)
     return
 
 
