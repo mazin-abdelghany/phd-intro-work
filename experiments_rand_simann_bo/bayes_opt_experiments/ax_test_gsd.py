@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -33,11 +33,8 @@ def _():
 @app.cell
 def _():
     from ax.service.ax_client import AxClient, ObjectiveProperties
-    import warnings
-    # Suppress verbose optimization warnings from BoTorch for cleaner logs
-    warnings.filterwarnings("ignore")
 
-    return AxClient, ObjectiveProperties, warnings
+    return AxClient, ObjectiveProperties
 
 
 @app.cell
@@ -480,7 +477,6 @@ def _(
     n_loops,
     np,
     num_analyses,
-    num_initial_trials,
     obj_f,
     short_seed_list,
     sigma2,
@@ -591,15 +587,10 @@ def _(bayes_opt_results, pd):
 
 
 @app.cell
-def _(
-    n_experiments,
-    n_loops,
-    num_initial_trials
-):
+def _(n_experiments, n_loops, num_initial_trials):
     file_name = "bo_smooth_ax"
     file_name += "_" + str(n_experiments) + "x" + str(n_loops)
-    file_name += "_ax_natively_scaled"
-    file_name += "_" + str(num_initial_trials.value) + "init_trials"
+    file_name += "_" + str(num_initial_trials.value) + "_init_trials"
     file_name += ".csv"
     return (file_name,)
 
@@ -618,7 +609,7 @@ def _(file_name):
 
 @app.cell
 def _(bayes_opt_results, path, pd):
-    pd.DataFrame(bayes_opt_results).to_csv(path_or_buf=path, index=False)
+    pd.DataFrame(bayes_opt_results).to_csv(path_or_buf=path)
     return
 
 
