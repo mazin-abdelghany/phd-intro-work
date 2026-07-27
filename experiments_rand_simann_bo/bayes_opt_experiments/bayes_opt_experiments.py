@@ -801,14 +801,14 @@ def _(
         # values for the initial GP fit
         if scale_input.value:
             initial_x_unscaled = min_max_unscale(
-                x_scaled = initial_x.numpy(),
+                x_scaled = initial_x,
                 min = current_lower,
                 max = current_upper
             )
 
             initial_points = initial_x_unscaled
         else:
-            initial_points = initial_x
+            initial_points = np.array(initial_x, dtype=np.float64)
 
         initial_y = []
 
@@ -836,7 +836,7 @@ def _(
             initial_y.append(initial_y_new)
 
         # turn y into [N,1] column vector
-        initial_y_formatted = np.array(initial_y, dtype=np.float64).reshape(-1, 1)
+        initial_y_formatted = np.array(initial_y).reshape(-1, 1)
 
         # scale y as well
         if scale_output.value:
@@ -850,14 +850,26 @@ def _(
 
         initial_data = trieste.data.Dataset(
             query_points = initial_x,
-            observations = initial_y_formatted
+            observations = tf.convert_to_tensor(initial_y_formatted, dtype=tf.float64)
         )
 
         #######################
         # GP regression model #
         #######################
+        if scale_input.value:
+            # min-max scaled space, all dimensions are [0, 1].
+            initial_lengthscales = [1.0] * len(current_lower)
+        else:
+            # Calculate the span of each dimension (upper - lower)
+            ranges = [u - l for u, l in zip(current_upper, current_lower)]
+
+            # Initialize ARD lengthscales to 20% of each dimension's range
+            # for large 3-stage box, e.g., 
+            # [1.2, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 28.0]
+            initial_lengthscales = [r * 0.2 for r in ranges]
+
         kernel = gpflow.kernels.Matern52(
-            lengthscales = [1.0] * (num_analyses.value * 2)
+            lengthscales = initial_lengthscales
         )
 
         # these priors regularize the lengthscale to have ~99% of its probability
@@ -923,6 +935,7 @@ def _(
         # there are n_loops number of reverse_bounds to iterate through
         for j in range(n_loops):
             x_new = ask_tell.ask()
+            x_new_np = x_new.numpy() 
 
             # print("new point:", x_new.numpy())
             # print(ask_tell.to_result().try_get_final_dataset().query_points)
@@ -933,17 +946,15 @@ def _(
 
             if scale_input.value:
                 x_new_unscaled = min_max_unscale(
-                    x_scaled = x_new.numpy(),
+                    x_scaled = x_new_np, 
                     min = current_lower,
                     max = current_upper
                 )
-
-            if scale_input.value:
                 x_new_sample_size = x_new_unscaled[0][(num_analyses.value*2)-1]
                 x_new_bounds = x_new_unscaled[0][:-1]
             else:
-                x_new_sample_size = x_new[0][(num_analyses.value*2)-1]
-                x_new_bounds = x_new[0][:-1]
+                x_new_sample_size = x_new_np[0][(num_analyses.value*2)-1]
+                x_new_bounds = x_new_np[0][:-1]
 
             bounds = fmt_bd.reverse_to_boundaries(params = x_new_bounds, K = num_analyses.value)
             bounds_list = np.concatenate( (bounds[0], bounds[1][0:num_analyses.value-1]) )
@@ -981,12 +992,12 @@ def _(
 
                 ask_tell.tell(trieste.data.Dataset(
                     query_points = x_new,
-                    observations = np.array([[y_new_scaled]])
+                    observations = tf.convert_to_tensor([[y_new_scaled]], dtype=tf.float64)
                 ))
             else:
                 ask_tell.tell(trieste.data.Dataset(
                     query_points = x_new,
-                    observations = np.array([[y_new]])
+                    observations = tf.convert_to_tensor([[y_new]], dtype=tf.float64)
                 ))
 
             if j % 25 == 0:
@@ -1035,10 +1046,10 @@ def _(bayes_opt_results, pd):
 @app.cell
 def _(
     do_not_train_error,
-    error,
     n_experiments,
     n_loops,
     num_haltons,
+    radio,
     scale_input,
     scale_output,
 ):
@@ -1051,7 +1062,7 @@ def _(
     if scale_output.value:
         file_name += "_y_z_scaled"
     if do_not_train_error.value:
-        file_name += "_" + str(error)
+        file_name += "_" + str(radio.value)
 
     file_name += "_" + str(num_haltons.value) + "haltons"
 
