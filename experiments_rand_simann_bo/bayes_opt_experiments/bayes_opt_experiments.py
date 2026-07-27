@@ -691,7 +691,7 @@ def _(do_not_train_error, mo):
         radio
     else:
         radio = mo.ui.radio(
-            options={1},
+            options={"1": 1},
             label="Initial value for likelihood variance",
         )
     radio
