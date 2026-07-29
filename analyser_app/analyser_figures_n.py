@@ -18,8 +18,9 @@ def _():
     import matplotlib.pyplot as plt
     import matplotlib.lines as mlines
     import matplotlib as mpl
+    from scipy import stats
 
-    return mlines, mpl, np, pd, plt
+    return mlines, mpl, np, pd, plt, stats
 
 
 @app.cell
@@ -565,6 +566,65 @@ def _(best_constrained_bound_getter, datasets, plt, stages, tri):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ## Best double constrained boundary
+    """)
+    return
+
+
+@app.cell
+def _(lower_boundary_value_labels, np, upper_boundary_value_labels):
+    def best_double_constrained_bound_getter(data):
+        constrained_data = data[(data["alpha"] <= 0.05 )& (data["power"] >= 0.9)]
+        if constrained_data.empty:
+            constrained_data = data # fallback
+        min_idx = constrained_data["obj_func"].idxmin()
+        lower = constrained_data.loc[min_idx, upper_boundary_value_labels].tolist()
+        upper = constrained_data.loc[min_idx, lower_boundary_value_labels].tolist()
+        obj_f = np.round(constrained_data.loc[min_idx, "obj_func"], decimals=4)
+        alpha = np.round(constrained_data.loc[min_idx, "alpha"], decimals=4)
+        power = np.round(constrained_data.loc[min_idx, "power"], decimals=4)
+        return lower, upper, obj_f, alpha, power
+
+    return (best_double_constrained_bound_getter,)
+
+
+@app.cell
+def _(best_double_constrained_bound_getter, datasets, plt, stages, tri):
+    _num_plots = len(datasets)
+    _fig, _ax = plt.subplots(1, _num_plots, figsize=(6 * _num_plots, 3.5), sharey=True, squeeze=False)
+    _ax = _ax.flatten()
+
+    for _idx, (_label, _data) in enumerate(datasets.items()):
+        _upper, _lower, _obj_f, _alpha, _power = best_double_constrained_bound_getter(_data)
+        _b = _ax[_idx]
+
+        _b.set_title(_label)
+        _b.set(xlabel="Trial stages", xticks=stages)
+
+        _b.plot(stages, tri[0], color="darkorange", label="Tri bound")
+        _b.plot(stages, tri[1], color="darkorange")
+
+        _b.plot(stages, _upper, color="purple", label="Best bound")
+        _b.plot(stages, _lower, color="purple")
+
+        for _y, _txt in zip(
+            [0.96, 0.88, 0.8],
+            [f"$\\mathcal{{L}}$ = {_obj_f}", f"$\\alpha$ = {_alpha}", f"$1-\\beta$ = {_power}"]
+        ):
+            _b.text(0.98, _y, _txt, ha="right", va="top", transform=_b.transAxes)
+
+        _b.legend(loc="lower right")
+
+    _ax[0].set_ylabel("$Z_k$ values")
+    _fig.suptitle("Best constrained boundary", y=0.96)
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Random run assessment
     """)
     return
@@ -837,13 +897,18 @@ def _(
     lower_boundary_value_labels,
     np,
     num_analyses,
+    pd,
     plt,
     runs_dict,
     stages,
+    stats,
     upper_boundary_value_labels,
 ):
     _fig, _ax = plt.subplots(nrows=2, ncols=num_analyses.value, figsize=(11,5), sharey=True)
     _ax[1, stages[-1] - 1].axis("off")
+
+    boundary_collector = {}
+    ks_index = []
 
     for _idx, (_label, _data) in enumerate(datasets.items()):
 
@@ -860,10 +925,16 @@ def _(
             # get the upper bound values
             for _key in _upper:
                 _upper[_key].append(_constrained_data.loc[_min_idx, _key])
+            
 
             # get the lower bound values
             for _key in _lower:
                 _lower[_key].append(_constrained_data.loc[_min_idx, _key])
+
+        # combine the dictionary keeping duplications in _upper only
+        # then add them to the collector dictionary
+        both_bounds = _upper | _lower
+        boundary_collector[_label] = both_bounds
 
         for colu, key in enumerate(upper_boundary_value_labels):
             _ax[0, colu].ecdf(_upper[key], label=_label)
@@ -877,9 +948,56 @@ def _(
             _ax[1, colu].set_title(key[0:5] + " bound " + key[5])
             #_ax[1, colu].legend()
 
+        ks_index.append(_label)
+
+    boundaries = upper_boundary_value_labels + lower_boundary_value_labels[:-1]
+    ks_dataframes = {}
+
+    # calculate the Kolmogorov–Smirnov test for all combinations
+    # there are (n_methods choose 2) * (2 * n_stages - 1) number of comparisons required
+    for _j in boundaries:
+        dup_skipper = 0
+    
+        ks_df = pd.DataFrame(
+            data=None, 
+            columns=ks_index, 
+            index=ks_index,
+            dtype=float
+        )
+    
+        for first_compare in boundary_collector:
+            for _i, second_compare in enumerate(boundary_collector):
+                # skip the first, then first 2, then first 3, etc
+                # loops in order to avoid duplicate comparisons
+                if dup_skipper >= _i: continue
+            
+                # calculated KS test and save the p-value only
+                ks_df.loc[first_compare, second_compare] = stats.kstest(
+                    boundary_collector[first_compare][_j],
+                    boundary_collector[second_compare][_j]
+                )[1]
+            
+            dup_skipper += 1
+        ks_dataframes[_j] = ks_df.round(4)
+
+
     _fig.suptitle(f"ECDF of top $x$ constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
+    return (ks_dataframes,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Kolmogorov-Smirnov test of ECDF differences by bound
+    """)
+    return
+
+
+@app.cell
+def _(ks_dataframes):
+    ks_dataframes
     return
 
 
@@ -1115,7 +1233,7 @@ def _(datasets, np, plt, runs_dict, slider2):
         obj_func_vals = data_to_assess["obj_func"].to_numpy()
         x_plot = np.arange(len(obj_func_vals))
 
-        running_min = np.minimum.accumulate(obj_func_vals)
+        running_min = np.log(np.minimum.accumulate(obj_func_vals))
         _ax.step(x_plot, running_min, label = _label, linestyle=style[_idx])
 
     _ax.set_title(f"Minimum objective function value over iteration, {run_to_assess}")
