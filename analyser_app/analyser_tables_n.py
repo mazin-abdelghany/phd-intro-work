@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.6"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 
@@ -188,7 +188,7 @@ def _(mo, num_methods):
     ])
 
     file_browser = mo.ui.file_browser(
-        initial_path = "/workspace/experiments_rand_simann_bo/",
+        initial_path = "/tf/experiments_rand_simann_bo/",
         label = "Select files in the order of the methods."
     )
 
@@ -249,8 +249,28 @@ def _(datasets, np, wason_included):
     return
 
 
+@app.function
+def parse_index(index):
+    s = str(index)
+
+    # First try a 2-digit experiment (10-99)
+    if len(s) >= 5:
+        exp = int(s[:2])
+        run = int(s[2:])
+        if 10 <= exp <= 99 and 100 <= run <= 99999:
+            return exp, run
+
+    # Otherwise it must be a 1-digit experiment (1-9)
+    exp = int(s[:1])
+    run = int(s[1:])
+    if 1 <= exp <= 9 and 100 <= run <= 99999:
+        return exp, run
+
+    raise ValueError("Invalid index")
+
+
 @app.cell
-def _(datasets):
+def _(datasets, np):
     n_experiments_dict = dict()
     n_loops_dict = dict()
 
@@ -258,10 +278,9 @@ def _(datasets):
     # e.g., 10500 = 10 experiments, 500 loops
     # !! this would if there were >99 experiments !!
     for _idx, (_label, _data) in enumerate(datasets.items()):
-        # pull the last index and then index it on the place where
-        # experiments and loops are encoded
-        n_experiments_dict[_label] = int(float(str(_data.iloc[-1]["index"])[0:2]))
-        n_loops_dict[_label] = int(float(str(_data.iloc[-1]["index"])[2:]))
+        _experiment, _run = parse_index(  _data.iloc[-1]["index"].astype(np.int_) )
+        n_experiments_dict[_label] = _experiment
+        n_loops_dict[_label] = _run
     return n_experiments_dict, n_loops_dict
 
 
