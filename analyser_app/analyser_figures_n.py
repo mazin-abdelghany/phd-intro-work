@@ -957,7 +957,9 @@ def _(
     # there are (n_methods choose 2) * (2 * n_stages - 1) number of comparisons required
     for _j in boundaries:
         dup_skipper = 0
-    
+
+        # initialize a symmetric (method x method) 
+        # empty dataframe of floats
         ks_df = pd.DataFrame(
             data=None, 
             columns=ks_index, 
@@ -971,13 +973,15 @@ def _(
                 # loops in order to avoid duplicate comparisons
                 if dup_skipper >= _i: continue
             
-                # calculated KS test and save the p-value only
+                # calculate KS test and save the p-value only
                 ks_df.loc[first_compare, second_compare] = stats.kstest(
                     boundary_collector[first_compare][_j],
                     boundary_collector[second_compare][_j]
                 )[1]
             
             dup_skipper += 1
+
+        # add the dataframe to a dictonary
         ks_dataframes[_j] = ks_df.round(4)
 
 
