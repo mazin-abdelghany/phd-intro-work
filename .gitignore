@@ -21,3 +21,6 @@
 
 # ignore the NVIDIA shader cache files
 .nv_cache/
+
+# ignore large data files
+/experiments_rand_simann_bo/**/*10x230k.csv
