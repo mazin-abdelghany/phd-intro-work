@@ -270,13 +270,13 @@ def parse_index(index):
     if len(s) >= 5:
         exp = int(s[:2])
         run = int(s[2:])
-        if 10 <= exp <= 99 and 100 <= run <= 99999:
+        if 10 <= exp <= 99:
             return exp, run
 
     # Otherwise it must be a 1-digit experiment (1-9)
     exp = int(s[:1])
     run = int(s[1:])
-    if 1 <= exp <= 9 and 100 <= run <= 99999:
+    if 1 <= exp <= 9:
         return exp, run
 
     raise ValueError("Invalid index")
@@ -925,7 +925,7 @@ def _(
             # get the upper bound values
             for _key in _upper:
                 _upper[_key].append(_constrained_data.loc[_min_idx, _key])
-            
+
 
             # get the lower bound values
             for _key in _lower:
@@ -966,19 +966,19 @@ def _(
             index=ks_index,
             dtype=float
         )
-    
+
         for first_compare in boundary_collector:
             for _i, second_compare in enumerate(boundary_collector):
                 # skip the first, then first 2, then first 3, etc
                 # loops in order to avoid duplicate comparisons
                 if dup_skipper >= _i: continue
-            
+
                 # calculate KS test and save the p-value only
                 ks_df.loc[first_compare, second_compare] = stats.kstest(
                     boundary_collector[first_compare][_j],
                     boundary_collector[second_compare][_j]
                 )[1]
-            
+
             dup_skipper += 1
 
         # add the dataframe to a dictonary
