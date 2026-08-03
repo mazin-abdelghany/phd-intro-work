@@ -257,13 +257,13 @@ def parse_index(index):
     if len(s) >= 5:
         exp = int(s[:2])
         run = int(s[2:])
-        if 10 <= exp <= 99 and 100 <= run <= 99999:
+        if 10 <= exp <= 50:
             return exp, run
 
     # Otherwise it must be a 1-digit experiment (1-9)
     exp = int(s[:1])
     run = int(s[1:])
-    if 1 <= exp <= 9 and 100 <= run <= 99999:
+    if 1 <= exp <= 9:
         return exp, run
 
     raise ValueError("Invalid index")
