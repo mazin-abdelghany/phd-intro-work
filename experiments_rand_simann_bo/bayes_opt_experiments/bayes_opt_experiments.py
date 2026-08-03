@@ -416,8 +416,8 @@ def _(mo):
 
 @app.cell
 def _():
-    n_experiments = 50
-    n_loops = 500
+    n_experiments = 5
+    n_loops = 5000
     return n_experiments, n_loops
 
 
@@ -1004,9 +1004,11 @@ def _(
                 print(".", end="")
 
             if j % 100 == 0:
-                print(gpr.kernel.lengthscales.numpy())
-                print(gpr.kernel.variance.numpy())
-                print(gpr.likelihood.variance.numpy())
+                print(" ")
+                print(f"Kernel length scales: {gpr.kernel.lengthscales.numpy()}.")
+                print(f"Kernel variance: {gpr.kernel.variance.numpy()}.")
+                print(f"Likelihood variance: {gpr.likelihood.variance.numpy()}.")
+                print(f"Iteration {j}.")
 
         stop_time = time.time()
         execute_time = stop_time - start_time
@@ -1014,9 +1016,9 @@ def _(
         bayes_opt_results["execute_time"].extend([execute_time] * n_loops)
 
         if i % 1 == 0:
-            print("\n===========================")
+            print("\n============================")
             print(f"= Completed experiment {i+1}. =")
-            print("===========================")
+            print("============================")
 
         del ask_tell
         del bayes_opt_model
