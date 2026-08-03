@@ -270,7 +270,7 @@ def parse_index(index):
     if len(s) >= 5:
         exp = int(s[:2])
         run = int(s[2:])
-        if 10 <= exp <= 99:
+        if 10 <= exp <= 50:
             return exp, run
 
     # Otherwise it must be a 1-digit experiment (1-9)
@@ -616,7 +616,7 @@ def _(best_double_constrained_bound_getter, datasets, plt, stages, tri):
         _b.legend(loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle("Best constrained boundary", y=0.96)
+    _fig.suptitle("Best doubly constrained boundary", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
