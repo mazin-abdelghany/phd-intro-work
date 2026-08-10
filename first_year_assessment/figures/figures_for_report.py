@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.8"
+__generated_with = "0.23.16"
 app = marimo.App(width="medium")
 
 
@@ -714,8 +714,66 @@ def _(mo):
     return
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # MAMS design
+    """)
+    return
+
+
 @app.cell
 def _():
+    mams_stages = [i+1 for i in range(3)]
+    mams_lower = [-4, -0.5, 1.3]
+    mams_upper = [5, 2.5, 1.3]
+    return mams_lower, mams_stages, mams_upper
+
+
+@app.cell
+def _(mams_lower, mams_stages, mams_upper, plt):
+    _fig, _ax = plt.subplots(nrows=1,ncols=4, figsize=(13,3), sharey=True)
+
+    for t, axis in enumerate(_ax):
+
+        axis.plot(mams_stages, mams_upper)
+        axis.plot(mams_stages, mams_lower)
+    
+        axis.scatter(mams_stages, mams_upper, color="black", zorder=2, s=20)
+        axis.scatter(mams_stages, mams_lower, color="black", zorder=2, s=20)
+    
+        axis.fill_between(mams_stages, mams_upper, mams_lower, alpha=0.2, color="green")
+        axis.fill_between(mams_stages, -6, mams_lower, alpha=0.2, color="darkorange")
+        axis.fill_between(mams_stages, 8, mams_upper, alpha=0.2, color="blue")
+
+        if t == 0:
+            axis.set_ylabel("Test statistic, $Z^{(k)}$")
+            axis.text(x=1.2, y=1, s="Continue trial", bbox=dict(facecolor='white'))
+            axis.text(x=1.7, y=4.5, s="Stop for efficacy", bbox=dict(facecolor='white'))
+            axis.text(x=1.7, y=-3.6, s="Stop for futility", bbox=dict(facecolor='white'))
+        
+        axis.set_ylim(-5, 6)
+        axis.set_title(f"Treatment {t+1}")
+        axis.set_xticks([i+1 for i in range(3)])
+        axis.set_xlabel("Analysis number, $j$")
+
+    _ax[1].plot([1,2], [0, 1], color="black")
+    _ax[1].scatter([1,2], [0, 1], color="red", zorder=3)
+    _ax[1].text(x=1.7, y=-3.6, s="Group remains", bbox=dict(facecolor='white'))
+
+    _ax[2].plot([1,2], [0, -1.5], color="black")
+    _ax[2].scatter([1,2], [0, -1.5], color="red", zorder=3)
+    _ax[2].text(x=1.7, y=-3.6, s="Group dropped", bbox=dict(facecolor='white'))
+
+    _ax[3].plot([1,2], [0, 3.5], color="black")
+    _ax[3].scatter([1,2], [0, 3.5], color="red", zorder=3)
+    _ax[3].text(x=1.7, y=-3.6, s='"Winner"', bbox=dict(facecolor='white'))
+
+    _fig.suptitle("MAMS design with 4 treatments and 3 stages", y=1.04)
+
+    _fig.savefig("/tf/first_year_assessment/figures/mams_example.png", dpi=300, bbox_inches="tight")
+
+    plt.show()
     return
 
 
