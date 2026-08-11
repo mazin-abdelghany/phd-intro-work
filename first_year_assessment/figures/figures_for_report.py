@@ -207,7 +207,7 @@ def _(f1_draws, f2_draws, f3_draws, np, plt, save_figures, x):
     # Save the figure before showing it
     if save_figures.value:
         _fig.savefig('/tf/first_year_assessment/figures/gp_func_priors.png', dpi=300, bbox_inches="tight")
-    
+
     plt.gca()
     return
 
@@ -258,17 +258,18 @@ def _(np, plt, save_figures, squaredExponential, tf, tfd, x):
     _fig, ax_gp = plt.subplots(figsize=(14,4)) 
 
     # Plot 9 of 10 the sampled functions from the posterior GP
-    for _i in range(f_posterior_samples.shape[0]-1):
+    for _i in range(f_posterior_samples.shape[0]):
+        if _i == 0: continue
         ax_gp.plot(x, f_posterior_samples[_i], alpha=0.6, color='blue', linewidth=0.8)
 
     # plot the last sampled function to add the legend
-    ax_gp.plot(x, f_posterior_samples[_i], alpha=0.6, color='blue', linewidth=0.8, label="Posterior function draws")
+    ax_gp.plot(x, f_posterior_samples[0], alpha=0.6, color='blue', linewidth=0.8, label="Posterior function draws")
 
     # Plot the known data points
-    ax_gp.plot(x_observed, y_observed, 'o', markersize=8, color='red', label='Known Points', zorder=3)
+    ax_gp.plot(x_observed, y_observed, 'o', markersize=8, color='red', label='Known points', zorder=3)
 
     # Plot the posterior mean function
-    ax_gp.plot(x, mu_post, color='black', linestyle='--', linewidth=2, label='Posterior Mean')
+    ax_gp.plot(x, mu_post, color='black', linestyle='--', linewidth=2, label='Posterior mean')
 
     # Plot the error bands (2 standard deviations from the posterior mean)
     std_dev_post = np.sqrt(np.diag(Sigma_post))
@@ -278,18 +279,18 @@ def _(np, plt, save_figures, squaredExponential, tf, tfd, x):
         mu_post + 2 * std_dev_post,
         alpha = 0.2,
         color = "grey",
-        label = "95% Confidence Interval"
+        label = "95% confidence region"
     )
 
-    ax_gp.set_title("Gaussian Process Posterior and Samples") # New title for GP subplot
+    ax_gp.set_title("Gaussian process posterior and samples") # New title for GP subplot
     ax_gp.set_ylabel("Output, f(x)")
     ax_gp.legend(loc='lower left')
-    ax_gp.grid(True, linestyle='--', alpha=0.7)
+    ax_gp.grid(True, linestyle='--', alpha=0.7, axis="y")
 
     # Save the figure before showing it
     if save_figures.value:
         _fig.savefig('/tf/first_year_assessment/figures/conditioned_gp_samples.png', dpi=300, bbox_inches="tight")
-    
+
     plt.gca()
     return length_scale_prior, noise_variance, signal_variance_prior
 
@@ -312,7 +313,7 @@ def _(np):
 
 @app.cell
 def _(f1, plt, save_figures, true_obj_func, x):
-    f1_for_plot = f1.sample(40)
+    f1_for_plot = f1.sample(15)
 
     _fig, _ax = plt.subplots(figsize=(14,4))
 
@@ -320,11 +321,12 @@ def _(f1, plt, save_figures, true_obj_func, x):
     _ax.plot(x, true_obj_func(x), lw=2, color="black", linestyle='--', label="Objective function")
 
     # plot the samples from GP prior up to last
-    for _i in range(f1_for_plot.shape[0]-1):
-        _ax.plot(x, f1_for_plot[_i], color = "purple", lw=0.7, alpha=0.2, zorder=1)
+    for _i in range(f1_for_plot.shape[0]):
+        if _i == 0: continue
+        _ax.plot(x, f1_for_plot[_i], color = "purple", lw=0.7, alpha=0.4, zorder=1)
 
     # plot the last GP prior sample to get a label
-    _ax.plot(x, f1_for_plot[f1_for_plot.shape[0]-1], label = "Prior function draws", color = "purple", lw=0.7, alpha=0.2)
+    _ax.plot(x, f1_for_plot[0], label = "Prior function draws", color = "purple", lw=0.7, alpha=0.4)
 
     _ax.set_ylim(-3.6, 3.6)
     _ax.set_xlim(-6, 6)
@@ -337,7 +339,7 @@ def _(f1, plt, save_figures, true_obj_func, x):
 
     if save_figures.value:
         _fig.savefig("/tf/first_year_assessment/figures/gp_prior_and_objective_function.png", dpi=300, bbox_inches="tight")
-    
+
     plt.gca()
     return
 
@@ -397,15 +399,15 @@ def _(
     )
 
     # Draw 10 samples (functions) from the posterior GP
-    f_samples = p_gp.sample(40)
+    f_samples = p_gp.sample(15)
 
-    for sample in f_samples:
-        _ax[0].plot(x, sample, color = "purple", alpha = 0.2, linewidth = 0.7, zorder = 1)
+    for _i, sample in enumerate(f_samples):
+        if _i == 0: continue
+        _ax[0].plot(x, sample, color = "purple", alpha = 0.4, linewidth = 0.7, zorder = 1)
 
     # plot the last GP prior sample to get a label
-    _ax[0].plot(x, f_samples[0], label = "Prior function draws", color = "purple", lw=0.7, alpha=0.2)
+    _ax[0].plot(x, f_samples[0], label = "Prior function draws", color = "purple", lw=0.7, alpha=0.5)
 
-    _ax[0].set_xlabel('x')
     _ax[0].set_ylabel("f(x)")
     _ax[0].set_title("Gaussian process fit, objective function, and expected improvement")
     _ax[0].legend(loc = "lower right")
@@ -453,7 +455,7 @@ def _(np, plt):
         _fig, (ax_gp, ax_acq) = plt.subplots(2, 1, figsize=(14, 6), sharex=True)
 
         for _i in range(f_posterior_samples.shape[0]):
-            ax_gp.plot(x, f_posterior_samples[_i], color='purple', linewidth=0.7, alpha = 0.2)
+            ax_gp.plot(x, f_posterior_samples[_i], color='purple', linewidth=0.7, alpha = 0.4)
 
         ax_gp.plot(x, mu_post, color='purple', linewidth=2, label='Posterior mean')
         ax_gp.plot(x, true_obj_func(x), lw=2, color="black", linestyle='--', label="Objective function")
@@ -463,6 +465,7 @@ def _(np, plt):
 
         ax_gp.set_title(
             f"Bayes opt iteration {iteration_count}: Gaussian process fit, objective function, and expected improvement")
+        ax_gp.set_ylabel("$f(x)$")
         ax_gp.set_ylim(-3.6, 3.6)
         ax_gp.set_xlim(-6, 6)
         ax_gp.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
@@ -476,7 +479,7 @@ def _(np, plt):
 
         ax_acq.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
         ax_acq.set_xlim(-6, 6)
-        ax_acq.set_xlabel("Input, x")
+        ax_acq.set_xlabel("Input, $x$")
         ax_acq.set_ylabel("EI value")
         ax_acq.legend(loc='lower right')
 
@@ -530,7 +533,7 @@ def _(
             loc=mu_posterior,
             scale_tril=tf.linalg.cholesky(SIGMA_post_stable)
         )
-        f_post_samples = post_gp.sample(40)
+        f_post_samples = post_gp.sample(15)
 
         # 6. Calculate Expected Improvement (EI)
         f_curr_best = np.max(y_obs)
@@ -636,7 +639,7 @@ def _(alpha_range, loss_alpha, plt, save_figures):
 
     if save_figures.value:
         fig.savefig("/tf/first_year_assessment/figures/loss_alpha.png", dpi=300, bbox_inches="tight")
-    
+
     plt.show()
     return
 
@@ -676,7 +679,7 @@ def _(X, Y, loss_ab, plt, save_figures):
 
     if save_figures.value:
         _fig.savefig("/tf/first_year_assessment/figures/loss_alpha_beta.png", dpi=300, bbox_inches="tight")
-    
+
     plt.show()
     return
 
