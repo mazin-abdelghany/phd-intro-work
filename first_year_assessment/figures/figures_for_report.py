@@ -439,7 +439,8 @@ def _(np, plt):
         ax_gp.axvline(next_x_to_observe, color='darkgreen')
         # ax_gp.plot(next_x_to_observe, next_y_to_observe, 'o', markersize=8, color='green', label='New point')
 
-        ax_gp.set_title(f"Bayes opt iteration {iteration_count}: Gaussian process fit, objective function, and expected improvement")
+        ax_gp.set_title(
+            f"Bayes opt iteration {iteration_count}: Gaussian process fit, objective function, and expected improvement")
         ax_gp.set_ylim(-3.6, 3.6)
         ax_gp.set_xlim(-6, 6)
         ax_gp.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
@@ -738,10 +739,10 @@ def _(mams_lower, mams_stages, mams_upper, plt):
 
         axis.plot(mams_stages, mams_upper)
         axis.plot(mams_stages, mams_lower)
-    
+
         axis.scatter(mams_stages, mams_upper, color="black", zorder=2, s=20)
         axis.scatter(mams_stages, mams_lower, color="black", zorder=2, s=20)
-    
+
         axis.fill_between(mams_stages, mams_upper, mams_lower, alpha=0.2, color="green")
         axis.fill_between(mams_stages, -6, mams_lower, alpha=0.2, color="darkorange")
         axis.fill_between(mams_stages, 8, mams_upper, alpha=0.2, color="blue")
@@ -751,7 +752,7 @@ def _(mams_lower, mams_stages, mams_upper, plt):
             axis.text(x=1.2, y=1, s="Continue trial", bbox=dict(facecolor='white'))
             axis.text(x=1.7, y=4.5, s="Stop for efficacy", bbox=dict(facecolor='white'))
             axis.text(x=1.7, y=-3.6, s="Stop for futility", bbox=dict(facecolor='white'))
-        
+
         axis.set_ylim(-5, 6)
         axis.set_title(f"Treatment {t+1}")
         axis.set_xticks([i+1 for i in range(3)])
@@ -772,6 +773,688 @@ def _(mams_lower, mams_stages, mams_upper, plt):
     _fig.suptitle("MAMS design with 4 treatments and 3 stages", y=1.04)
 
     _fig.savefig("/tf/first_year_assessment/figures/mams_example.png", dpi=300, bbox_inches="tight")
+
+    plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # GP regression appendix
+    """)
+    return
+
+
+@app.cell
+def _(np, plt):
+    # R indices are 1-based, so subtract 1 for Python
+    idx = np.array([2, 10, 14, 33, 45]) - 1
+    x_gp = np.linspace(0, 2 * np.pi + 0.2, 50)
+    y = np.sin(x_gp)
+
+    _fig, _ax = plt.subplots(figsize=(9,3))
+
+    # geom_point
+    _ax.scatter(x_gp[idx], y[idx], color="purple", label="observations", zorder=3)
+
+    # geom_linerange
+    _ax.vlines(x=3, ymin=-0.5, ymax=0.5, color="black", label="unknown region")
+
+    # geom_label
+    _ax.annotate("?", xy=(3, 0), ha="center", va="center",
+                bbox=dict(boxstyle="round,pad=0.3", fc="white"))
+
+    # labs
+    _ax.set_title("Non-linear function")
+    _ax.set_xlabel(r"$x$")
+    _ax.set_ylabel(r"$y$")
+    _ax.legend()
+    _ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+    _fig.savefig("/tf/first_year_assessment/figures/non-linear_func.png", dpi=300, bbox_inches="tight")
+
+    plt.show()
+    return idx, x_gp, y
+
+
+@app.cell
+def _():
+    import gpflow
+
+    return (gpflow,)
+
+
+@app.cell
+def _(gpflow, idx, np, plt, tf, x_gp, y):
+    _X = x_gp[idx, None]
+    _Y = y[idx, None]
+
+    # Prediction grid
+    Xnew = np.linspace(0, 2 * np.pi + 0.2, 300)[:, None]
+
+    model = gpflow.models.GPR(
+        (_X, _Y),
+        kernel=gpflow.kernels.SquaredExponential(),
+    )
+
+    opt = gpflow.optimizers.Scipy()
+    opt.minimize(model.training_loss, model.trainable_variables)
+
+    # Draw 40 functions directly from GPflow
+    samples = model.predict_f_samples(
+        tf.convert_to_tensor(Xnew, dtype=tf.float64),
+        num_samples=40,
+        full_cov=True
+    )
+
+    samples = samples.numpy()[:, :, 0]
+
+    _fig, _ax = plt.subplots(figsize=(9,3))
+
+    # replot the old points
+    _ax.scatter(x_gp[idx], y[idx], color="purple", label="observations", zorder=3)
+    _ax.vlines(x=3, ymin=-0.5, ymax=0.5, color="black", label="unknown region")
+    _ax.annotate("?", xy=(3, 0), ha="center", va="center",
+                bbox=dict(boxstyle="round,pad=0.3", fc="white"))
+
+    # plot the fitted GP
+    _ax.plot(Xnew[:, 0], samples.T, color="darkorange", alpha=0.25, zorder=2)
+    _ax.plot(Xnew[:, 0], samples[0], color="darkorange", alpha=0.25, zorder=2, label="GP posterior")
+
+    _ax.set_title("Non-linear function")
+    _ax.set_xlabel(r"$x$")
+    _ax.set_ylabel(r"$y$")
+    _ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y", zorder=0)
+    _ax.legend()
+
+    _fig.savefig("/tf/first_year_assessment/figures/gp_fit_nonlinear_func.png", dpi=300, bbox_inches="tight")
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(np, plt):
+    from scipy.stats import multivariate_normal
+
+    # -------------------------------------------------
+    # Mean vector
+    # -------------------------------------------------
+    _mu = np.array([0, 0])
+
+    # -------------------------------------------------
+    # Covariance matrix
+    # -------------------------------------------------
+    _Sigma = np.array([
+        [1, 0.7],
+        [0.7, 1]
+    ])
+
+    # -------------------------------------------------
+    # Grid
+    # -------------------------------------------------
+    x1 = np.linspace(-3, 3, 100)
+    x2 = np.linspace(-3, 3, 100)
+
+    X1, X2 = np.meshgrid(x1, x2)
+
+    # -------------------------------------------------
+    # Probability density
+    # -------------------------------------------------
+    grid = np.dstack((X1, X2))
+
+    probabilities = multivariate_normal.pdf(
+        grid,
+        mean=_mu,
+        cov=_Sigma
+    )
+
+    # -------------------------------------------------
+    # Create 1 row x 3 columns
+    # -------------------------------------------------
+    figu = plt.figure(figsize=(15, 4), layout="compressed")
+
+    ax1 = figu.add_subplot(1, 3, 3)
+    ax2 = figu.add_subplot(1, 3, 2)
+    ax3 = figu.add_subplot(1, 3, 1, projection="3d")
+
+    # -------------------------------------------------
+    # 1. Equal probability contour plot
+    # -------------------------------------------------
+    ax1.contour(
+        X1,
+        X2,
+        probabilities,
+        levels=5,
+        colors="purple",
+        linewidths=0.8
+    )
+
+    ax1.set_title("Equal probability contours")
+    ax1.set_xlabel(r"$x_1$")
+    ax1.set_ylabel(r"$x_2$")
+    ax1.set_aspect("equal")
+    ax1.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+    # -------------------------------------------------
+    # 2. Filled contour plot
+    # -------------------------------------------------
+    contours = ax2.contourf(
+        X1,
+        X2,
+        probabilities,
+        levels=8,
+        cmap="viridis"
+    )
+
+    # Add contour lines
+    ax2.contour(
+        X1,
+        X2,
+        probabilities,
+        levels=8,
+        colors="white",
+        linewidths=0.5
+    )
+
+    ax2.set_title("Heatmap probability contours")
+    ax2.set_xlabel(r"$x_1$")
+    ax2.set_ylabel(r"$x_2$")
+    ax2.set_aspect("equal")
+
+    # Colorbar for second plot
+    cbar = figu.colorbar(contours, ax=ax2)
+    cbar.ax.yaxis.set_major_formatter(
+        plt.FormatStrFormatter("%.2f")
+    )
+    cbar.set_label("Probability density")
+
+    # -------------------------------------------------
+    # 3. 3D probability density surface
+    # -------------------------------------------------
+    ax3.plot_surface(
+        X1,
+        X2,
+        probabilities,
+        cmap="viridis",
+        linewidth=0,
+        antialiased=True
+    )
+
+    ax3.set_title("3D probability density")
+    ax3.set_xlabel(r"$x_1$")
+    ax3.set_ylabel(r"$x_2$")
+    ax3.set_zlabel("Probability density")
+    ax3.view_init(elev=25, azim=65)
+
+    # Soften 3D gridlines and remove panel color
+    ax3.grid(True)
+
+    for _axis in [ax3.xaxis, ax3.yaxis, ax3.zaxis]:
+        _axis._axinfo["grid"]["color"] = (0.8, 0.8, 0.8, 0.7)
+        _axis._axinfo["grid"]["linewidth"] = 0.5
+
+    ax3.xaxis.set_pane_color((1, 1, 1, 0.0))
+    ax3.yaxis.set_pane_color((1, 1, 1, 0.0))
+    ax3.zaxis.set_pane_color((1, 1, 1, 0.0))
+
+    # -------------------------------------------------
+    # Save figure (optional)
+    # -------------------------------------------------
+    figu.savefig(
+        "/tf/first_year_assessment/figures/mvn_contours.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    # -------------------------------------------------
+    # Show plots
+    # -------------------------------------------------
+    plt.show()
+    return X1, X2, multivariate_normal
+
+
+@app.cell
+def _(X1, X2, multivariate_normal, np, plt):
+    # -------------------------------------------------
+    # Mean vector
+    # -------------------------------------------------
+    _mu = np.array([0, 0])
+
+    # -------------------------------------------------
+    # Covariance matrix
+    # -------------------------------------------------
+    _Sigma = np.array([
+        [1, 0.7],
+        [0.7, 1]
+    ])
+
+    # -------------------------------------------------
+    # Grid
+    # -------------------------------------------------
+    _x1 = np.linspace(-3, 3, 100)
+    _x2 = np.linspace(-3, 3, 100)
+
+    _X1, _X2 = np.meshgrid(_x1, _x2)
+
+    # -------------------------------------------------
+    # Probability density
+    # -------------------------------------------------
+    _grid = np.dstack((_X1, _X2))
+
+    _probabilities = multivariate_normal.pdf(
+        _grid,
+        mean=_mu,
+        cov=_Sigma
+    )
+
+    # --------------------------------------------------
+    # Generate random MVN samples
+    # --------------------------------------------------
+    rand_mvn = np.random.multivariate_normal(
+        mean=_mu,
+        cov=_Sigma,
+        size=10
+    )
+
+    # --------------------------------------------------
+    # Conditional distribution x2 | x1 = 0.5
+    # --------------------------------------------------
+    # x1 = 0.5
+    mu_cond = _mu[1] + 0.7 * 0.5
+    Sigma_cond = 1 - (0.7 * 1 * 0.7)
+
+    rand_cond = np.random.normal(
+        loc=mu_cond,
+        scale=np.sqrt(Sigma_cond),
+        size=20
+    )
+
+    # --------------------------------------------------
+    # Create 1 row x 2 columns
+    # --------------------------------------------------
+    _fig, axes = plt.subplots(
+        1, 2,
+        figsize=(11, 3),
+        layout = "compressed"
+    )
+
+    # ==================================================
+    # Left: Random samples from MVN
+    # ==================================================
+    axes[0].contour(
+        X1,
+        X2,
+        _probabilities,
+        levels=4,
+        colors="purple",
+        linewidths=0.8
+    )
+
+    axes[0].scatter(
+        rand_mvn[:, 0],
+        rand_mvn[:, 1],
+        color="black",
+        label="rv realisations",
+        zorder=3
+    )
+
+    axes[0].set_title("Equal probability contours, MVN draws")
+    axes[0].set_xlabel(r"$x_1$")
+    axes[0].set_ylabel(r"$x_2$")
+    axes[0].grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+    # ==================================================
+    # Right: Conditional distribution
+    # ==================================================
+    axes[1].contour(
+        X1,
+        X2,
+        _probabilities,
+        levels=4,
+        colors="purple",
+        linewidths=0.8
+    )
+
+    axes[1].axvline(
+        x=0.5,
+        color="black"
+    )
+
+    axes[1].scatter(
+        np.full(20, 0.5),
+        rand_cond,
+        color="black",
+        zorder=3
+    )
+
+    axes[1].set_title("Equal probability contours, draws $p(x_2\mid x_1=0.5, \Sigma)$")
+    axes[1].set_xlabel(r"$x_1$")
+    axes[1].set_ylabel(r"$x_2$")
+    axes[1].grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+    axes[0].legend()
+
+    _fig.savefig(
+        "/tf/first_year_assessment/figures/mvn_realisations.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(multivariate_normal, np, plt):
+    def se_kernel(n=10):
+        """Squared-exponential covariance matrix."""
+        x = np.arange(1, n + 1)
+        D = x[:, None] - x[None, :]
+        return np.exp(-(D ** 2) / 10) + np.eye(n) * np.sqrt(np.finfo(float).eps)
+
+
+    def spaghetti_plot_dim(seed=None):
+
+        if seed is not None:
+            np.random.seed(seed)
+
+        # ---------------------------------------------------------
+        # Generate MVN realizations
+        # ---------------------------------------------------------
+        rand_2d = np.random.multivariate_normal(
+            mean=np.zeros(2),
+            cov=se_kernel(2)
+        )
+
+        rand_10d = np.random.multivariate_normal(
+            mean=np.zeros(10),
+            cov=se_kernel(10)
+        )
+
+        rand_20d = np.random.multivariate_normal(
+            mean=np.zeros(20),
+            cov=se_kernel(20)
+        )
+
+        # ---------------------------------------------------------
+        # 2 x 2 layout
+        # ---------------------------------------------------------
+        _fig, _axes = plt.subplots(
+            2, 2,
+            figsize=(12, 9)
+        )
+
+        # =========================================================
+        # (1,1) 2D contour
+        # =========================================================
+
+        ax = _axes[0, 0]
+
+        x = np.linspace(-3, 3, 200)
+        y = np.linspace(-3, 3, 200)
+        X, Y = np.meshgrid(x, y)
+
+        pos = np.dstack((X, Y))
+
+        rv = multivariate_normal(
+            mean=np.zeros(2),
+            cov=se_kernel(2)
+        )
+
+        Z = rv.pdf(pos)
+
+        ax.contour(
+            X,
+            Y,
+            Z,
+            levels=4,
+            colors="purple",
+            linewidths=0.8
+        )
+
+        # Plot the sampled 2D point
+        ax.scatter(
+            rand_2d[0],
+            rand_2d[1],
+            color="black",
+            s=30,
+            zorder=3
+        )
+
+        ax.set_xlim(-3, 3)
+        ax.set_ylim(-3, 3)
+
+        ax.set_title("2-d MVN representation")
+        ax.set_xlabel(r"$x_1$")
+        ax.set_ylabel(r"$x_2$")
+        ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+
+        # =========================================================
+        # (1,2) 2D spaghetti
+        # =========================================================
+
+        ax = _axes[0, 1]
+
+        indices = np.arange(1, 3)
+
+        ax.plot(
+            indices,
+            rand_2d,
+            color="black",
+            linewidth=1
+        )
+
+        ax.scatter(
+            indices,
+            rand_2d,
+            color="black",
+            s=30,
+            zorder=3
+        )
+
+        ax.set_xlim(0.75, 2.25)
+        ax.set_ylim(-3, 3)
+
+        ax.set_xticks(indices)
+
+        ax.set_title("2-d spaghetti representation")
+        ax.set_xlabel("Variable index")
+        ax.set_ylabel(r"$x$")
+        ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+
+        # =========================================================
+        # (2,1) 10D spaghetti
+        # =========================================================
+
+        ax = _axes[1, 0]
+
+        indices = np.arange(1, 11)
+
+        ax.plot(
+            indices,
+            rand_10d,
+            color="black",
+            linewidth=1
+        )
+
+        ax.scatter(
+            indices,
+            rand_10d,
+            color="black",
+            s=30,
+            zorder=3
+        )
+
+        ax.set_ylim(-3, 3)
+        ax.set_xticks(indices)
+
+        ax.set_title("10-d representation")
+        ax.set_xlabel("Variable index")
+        ax.set_ylabel(r"$x$")
+        ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+
+        # =========================================================
+        # (2,2) 20D spaghetti
+        # =========================================================
+
+        ax = _axes[1, 1]
+
+        indices = np.arange(1, 21)
+
+        ax.plot(
+            indices,
+            rand_20d,
+            color="black",
+            linewidth=1
+        )
+
+        ax.scatter(
+            indices,
+            rand_20d,
+            color="black",
+            s=30,
+            zorder=3
+        )
+
+        ax.set_ylim(-3, 3)
+        ax.set_xticks(indices)
+
+        ax.set_title("20-d representation")
+        ax.set_xlabel("Variable index")
+        ax.set_ylabel(r"$x$")
+        ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+
+        # ---------------------------------------------------------
+        # Overall formatting
+        # ---------------------------------------------------------
+
+        _fig.suptitle(
+            "MVN realisations at different dimensions",
+            fontsize=14
+        )
+
+        plt.tight_layout()
+
+        return _fig, _axes
+
+    # Run
+    _fig, _axes = spaghetti_plot_dim(seed=123)
+
+    _fig.savefig(
+        "/tf/first_year_assessment/figures/mvn_new_viz.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(multivariate_normal, np, squaredExponential):
+    def new_predictions(n_preds=1):
+        # Given (x, y) pairs
+        x2 = np.arange(1, 4)
+        y = np.array([0.9, 0.64, 0.1])
+
+        # x values for which we want predictions
+        x1 = np.arange(1, 21)
+
+        # kernel matrices
+        S11 = squaredExponential(x1, x1, 1, 2)
+        S12 = squaredExponential(x1, x2, 1, 2)
+        S22 = squaredExponential(x2, x2, 1, 2)
+
+        # Conditional mean and covariance
+        S22inv = np.linalg.solve(S22, np.eye(S22.shape[0]))
+
+        mu1given2 = S12 @ S22inv @ y
+        S1given2 = S11 - S12 @ S22inv @ S12.T
+
+        # Draw predictions
+        new_ys = multivariate_normal.rvs(
+            mean=mu1given2,
+            cov=S1given2,
+            size=n_preds
+        )
+
+        # Ensure shape is (n_preds, 20) even when n_preds=1
+        if n_preds == 1:
+            new_ys = np.atleast_2d(new_ys)
+
+        return new_ys
+
+
+    return (new_predictions,)
+
+
+@app.cell
+def _(new_predictions, np, plt):
+    def plot_new_predictions(x=None):
+        if x is None:
+            x = new_predictions()
+
+        y = np.array([0.9, 0.64, 0.1])
+        x1 = np.arange(1, 21)
+
+        fig, ax2 = plt.subplots(
+            figsize=(12, 3)
+        )
+
+        prediction = np.asarray(x)[0]
+
+        ax2.scatter(
+            x1,
+            prediction,
+            color="black"
+        )
+
+        ax2.plot(
+            x1,
+            prediction,
+            color="black"
+        )
+
+        # Fixed observations
+        ax2.scatter(
+            np.arange(1, 4),
+            y,
+            color="darkorange",
+            zorder=3
+        )
+
+        ax2.set_ylim(-3, 3)
+        ax2.set_xticks(x1)
+
+        ax2.set_title("3 fixed points, then predictions")
+        ax2.set_xlabel("Variable index")
+        ax2.set_ylabel(r"$x$")
+        ax2.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
+
+        plt.tight_layout()
+
+        return fig, ax2
+
+    return (plot_new_predictions,)
+
+
+@app.cell
+def _(new_predictions, plot_new_predictions, plt):
+    predictions = new_predictions()
+
+    _fig, _axes = plot_new_predictions(predictions)
+
+    _fig.savefig(
+        "/tf/first_year_assessment/figures/mvn_cond_20d.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
 
     plt.show()
     return
