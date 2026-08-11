@@ -28,7 +28,19 @@ def _(mo):
 
 
 @app.cell
-def _(plt):
+def _(mo):
+    save_figures = mo.ui.switch(label="Save figures?")
+    return (save_figures,)
+
+
+@app.cell
+def _(mo, save_figures):
+    mo.hstack([save_figures, mo.md(f"Has value: {save_figures.value}")])
+    return
+
+
+@app.cell
+def _(plt, save_figures):
     _fig, _ax = plt.subplots(figsize=(9,2.5))
 
     # 5 stage design
@@ -45,8 +57,8 @@ def _(plt):
     _ax.scatter(stages, lower_bounds, color="black", zorder=2, s=20)
 
     _ax.fill_between(stages, upper_bounds, lower_bounds, alpha=0.2, color="green")
-    _ax.fill_between(stages, -6, lower_bounds, alpha=0.2, color="red")
-    _ax.fill_between(stages, 8, upper_bounds, alpha=0.2, color="red")
+    _ax.fill_between(stages, -6, lower_bounds, alpha=0.2, color="darkorange")
+    _ax.fill_between(stages, 8, upper_bounds, alpha=0.2, color="blue")
 
     _ax.text(x=1.2, y=1, s="Continue trial", bbox=dict(facecolor='white'))
     _ax.text(x=2.5, y=5, s="Stop for efficacy", bbox=dict(facecolor='white'))
@@ -60,7 +72,8 @@ def _(plt):
     _ax.set_xlabel("Analysis number, $k$")
     _ax.set_ylabel("Test statistic, $Z_k$")
 
-    _fig.savefig("/tf/first_year_assessment/figures/gsd_example.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/gsd_example.png", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -146,7 +159,7 @@ def _(np, squaredExponential, tf, tfd):
 
 
 @app.cell
-def _(f1_draws, f2_draws, f3_draws, np, plt, x):
+def _(f1_draws, f2_draws, f3_draws, np, plt, save_figures, x):
     # plot them
     _fig, _ax = plt.subplots(1, 3, figsize=(14,4), sharey=True)
     for _i in range(f1_draws.shape[0]):
@@ -192,13 +205,15 @@ def _(f1_draws, f2_draws, f3_draws, np, plt, x):
     _ax[0].set_ylabel("output, f(x)")
 
     # Save the figure before showing it
-    _fig.savefig('/tf/first_year_assessment/figures/gp_func_priors.png', dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig('/tf/first_year_assessment/figures/gp_func_priors.png', dpi=300, bbox_inches="tight")
+    
     plt.gca()
     return
 
 
 @app.cell
-def _(np, plt, squaredExponential, tf, tfd, x):
+def _(np, plt, save_figures, squaredExponential, tf, tfd, x):
     # conditioned Gaussian process figure
     # Define known input (x_observed) and output (y_observed) points
     x_observed = np.array([-5, -3.5, 3.])
@@ -272,7 +287,9 @@ def _(np, plt, squaredExponential, tf, tfd, x):
     ax_gp.grid(True, linestyle='--', alpha=0.7)
 
     # Save the figure before showing it
-    _fig.savefig('/tf/first_year_assessment/figures/conditioned_gp_samples.png', dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig('/tf/first_year_assessment/figures/conditioned_gp_samples.png', dpi=300, bbox_inches="tight")
+    
     plt.gca()
     return length_scale_prior, noise_variance, signal_variance_prior
 
@@ -294,7 +311,7 @@ def _(np):
 
 
 @app.cell
-def _(f1, plt, true_obj_func, x):
+def _(f1, plt, save_figures, true_obj_func, x):
     f1_for_plot = f1.sample(40)
 
     _fig, _ax = plt.subplots(figsize=(14,4))
@@ -318,7 +335,9 @@ def _(f1, plt, true_obj_func, x):
     _ax.set_title("Gaussian process prior and objective function")
     _ax.legend(loc = "lower right")
 
-    _fig.savefig("/tf/first_year_assessment/figures/gp_prior_and_objective_function.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/gp_prior_and_objective_function.png", dpi=300, bbox_inches="tight")
+    
     plt.gca()
     return
 
@@ -331,6 +350,7 @@ def _(
     norm,
     np,
     plt,
+    save_figures,
     signal_variance_prior,
     squaredExponential,
     tf,
@@ -414,7 +434,9 @@ def _(
     _ax[1].grid(True, linestyle=':', alpha=0.5, axis = "y")
     _ax[1].legend(loc='lower right') # Adjust legend position for acquisition plot
 
-    _fig.savefig("/tf/first_year_assessment/figures/gp_fit_w_acq_func.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/gp_fit_w_acq_func.png", dpi=300, bbox_inches="tight")
+
     plt.gca()
     return
 
@@ -566,9 +588,10 @@ def _(iter, plot_dict):
 
 
 @app.cell
-def _(plot_dict):
-    save_fig = plot_dict[0]
-    save_fig.savefig("/tf/first_year_assessment/figures/observe_new_point.png", dpi=300, bbox_inches="tight")
+def _(plot_dict, save_figures):
+    if save_figures.value:
+        save_fig = plot_dict[0]
+        save_fig.savefig("/tf/first_year_assessment/figures/observe_new_point.png", dpi=300, bbox_inches="tight")
     return
 
 
@@ -601,7 +624,7 @@ def _(alpha_range, target_alpha):
 
 
 @app.cell
-def _(alpha_range, loss_alpha, plt):
+def _(alpha_range, loss_alpha, plt, save_figures):
     fig, ax = plt.subplots(figsize=(9,2.5))
 
     ax.plot(alpha_range, loss_alpha, color = "darkorange", label="loss function")
@@ -611,7 +634,9 @@ def _(alpha_range, loss_alpha, plt):
     ax.axvline(0.05, color = "purple", linewidth = 1, linestyle="--", label = "minimum")
     ax.legend()
 
-    fig.savefig("/tf/first_year_assessment/figures/loss_alpha.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        fig.savefig("/tf/first_year_assessment/figures/loss_alpha.png", dpi=300, bbox_inches="tight")
+    
     plt.show()
     return
 
@@ -625,7 +650,7 @@ def _(alpha_range, beta_range, np):
 
 
 @app.cell
-def _(X, Y, loss_ab, plt):
+def _(X, Y, loss_ab, plt, save_figures):
     _fig, _ax = plt.subplots(figsize=(10.3,2.5))
 
     # number of contour lines
@@ -649,7 +674,9 @@ def _(X, Y, loss_ab, plt):
     _ax.set_xlabel("$\\alpha'$")
     _ax.set_ylabel("$\\beta'$")
 
-    _fig.savefig("/tf/first_year_assessment/figures/loss_alpha_beta.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/loss_alpha_beta.png", dpi=300, bbox_inches="tight")
+    
     plt.show()
     return
 
@@ -732,7 +759,7 @@ def _():
 
 
 @app.cell
-def _(mams_lower, mams_stages, mams_upper, plt):
+def _(mams_lower, mams_stages, mams_upper, plt, save_figures):
     _fig, _ax = plt.subplots(nrows=1,ncols=4, figsize=(13,3), sharey=True)
 
     for t, axis in enumerate(_ax):
@@ -772,7 +799,8 @@ def _(mams_lower, mams_stages, mams_upper, plt):
 
     _fig.suptitle("MAMS design with 4 treatments and 3 stages", y=1.04)
 
-    _fig.savefig("/tf/first_year_assessment/figures/mams_example.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/mams_example.png", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -787,7 +815,7 @@ def _(mo):
 
 
 @app.cell
-def _(np, plt):
+def _(np, plt, save_figures):
     # R indices are 1-based, so subtract 1 for Python
     idx = np.array([2, 10, 14, 33, 45]) - 1
     x_gp = np.linspace(0, 2 * np.pi + 0.2, 50)
@@ -812,7 +840,8 @@ def _(np, plt):
     _ax.legend()
     _ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
 
-    _fig.savefig("/tf/first_year_assessment/figures/non-linear_func.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/non-linear_func.png", dpi=300, bbox_inches="tight")
 
     plt.show()
     return idx, x_gp, y
@@ -826,7 +855,7 @@ def _():
 
 
 @app.cell
-def _(gpflow, idx, np, plt, tf, x_gp, y):
+def _(gpflow, idx, np, plt, save_figures, tf, x_gp, y):
     _X = x_gp[idx, None]
     _Y = y[idx, None]
 
@@ -868,14 +897,15 @@ def _(gpflow, idx, np, plt, tf, x_gp, y):
     _ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y", zorder=0)
     _ax.legend()
 
-    _fig.savefig("/tf/first_year_assessment/figures/gp_fit_nonlinear_func.png", dpi=300, bbox_inches="tight")
+    if save_figures.value:
+        _fig.savefig("/tf/first_year_assessment/figures/gp_fit_nonlinear_func.png", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
 
 
 @app.cell
-def _(np, plt):
+def _(np, plt, save_figures):
     from scipy.stats import multivariate_normal
 
     # -------------------------------------------------
@@ -1002,11 +1032,12 @@ def _(np, plt):
     # -------------------------------------------------
     # Save figure (optional)
     # -------------------------------------------------
-    figu.savefig(
-        "/tf/first_year_assessment/figures/mvn_contours.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
+    if save_figures.value:
+        figu.savefig(
+            "/tf/first_year_assessment/figures/mvn_contours.png",
+            dpi=300,
+            bbox_inches="tight"
+        )
 
     # -------------------------------------------------
     # Show plots
@@ -1016,7 +1047,7 @@ def _(np, plt):
 
 
 @app.cell
-def _(X1, X2, multivariate_normal, np, plt):
+def _(X1, X2, multivariate_normal, np, plt, save_figures):
     # -------------------------------------------------
     # Mean vector
     # -------------------------------------------------
@@ -1136,18 +1167,19 @@ def _(X1, X2, multivariate_normal, np, plt):
 
     axes[0].legend()
 
-    _fig.savefig(
-        "/tf/first_year_assessment/figures/mvn_realisations.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
+    if save_figures.value:
+        _fig.savefig(
+            "/tf/first_year_assessment/figures/mvn_realisations.png",
+            dpi=300,
+            bbox_inches="tight"
+        )
 
     plt.show()
     return
 
 
 @app.cell
-def _(multivariate_normal, np, plt):
+def _(multivariate_normal, np, plt, save_figures):
     def se_kernel(n=10):
         """Squared-exponential covariance matrix."""
         x = np.arange(1, n + 1)
@@ -1346,11 +1378,12 @@ def _(multivariate_normal, np, plt):
     # Run
     _fig, _axes = spaghetti_plot_dim(seed=123)
 
-    _fig.savefig(
-        "/tf/first_year_assessment/figures/mvn_new_viz.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
+    if save_figures.value:
+        _fig.savefig(
+            "/tf/first_year_assessment/figures/mvn_new_viz.png",
+            dpi=300,
+            bbox_inches="tight"
+        )
 
     plt.show()
     return
@@ -1445,16 +1478,17 @@ def _(new_predictions, np, plt):
 
 
 @app.cell
-def _(new_predictions, plot_new_predictions, plt):
+def _(new_predictions, plot_new_predictions, plt, save_figures):
     predictions = new_predictions()
 
     _fig, _axes = plot_new_predictions(predictions)
 
-    _fig.savefig(
-        "/tf/first_year_assessment/figures/mvn_cond_20d.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
+    if save_figures.value:
+        _fig.savefig(
+            "/tf/first_year_assessment/figures/mvn_cond_20d.png",
+            dpi=300,
+            bbox_inches="tight"
+        )
 
     plt.show()
     return
