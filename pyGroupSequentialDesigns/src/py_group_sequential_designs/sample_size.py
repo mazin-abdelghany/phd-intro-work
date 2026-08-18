@@ -1,5 +1,4 @@
 from scipy import stats
-from scipy.optimize import minimize_scalar
 from . import simulate as sim
 
 # sample size per group for a difference in means
@@ -25,7 +24,7 @@ def sample_size_means(
     return n
 
 # obtain maximum expected sample size for an interval of interest
-# using interval search on the derivative
+# using golden-ratio search 
 def max_ess(
         delta_start=0,
         n_analyses=3,
@@ -38,43 +37,55 @@ def max_ess(
     # epsilon precision for max ESS calculated
     epsilon = 1e-4
 
-    # delta_stop based on the variance (5x the variance)
-    delta_stop = variance * 5
+    # delta_stop based on the variance (5x the standard deviation)
+    delta_stop = variance**0.5 * 5
     
-    # helper function 
     def run_sim(delta):
         _, _, ess = sim.group_sequential_designs(
-            n_analyses = n_analyses,
-            upper_bounds = upper_bounds,
-            lower_bounds = lower_bounds,
-            n_patients = n_patients,
-            null_hypothesis = null_hypothesis,
-            alt_hypothesis = delta,
-            variance = variance
+            n_analyses=n_analyses,
+            upper_bounds=upper_bounds,
+            lower_bounds=lower_bounds,
+            n_patients=n_patients,
+            null_hypothesis=null_hypothesis,
+            alt_hypothesis=delta,
+            variance=variance
         )
         return ess
 
-    # calculate initial values outside the loop
-    ess_delta_start = run_sim(delta_start)
-    ess_delta_stop = run_sim(delta_stop)
-    
-    # while the error is greater than desired precision
-    while abs(ess_delta_start - ess_delta_stop) > epsilon:
-        # calculate the midpoint
-        midpoint = (delta_start + delta_stop) / 2.0
-        
-        if ess_delta_start >= ess_delta_stop:
-            # move the right bound to the midpoint
-            delta_stop = midpoint
-            # only update the ESS value that actually changed
-            ess_delta_stop = run_sim(delta_stop)
-        else:
-            # move the left bound to the midpoint
-            delta_start = midpoint
-            # only update the ESS value that actually changed
-            ess_delta_start = run_sim(delta_start)
+    # inverse of the golden ratio constant 1/phi 
+    inv_phi = (5**0.5 - 1) / 2.0  # ~0.618033
 
-    return ess_delta_start
+    a = delta_start
+    b = delta_stop
+
+    # Define two interior points
+    c = b - inv_phi * (b - a)
+    d = a + inv_phi * (b - a)
+
+    # find the function evaluation at c and d 
+    fc = run_sim(c)
+    fd = run_sim(d)
+
+    # Search until search interval width is less than epsilon
+    while (b - a) > epsilon:
+        if fc > fd:
+            # if f(c) > f(d), then the interval [d, end] can be excluded
+            b = d # b was the endpoint, it becomes d
+            d = c # the already evaluated interior point c becomes d
+            fd = fc
+            c = b - inv_phi * (b - a) # choose a new point in the new interval
+            fc = run_sim(c)
+        else:
+            # if f(d) > f(c), then the interval [start, c] can be excluded
+            a = c
+            c = d
+            fc = fd
+            d = a + inv_phi * (b - a)
+            fd = run_sim(d)
+
+    # Evaluate max ESS at final midpoint
+    best_delta = (a + b) / 2.0
+    return run_sim(best_delta)
 
 def find_sample_size(
         power_target=0.9,
