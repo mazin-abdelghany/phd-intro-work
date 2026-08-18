@@ -1,6 +1,9 @@
 # from the Rocker project, use rstudio Docker container
 FROM rocker/rstudio:latest
 
+# required for gsDesign
+RUN apt-get update && apt-get install -y libuv1
+
 # install packages of interest 
 RUN install2.r --error \
      gplite \
@@ -10,7 +13,8 @@ RUN install2.r --error \
      rpact \
      profvis \
      tictoc \
-     gridExtra 
+     gridExtra \
+     gsDesign
 
 RUN Rscript -e 'install.packages("devtools", dependencies = TRUE)'
 
