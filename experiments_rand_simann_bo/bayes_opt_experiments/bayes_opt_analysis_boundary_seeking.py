@@ -545,7 +545,7 @@ def _(
     target_alpha,
     target_power,
 ):
-    _, _, _, of = obj_f(
+    _, _, mess, of = obj_f(
         mu = mu,
         upper_bounds = point_bounds[0],
         lower_bounds = point_bounds[1],
@@ -557,7 +557,7 @@ def _(
         alternative_hypothesis = delta1,
         variance = sigma2
     )
-    return (of,)
+    return mess, of
 
 
 @app.cell
@@ -576,12 +576,13 @@ def _(point_bounds):
 
 
 @app.cell
-def _(np, obj_funct, of, plot_bounds, plt, slider):
+def _(mess, np, obj_funct, of, plot_bounds, plt, slider):
     fig, ax = plt.subplots(figsize=(12,6))
 
     ax.plot(plot_bounds, obj_funct)
     ax.scatter(slider.value, of)
     ax.text(2, 0.76, np.round(of, 8))
+    ax.text(2, 0.78, mess)
     ax.axvline(4, color = "red")
 
     ax.set_ylabel("Objective function")
