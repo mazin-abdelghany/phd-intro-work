@@ -37,8 +37,8 @@ def max_ess(
     # epsilon precision for max ESS calculated
     epsilon = 1e-4
 
-    # delta_stop based on the variance (5x the standard deviation)
-    delta_stop = variance**0.5 * 5
+    # delta_stop based on the variance (10x the standard deviation)
+    delta_stop = variance**0.5 * 10 
     
     def run_sim(delta):
         _, _, ess = sim.group_sequential_designs(
@@ -58,6 +58,9 @@ def max_ess(
     a = delta_start
     b = delta_stop
 
+    # evaluate starting point to avoid plateau violation (see comment below)
+    fa = run_sim(a)
+
     # Define two interior points
     c = b - inv_phi * (b - a)
     d = a + inv_phi * (b - a)
@@ -68,13 +71,22 @@ def max_ess(
 
     # Search until search interval width is less than epsilon
     while (b - a) > epsilon:
-        if fc > fd:
+        # at >= 5 times the standard deviation, there is a plateau, which
+        # violates the assumption for golden-section search. to avoid this 
+        # violation, we check the left-most point in the search (delta_start).
+        # if we are in the plateau (i.e., fc == fd) and f(a) > f(c), then we must
+        # discard the [d, end] interval
+        if (fc > fd) or (fc == fd and fa > fc):
             # if f(c) > f(d), then the interval [d, end] can be excluded
             b = d # b was the endpoint, it becomes d
             d = c # the already evaluated interior point c becomes d
             fd = fc
             c = b - inv_phi * (b - a) # choose a new point in the new interval
             fc = run_sim(c)
+        # in this else statement, there are two possibilities, either the peak
+        # is further rightward, or initial c and d have been selected on either
+        # side of the maximum. either way, a valid search can continue in this 
+        # block
         else:
             # if f(d) > f(c), then the interval [start, c] can be excluded
             a = c
