@@ -195,30 +195,30 @@ def _(mo):
 
 @app.cell
 def _(pd):
-    scaled_trieste = pd.read_csv(filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/bo_smooth_50x500_x_min_max_y_z_scaled_0.001_500haltons.csv")
-    return (scaled_trieste,)
+    new_data = pd.read_csv(filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/3-stage_bo_smooth_50x500_0.1_500haltons.csv")
+    return (new_data,)
 
 
 @app.cell
 def _():
-    upper_keys = ["upper" + str(i+1) for i in range(5)]
-    lower_keys = ["lower" + str(i+1) for i in range(4)]
-    lower_keys = lower_keys + ["upper5"]
+    upper_keys = ["upper" + str(i+1) for i in range(3)]
+    lower_keys = ["lower" + str(i+1) for i in range(2)]
+    lower_keys = lower_keys + ["upper3"]
     return lower_keys, upper_keys
 
 
 @app.cell
 def _(np):
-    reversed_bounds = np.empty((25000,9))
+    reversed_bounds = np.empty((25000,5))
     return (reversed_bounds,)
 
 
 @app.cell
-def _(fmt_bd, lower_keys, reversed_bounds, scaled_trieste, upper_keys):
-    for i in range(len(scaled_trieste)):
+def _(fmt_bd, lower_keys, new_data, reversed_bounds, upper_keys):
+    for i in range(len(new_data)):
         reversed_bounds[i] = fmt_bd.boundaries_to_reverse(
-            upper_bounds=scaled_trieste[upper_keys].to_numpy()[i],
-            lower_bounds=scaled_trieste[lower_keys].to_numpy()[i]
+            upper_bounds=new_data[upper_keys].to_numpy()[i],
+            lower_bounds=new_data[lower_keys].to_numpy()[i]
         )
     return
 
@@ -233,7 +233,7 @@ def _(mo):
 
 @app.cell
 def _(pd):
-    three_stage = pd.read_csv(filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/3-stage-designs/large_box_bo_smooth_50x500.csv")
+    three_stage = pd.read_csv(filepath_or_buffer="/tf/experiments_rand_simann_bo/bayes_opt_experiments/incorrect_maxESS_3-stage-designs/large_box_bo_smooth_50x500.csv")
     return (three_stage,)
 
 
@@ -277,7 +277,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## 5-stage designs
+    ## New 3-stage designs
     """)
     return
 
@@ -374,6 +374,364 @@ def _(np, three_stage_reversed_bounds):
 def _(mo):
     mo.md(r"""
     # Exploring boundary seeking with graphs
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## New 3-stage method
+    """)
+    return
+
+
+@app.cell
+def _(new_data, reversed_bounds):
+    best = reversed_bounds[new_data["obj_func"].idxmin()]
+    return (best,)
+
+
+@app.cell
+def _(best):
+    best
+    return
+
+
+@app.cell
+def _(
+    best,
+    delta0,
+    delta1,
+    fmt_bd,
+    mu,
+    np,
+    num_analyses,
+    obj_f,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    plot_bounds = np.linspace(start=0, stop=6, num=2000)
+    obj_funct1 = np.empty(2000)
+
+    for _i, _point in enumerate(plot_bounds):
+        _new_bounds = [best[0].tolist()] + [_point] + best[2:].tolist()
+
+        _bounds = fmt_bd.reverse_to_boundaries(
+            params=_new_bounds,
+            K=3
+        )
+
+        _, _, _, obj_funct1[_i] = obj_f(
+            mu = mu,
+            upper_bounds = _bounds[0],
+            lower_bounds = _bounds[1],
+            n_analyses = num_analyses,
+            n_patients = 63.49957129,
+            target_power = target_power,
+            target_alpha = target_alpha,
+            null_hypothesis = delta0,
+            alternative_hypothesis = delta1,
+            variance = sigma2
+        )
+    return obj_funct1, plot_bounds
+
+
+@app.cell
+def _(best, slider1):
+    modif = [best[0].tolist()] + [slider1.value] + best[2:].tolist()
+    return (modif,)
+
+
+@app.cell
+def _(fmt_bd, modif):
+    bds_slide = fmt_bd.reverse_to_boundaries(
+        params=modif,
+        K=3
+    )
+    return (bds_slide,)
+
+
+@app.cell
+def _(
+    bds_slide,
+    delta0,
+    delta1,
+    mu,
+    num_analyses,
+    obj_f,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    _, _, mess1, of1 = obj_f(
+        mu = mu,
+        upper_bounds = bds_slide[0],
+        lower_bounds = bds_slide[1],
+        n_analyses = num_analyses,
+        n_patients = 63.49957129,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+    return mess1, of1
+
+
+@app.cell
+def _(mo):
+    slider1 = mo.ui.slider(start=0, stop=6, step=0.001)
+    return (slider1,)
+
+
+@app.cell
+def _(slider1):
+    slider1
+    return
+
+
+@app.cell
+def _(mess1, np, obj_funct1, of1, plot_bounds, plt, slider1):
+    _fig, _ax = plt.subplots(figsize=(12,6))
+
+    _ax.plot(plot_bounds, obj_funct1)
+    _ax.scatter(slider1.value, of1)
+    _ax.text(2, 0.76, np.round(of1, 8))
+    _ax.text(2, 0.78, mess1)
+    _ax.axvline(0, color = "red")
+
+    _ax.set_ylabel("Objective function")
+    _ax.set_xlabel("Reverse bound value")
+    return
+
+
+@app.cell
+def _(
+    best,
+    delta0,
+    delta1,
+    fmt_bd,
+    mu,
+    np,
+    num_analyses,
+    obj_f,
+    plot_bounds,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    obj_funct2 = np.empty(2000)
+
+    for _i, _point in enumerate(plot_bounds):
+        _new_bounds = best[0:3].tolist() + [_point] + [best[4].tolist()]
+
+        _bounds = fmt_bd.reverse_to_boundaries(
+            params=_new_bounds,
+            K=3
+        )
+
+        _, _, _, obj_funct2[_i] = obj_f(
+            mu = mu,
+            upper_bounds = _bounds[0],
+            lower_bounds = _bounds[1],
+            n_analyses = num_analyses,
+            n_patients = 63.49957129,
+            target_power = target_power,
+            target_alpha = target_alpha,
+            null_hypothesis = delta0,
+            alternative_hypothesis = delta1,
+            variance = sigma2
+        )
+    return (obj_funct2,)
+
+
+@app.cell
+def _(best, slider3):
+    modif2 = best[0:3].tolist() + [slider3.value] + [best[4].tolist()]
+    return (modif2,)
+
+
+@app.cell
+def _(fmt_bd, modif2):
+    bds_slide1 = fmt_bd.reverse_to_boundaries(
+        params=modif2,
+        K=3
+    )
+    return (bds_slide1,)
+
+
+@app.cell
+def _(
+    bds_slide1,
+    delta0,
+    delta1,
+    mu,
+    num_analyses,
+    obj_f,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    _, _, mess2, of2 = obj_f(
+        mu = mu,
+        upper_bounds = bds_slide1[0],
+        lower_bounds = bds_slide1[1],
+        n_analyses = num_analyses,
+        n_patients = 63.49957129,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+    return mess2, of2
+
+
+@app.cell
+def _(mo):
+    slider3 = mo.ui.slider(start=0, stop=6, step=0.001)
+    return (slider3,)
+
+
+@app.cell
+def _(slider3):
+    slider3
+    return
+
+
+@app.cell
+def _(mess2, np, obj_funct2, of2, plot_bounds, plt, slider3):
+    _fig, _ax = plt.subplots(figsize=(12,6))
+
+    _ax.plot(plot_bounds, obj_funct2)
+    _ax.scatter(slider3.value, of2)
+    _ax.text(2, 0.80, np.round(of2, 8))
+    _ax.text(2, 0.85, mess2)
+    _ax.axvline(0, color = "red")
+
+    _ax.set_ylabel("Objective function")
+    _ax.set_xlabel("Reverse bound value")
+    return
+
+
+@app.cell
+def _(
+    best,
+    delta0,
+    delta1,
+    fmt_bd,
+    mu,
+    np,
+    num_analyses,
+    obj_f,
+    plot_bounds,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    obj_funct3 = np.empty(2000)
+
+    for _i, _point in enumerate(plot_bounds):
+        _new_bounds = best[0:2].tolist() + [_point] + best[3:].tolist()
+
+        _bounds = fmt_bd.reverse_to_boundaries(
+            params=_new_bounds,
+            K=3
+        )
+
+        _, _, _, obj_funct3[_i] = obj_f(
+            mu = mu,
+            upper_bounds = _bounds[0],
+            lower_bounds = _bounds[1],
+            n_analyses = num_analyses,
+            n_patients = 63.49957129,
+            target_power = target_power,
+            target_alpha = target_alpha,
+            null_hypothesis = delta0,
+            alternative_hypothesis = delta1,
+            variance = sigma2
+        )
+    return (obj_funct3,)
+
+
+@app.cell
+def _(best, slider4):
+    modif3 = best[0:2].tolist() + [slider4.value] + best[3:].tolist()
+    return (modif3,)
+
+
+@app.cell
+def _(fmt_bd, modif3):
+    bds_slide3 = fmt_bd.reverse_to_boundaries(
+        params=modif3,
+        K=3
+    )
+    return (bds_slide3,)
+
+
+@app.cell
+def _(
+    bds_slide3,
+    delta0,
+    delta1,
+    mu,
+    num_analyses,
+    obj_f,
+    sigma2,
+    target_alpha,
+    target_power,
+):
+    _, _, mess3, of3 = obj_f(
+        mu = mu,
+        upper_bounds = bds_slide3[0],
+        lower_bounds = bds_slide3[1],
+        n_analyses = num_analyses,
+        n_patients = 63.49957129,
+        target_power = target_power,
+        target_alpha = target_alpha,
+        null_hypothesis = delta0,
+        alternative_hypothesis = delta1,
+        variance = sigma2
+    )
+    return mess3, of3
+
+
+@app.cell
+def _(mo):
+    slider4 = mo.ui.slider(start=0, stop=6, step=0.001)
+    return (slider4,)
+
+
+@app.cell
+def _(mo, slider4):
+    mo.vstack([
+        slider4,
+        mo.md(f"Has value = {slider4.value}")
+    ])
+    return
+
+
+@app.cell
+def _(mess3, np, obj_funct3, of3, plot_bounds, plt, slider4):
+    _fig, _ax = plt.subplots(figsize=(12,6))
+
+    _ax.plot(plot_bounds, obj_funct3)
+    _ax.scatter(slider4.value, of3)
+    _ax.text(2, 1, np.round(of3, 8))
+    _ax.text(2, 0.78, mess3)
+    _ax.axvline(0.83384294, color = "red")
+
+    _ax.set_ylabel("Objective function")
+    _ax.set_xlabel("Reverse bound value")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Old 3-stage method
     """)
     return
 
@@ -494,11 +852,11 @@ def _(
     np,
     num_analyses,
     obj_f,
+    plot_bounds,
     sigma2,
     target_alpha,
     target_power,
 ):
-    plot_bounds = np.linspace(start=0, stop=6, num=2000)
     obj_funct = np.empty(2000)
 
     for je, point in enumerate(plot_bounds):
@@ -521,7 +879,7 @@ def _(
             alternative_hypothesis = delta1,
             variance = sigma2
         )
-    return obj_funct, plot_bounds
+    return (obj_funct,)
 
 
 @app.cell
