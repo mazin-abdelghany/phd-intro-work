@@ -1,3 +1,3 @@
-5-stage designs
+3-stage designs
 
 These data were generated with code that had incorrect maximum expected sample size calculations. maxESS was calculated using interval bisection, which can only be used for root finding with functions that are monotonic. maxESS is instead unimodal. New data are collected with maxESS corrected to perform Golden ratio search.
