@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.16"
 app = marimo.App(width="medium")
 
 
@@ -229,7 +229,7 @@ def _(mo, wason_included):
 def _(datasets, np, wason_included):
     if wason_included.value:
         n_experiments = 10
-        n_loops = 10000
+        n_loops = 11000
 
         # generate labels for data frame
         # if we have experiments <1000, then we need 3 spaces 
