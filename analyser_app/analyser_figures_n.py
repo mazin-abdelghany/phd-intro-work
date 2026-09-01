@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.16"
 app = marimo.App(width="medium")
 
 
@@ -242,7 +242,7 @@ def _(mo, wason_included):
 def _(datasets, np, wason_included):
     if wason_included.value:
         n_experiments = 10
-        n_loops = 10000
+        n_loops = 11000
 
         # generate labels for data frame
         # if we have experiments <1000, then we need 3 spaces 
@@ -773,7 +773,7 @@ def _(
         _b.legend(handles = [best_bound_label, tri_bound_label], loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle(f"Top $x$ constrained boundaries", y=0.96)
+    _fig.suptitle(f"Top constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
     return
@@ -939,8 +939,6 @@ def _(
         for colu, key in enumerate(upper_boundary_value_labels):
             _ax[0, colu].ecdf(_upper[key], label=_label)
             _ax[0, colu].set_title(key[0:5] + " bound " + key[5])
-            if colu == stages[-1] - 1:
-                _ax[0, colu].legend()
 
         for colu, key in enumerate(lower_boundary_value_labels):
             if colu == stages[-1] - 1: break
@@ -948,6 +946,13 @@ def _(
             _ax[1, colu].set_title(key[0:5] + " bound " + key[5])
             #_ax[1, colu].legend()
 
+        _handles, _labels = _ax[0, 0].get_legend_handles_labels()
+        _ax[1, stages[-1] - 1].legend(
+            _handles,
+            _labels,
+            loc="center"
+        )
+    
         ks_index.append(_label)
 
     boundaries = upper_boundary_value_labels + lower_boundary_value_labels[:-1]
@@ -985,7 +990,7 @@ def _(
         ks_dataframes[_j] = ks_df.round(4)
 
 
-    _fig.suptitle(f"ECDF of top $x$ constrained boundaries", y=0.96)
+    _fig.suptitle(f"ECDF of top constrained boundaries", y=0.96)
     plt.tight_layout()
     plt.gca()
     return (ks_dataframes,)
@@ -1246,11 +1251,6 @@ def _(datasets, np, plt, runs_dict, slider2):
 
     _ax.legend()
     plt.gca()
-    return
-
-
-@app.cell
-def _():
     return
 
 
