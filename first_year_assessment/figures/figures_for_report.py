@@ -790,11 +790,11 @@ def _(mams_lower, mams_stages, mams_upper, plt, save_figures):
 
     _ax[1].plot([1,2], [0, 1], color="black")
     _ax[1].scatter([1,2], [0, 1], color="red", zorder=3)
-    _ax[1].text(x=1.7, y=-3.6, s="Group remains", bbox=dict(facecolor='white'))
+    _ax[1].text(x=1.53, y=-3.6, s="Treatment remains", bbox=dict(facecolor='white'))
 
     _ax[2].plot([1,2], [0, -1.5], color="black")
     _ax[2].scatter([1,2], [0, -1.5], color="red", zorder=3)
-    _ax[2].text(x=1.7, y=-3.6, s="Group dropped", bbox=dict(facecolor='white'))
+    _ax[2].text(x=1.53, y=-3.6, s="Treatment dropped", bbox=dict(facecolor='white'))
 
     _ax[3].plot([1,2], [0, 3.5], color="black")
     _ax[3].scatter([1,2], [0, 3.5], color="red", zorder=3)
