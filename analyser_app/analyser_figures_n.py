@@ -952,7 +952,7 @@ def _(
             _labels,
             loc="center"
         )
-    
+
         ks_index.append(_label)
 
     boundaries = upper_boundary_value_labels + lower_boundary_value_labels[:-1]
@@ -1247,7 +1247,7 @@ def _(datasets, np, plt, runs_dict, slider2):
 
     _ax.set_title(f"Minimum objective function value over iteration, {run_to_assess}")
     _ax.set_xlabel("Iteration number")
-    _ax.set_ylabel("Objective function, $\mathcal{L}$")
+    _ax.set_ylabel("Log objective function, $\ln(\mathcal{L})$")
 
     _ax.legend()
     plt.gca()
