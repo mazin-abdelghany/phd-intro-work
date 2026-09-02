@@ -279,7 +279,7 @@ def _(np, plt, save_figures, squaredExponential, tf, tfd, x):
         mu_post + 2 * std_dev_post,
         alpha = 0.2,
         color = "grey",
-        label = "95% confidence region"
+        label = "95% credible interval"
     )
 
     ax_gp.set_title("Gaussian process posterior and samples") # New title for GP subplot
