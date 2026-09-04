@@ -241,8 +241,8 @@ def _(mo, wason_included):
 @app.cell
 def _(datasets, np, wason_included):
     if wason_included.value:
-        n_experiments = 10
-        n_loops = 11000
+        n_experiments = 11
+        n_loops = 10000
 
         # generate labels for data frame
         # if we have experiments <1000, then we need 3 spaces 
@@ -415,7 +415,8 @@ def _(datasets, np, plt):
     for a in ax.flat:
         a.set_xticks([])
 
-    plt.tight_layout()
+    fig.tight_layout()
+    #fig.savefig("/tf/first_year_assessment/figures/kde_50x1000_and_both_bayes_opt.pdf", dpi=400, bbox_inches="tight")
     plt.gca()
     return
 
@@ -773,8 +774,9 @@ def _(
         _b.legend(handles = [best_bound_label, tri_bound_label], loc="lower right")
 
     _ax[0].set_ylabel("$Z_k$ values")
-    _fig.suptitle(f"Top constrained boundaries", y=0.96)
-    plt.tight_layout()
+    _fig.suptitle(f"Top $\\alpha$-constrained boundaries", y=0.97)
+    _fig.tight_layout()
+    #_fig.savefig("/tf/first_year_assessment/figures/all_methods_10x10k_top_bounds.pdf", dpi=400, bbox_inches="tight")
     plt.gca()
     return
 
@@ -990,8 +992,9 @@ def _(
         ks_dataframes[_j] = ks_df.round(4)
 
 
-    _fig.suptitle(f"ECDF of top constrained boundaries", y=0.96)
-    plt.tight_layout()
+    _fig.suptitle(f"ECDF of top $\\alpha$-constrained boundaries", y=0.96)
+    _fig.tight_layout()
+    #_fig.savefig("/tf/first_year_assessment/figures/real_time_matched_ecdf.pdf", dpi=400, bbox_inches="tight")
     plt.gca()
     return (ks_dataframes,)
 
@@ -1250,6 +1253,7 @@ def _(datasets, np, plt, runs_dict, slider2):
     _ax.set_ylabel("Log objective function, $\ln(\mathcal{L})$")
 
     _ax.legend()
+    #_fig.savefig("50x1000_loss_func_over_iters.pdf", dpi=400, bbox_inches="tight")
     plt.gca()
     return
 
