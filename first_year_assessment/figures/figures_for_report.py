@@ -73,7 +73,7 @@ def _(plt, save_figures):
     _ax.set_ylabel("Test statistic, $Z_k$")
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/gsd_example.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/gsd_example.pdf", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -206,7 +206,7 @@ def _(f1_draws, f2_draws, f3_draws, np, plt, save_figures, x):
 
     # Save the figure before showing it
     if save_figures.value:
-        _fig.savefig('/tf/first_year_assessment/figures/gp_func_priors.png', dpi=300, bbox_inches="tight")
+        _fig.savefig('/tf/first_year_assessment/figures/gp_func_priors.pdf', dpi=300, bbox_inches="tight")
 
     plt.gca()
     return
@@ -289,7 +289,7 @@ def _(np, plt, save_figures, squaredExponential, tf, tfd, x):
 
     # Save the figure before showing it
     if save_figures.value:
-        _fig.savefig('/tf/first_year_assessment/figures/conditioned_gp_samples.png', dpi=300, bbox_inches="tight")
+        _fig.savefig('/tf/first_year_assessment/figures/conditioned_gp_samples.pdf', dpi=300, bbox_inches="tight")
 
     plt.gca()
     return length_scale_prior, noise_variance, signal_variance_prior
@@ -338,7 +338,7 @@ def _(f1, plt, save_figures, true_obj_func, x):
     _ax.legend(loc = "lower right")
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/gp_prior_and_objective_function.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/gp_prior_and_objective_function.pdf", dpi=300, bbox_inches="tight")
 
     plt.gca()
     return
@@ -437,7 +437,7 @@ def _(
     _ax[1].legend(loc='lower right') # Adjust legend position for acquisition plot
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/gp_fit_w_acq_func.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/gp_fit_w_acq_func.pdf", dpi=300, bbox_inches="tight")
 
     plt.gca()
     return
@@ -594,7 +594,7 @@ def _(iter, plot_dict):
 def _(plot_dict, save_figures):
     if save_figures.value:
         save_fig = plot_dict[0]
-        save_fig.savefig("/tf/first_year_assessment/figures/observe_new_point.png", dpi=300, bbox_inches="tight")
+        save_fig.savefig("/tf/first_year_assessment/figures/observe_new_point.pdf", dpi=300, bbox_inches="tight")
     return
 
 
@@ -638,7 +638,7 @@ def _(alpha_range, loss_alpha, plt, save_figures):
     ax.legend()
 
     if save_figures.value:
-        fig.savefig("/tf/first_year_assessment/figures/loss_alpha.png", dpi=300, bbox_inches="tight")
+        fig.savefig("/tf/first_year_assessment/figures/loss_alpha.pdf", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -678,7 +678,7 @@ def _(X, Y, loss_ab, plt, save_figures):
     _ax.set_ylabel("$\\beta'$")
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/loss_alpha_beta.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/loss_alpha_beta.pdf", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -803,7 +803,7 @@ def _(mams_lower, mams_stages, mams_upper, plt, save_figures):
     _fig.suptitle("MAMS design with 4 treatments and 3 stages", y=1.04)
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/mams_example.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/mams_example.pdf", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -844,7 +844,7 @@ def _(np, plt, save_figures):
     _ax.grid(True, linestyle = ":", alpha = 0.5, axis = "y")
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/non-linear_func.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/non-linear_func.pdf", dpi=300, bbox_inches="tight")
 
     plt.show()
     return idx, x_gp, y
@@ -901,7 +901,7 @@ def _(gpflow, idx, np, plt, save_figures, tf, x_gp, y):
     _ax.legend()
 
     if save_figures.value:
-        _fig.savefig("/tf/first_year_assessment/figures/gp_fit_nonlinear_func.png", dpi=300, bbox_inches="tight")
+        _fig.savefig("/tf/first_year_assessment/figures/gp_fit_nonlinear_func.pdf", dpi=300, bbox_inches="tight")
 
     plt.show()
     return
@@ -1037,7 +1037,7 @@ def _(np, plt, save_figures):
     # -------------------------------------------------
     if save_figures.value:
         figu.savefig(
-            "/tf/first_year_assessment/figures/mvn_contours.png",
+            "/tf/first_year_assessment/figures/mvn_contours.pdf",
             dpi=300,
             bbox_inches="tight"
         )
@@ -1172,7 +1172,7 @@ def _(X1, X2, multivariate_normal, np, plt, save_figures):
 
     if save_figures.value:
         _fig.savefig(
-            "/tf/first_year_assessment/figures/mvn_realisations.png",
+            "/tf/first_year_assessment/figures/mvn_realisations.pdf",
             dpi=300,
             bbox_inches="tight"
         )
@@ -1383,7 +1383,7 @@ def _(multivariate_normal, np, plt, save_figures):
 
     if save_figures.value:
         _fig.savefig(
-            "/tf/first_year_assessment/figures/mvn_new_viz.png",
+            "/tf/first_year_assessment/figures/mvn_new_viz.pdf",
             dpi=300,
             bbox_inches="tight"
         )
@@ -1488,7 +1488,7 @@ def _(new_predictions, plot_new_predictions, plt, save_figures):
 
     if save_figures.value:
         _fig.savefig(
-            "/tf/first_year_assessment/figures/mvn_cond_20d.png",
+            "/tf/first_year_assessment/figures/mvn_cond_20d.pdf",
             dpi=300,
             bbox_inches="tight"
         )

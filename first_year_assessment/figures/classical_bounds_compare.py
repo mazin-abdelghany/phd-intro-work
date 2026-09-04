@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.14"
+__generated_with = "0.23.16"
 app = marimo.App(width="medium")
 
 
@@ -501,7 +501,7 @@ def _(
     for _i in range(num_analyses):
         _ax[_i].set_xlabel("Analysis stage, $k$")
 
-    _fig.savefig("/tf/first_year_assessment/figures/classical_bounds.png", dpi=300, bbox_inches="tight")
+    _fig.savefig("/tf/first_year_assessment/figures/classical_bounds.pdf", dpi=300, bbox_inches="tight")
     plt.gca()
     return
 
